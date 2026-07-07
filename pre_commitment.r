@@ -4,10 +4,9 @@
 # OPTIMAL DYNAMIC PORTFOLIO SELECTION: MULTIPERIOD MEAN-VARIANCE FORMULATION
 ###
 
-# Loading packages
-# ....
+source("load_data.r")
 
-compute_results <- function(returns, w0, strat_param, strat) {
+compute_policy <- function(returns, w0, strat_param, strat) {
   
   T <- length(returns)         # number of time periods
   d <- ncol(returns[[1]]) - 1  # number of risky assets
@@ -98,42 +97,121 @@ compute_results <- function(returns, w0, strat_param, strat) {
     policy = policy,
     per_period = list(A1 = A1, A2 = A2, B = B, B1 = B1, B2 = B2)
   ))
-
 }
+
+
+run_simulation <- function(returns, policy, w0, seed=123) {
+  set.seed(seed)
+
+  T <- length(returns)         # number of time periods
+  d <- ncol(returns[[1]]) - 1  # number of risky assets
+
+  wealth <- numeric(T + 1)
+  wealth[1] <- w0
+
+  allocations <- list()
+  ref_asset <- numeric(T)      # amount in reference asset
+
+  for (t in 1:T) {
+    # obtain hedging term and speculative term
+    Kt <- policy[[t]]$Kt
+    vt <- policy[[t]]$vt
+
+    # compute allocations to risky and reference assets
+    ut <- -Kt * wealth[t] + vt
+    #ut <- pmax(pmin(ut / wealth[t], 1.0), -0.5) * wealth[t] # constraint on shorting
+    ref_asset[t] <- wealth[t] - sum(ut)
+
+    # ensure ref_asset is non-negative (no borrowing)
+    if (ref_asset[t] < 0) {
+      ut <- ut * (wealth[t] / sum(ut)) * 0.95   # scale to 95%
+      ref_asset[t] <- wealth[t] - sum(ut)
+    }
+
+    # sample a return scenario for this period
+    ret <- returns[[t]]
+    idx <- sample(nrow(ret), 1)
+    ret0 <- ret[idx, 1]
+    ret_risk <- ret[idx, -1]
+
+    # update wealth
+    wealth[t+1] <- ret0 * ref_asset[t] + sum(ret_risk * ut)
+
+    allocations[[t]] <- list(
+      u_risk = ut,
+      u_ref = ref_asset[t],
+      returns = c(ret0, ret_risk)
+    )
+  }
+
+  return(list(
+    wealth = wealth,
+    allocations = allocations,
+    ref_asset = ref_asset
+  ))
+}
+
+
+
+
 
 # ==============================================================================================
 
 set.seed(123)
 
 # Setup
-T <- 3         # number of periods
-d <- 2         # number of risky assets
-N <- 1000      # number of scenarios per period
-w0 <- 100000   # initial wealth
+T <- 12            # number of periods
+L <- 138           # lookback period (months)
+freq <- "monthly"  # rebalancing frequency
+w0 <- 100000       # initial wealth
 
 # Strategy
-sigma <- 22.6e6   # risk upper bound (or variance constraint)
-epsilon <- 125000 # expected terminal wealth (mean constraint)
-gamma <- 2        # risk-aversion coefficient
-strategy <- "E"  # P1(sigma), P2(epsilon) or E(gamma)
+sigma <- 22.6e6    # risk upper bound (or variance constraint)
+epsilon <- 125000  # expected terminal wealth (mean constraint)
+gamma <- 2         # risk-aversion coefficient
+strategy <- "E"    # P1(sigma), P2(epsilon) or E(gamma)
 
-# Create returns list
-returns <- list()
+# Retrieve returns
+returns <- load_returns()
+data <- preprocess_returns(returns, ref_col = 7,
+                           L = L, T = T, nfreq = freq)
+returns_list <- data$returns_list
+
+# Compute policy results
+if (strategy == "P1") result <- compute_policy(return_list, w0, sigma, strategy)
+if (strategy == "P2") result <- compute_policy(returns_list, w0, epsilon, strategy)
+if (strategy == "E") result <- compute_policy(returns_list, w0, gamma, strategy)
+
+# Run the simulation
+sim <- run_simulation(returns_list, result$policy, w0)
+
+# Print simulation results
+
+cat("\n========================================\n")
+cat("Li & Ng (2000) — Real Data Test\n")
+cat("========================================\n")
+cat(sprintf("Horizon: %d periods\n", T))
+cat(sprintf("Lookback: %d days per scenario set\n", L))
+cat(sprintf("Initial wealth: %.0f\n", w0))
+cat(sprintf("Risk aversion (gamma): %.1f\n", gamma))
+cat(sprintf("Strategy: %s\n\n", strategy))
+
+cat("Global parameters:\n")
+cat(sprintf("  mu (drift): %.6f\n", result$global$mu))
+cat(sprintf("  nu (speculative capacity): %.6f\n", result$global$nu))
+cat(sprintf("  tau (second-moment multiplier): %.6f\n", result$global$tau))
+
+cat("\nPeriod-by-period:\n")
 for (t in 1:T) {
-  r0 <- rnorm(N, mean = 1.04, sd = 0.02)
-  r1 <- rnorm(N, mean = 1.02, sd = 0.15)
-  r2 <- rnorm(N, mean = 1.09, sd = 0.12)
-  returns[[t]] <- cbind(r0, r1, r2)
+  cat(sprintf("\nPeriod %d:\n", t))
+  cat(sprintf("  Wealth start: %.2f\n", sim$wealth[t]))
+  cat(sprintf("  Risky weights (fraction of wealth): %s\n",
+              paste(round(sim$allocations[[t]]$u_risk / sim$wealth[t], 4), collapse = ", ")))
+  cat(sprintf("  Reference weight (GOLD): %.4f\n", 
+              sim$allocations[[t]]$u_ref / sim$wealth[t]))
+  cat(sprintf("  Wealth end: %.2f\n", sim$wealth[t+1]))
 }
 
-# Print results
-if (strategy == "P1") result <- compute_results(returns, w0, sigma, strategy)
-if (strategy == "P2") result <- compute_results(returns, w0, epsilon, strategy)
-if (strategy == "E") result <- compute_results(returns, w0, gamma, strategy)
-print(result$global) 
+cat(sprintf("\nFinal wealth: %.2f\n", sim$wealth[T+1]))
+cat(sprintf("Total return: %.2f%%\n", 100 * (sim$wealth[T+1]/w0 - 1)))
 
-K1 <- result$policy[[1]]$Kt
-v1 <- result$policy[[1]]$vt
-
-cat("u1 = -(", K1[1], ") * w1 + ", v1[1], " (for asset 1)\n", sep="")
-  cat("u1 = -(", K1[2], ") * w1 + ", v1[2], " (for asset 2)\n", sep="")
