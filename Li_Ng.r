@@ -3,7 +3,7 @@
 # Replicated Li & Ng (2000) pre-commitment policy for multi-period mean-variance portfolio selection
 # =================================================================================
 
-source("load_data.r")
+source("helper/load_data.r")
 
 compute_policy <- function(returns, w0, strat_param, strat) {
   
@@ -154,7 +154,6 @@ run_simulation <- function(returns, policy, w0, seed=123) {
 # ==============================================================================================
 
 if (sys.nframe() == 0) {
-  source("load_data.r")
   
   set.seed(123)
   

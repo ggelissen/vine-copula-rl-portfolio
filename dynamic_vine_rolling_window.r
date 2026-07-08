@@ -5,8 +5,8 @@
 
 library(rvinecopulib)
 library(xts)
-source("load_data.r")
-source("pre_commitment.r")  
+source("helper/load_data.r")
+source("Li_Ng.r")
 load("data/marginal_results.RData")
 returns <- load_returns()
 

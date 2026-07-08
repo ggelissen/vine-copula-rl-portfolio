@@ -8,7 +8,7 @@ library(rvinecopulib)
 library(xts)
 
 load("data/marginal_results.RData")
-source("load_data.r")
+source("helper/load_data.r")
 
 # Fit a static D-vine to residuals.
 # Select structures using AIC and choosing from (Gauss,t,Clayton,Gumbel,Frank,Joe).

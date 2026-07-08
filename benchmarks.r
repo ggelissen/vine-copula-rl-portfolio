@@ -6,8 +6,8 @@
 library(rvinecopulib)
 library(xts)
 
-source("load_data.r")
-source("pre_commitment.r")
+source("helper/load_data.r")
+source("Li_Ng.r")
 
 
 # Helper: compute risk metrics from a wealth path
