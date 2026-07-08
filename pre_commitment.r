@@ -1,8 +1,7 @@
-###
-# Computational Implementation of: 
-# Li & Ng (2000)
-# OPTIMAL DYNAMIC PORTFOLIO SELECTION: MULTIPERIOD MEAN-VARIANCE FORMULATION
-###
+# =================================================================================
+# pre_commitment.r
+# Replicated Li & Ng (2000) pre-commitment policy for multi-period mean-variance portfolio selection
+# =================================================================================
 
 source("load_data.r")
 
@@ -152,66 +151,52 @@ run_simulation <- function(returns, policy, w0, seed=123) {
 }
 
 
-
-
-
 # ==============================================================================================
 
-set.seed(123)
-
-# Setup
-T <- 12            # number of periods
-L <- 138           # lookback period (months)
-freq <- "monthly"  # rebalancing frequency
-w0 <- 100000       # initial wealth
-
-# Strategy
-sigma <- 22.6e6    # risk upper bound (or variance constraint)
-epsilon <- 125000  # expected terminal wealth (mean constraint)
-gamma <- 2         # risk-aversion coefficient
-strategy <- "E"    # P1(sigma), P2(epsilon) or E(gamma)
-
-# Retrieve returns
-returns <- load_returns()
-data <- preprocess_returns(returns, ref_col = 7,
-                           L = L, T = T, nfreq = freq)
-returns_list <- data$returns_list
-
-# Compute policy results
-if (strategy == "P1") result <- compute_policy(return_list, w0, sigma, strategy)
-if (strategy == "P2") result <- compute_policy(returns_list, w0, epsilon, strategy)
-if (strategy == "E") result <- compute_policy(returns_list, w0, gamma, strategy)
-
-# Run the simulation
-sim <- run_simulation(returns_list, result$policy, w0)
-
-# Print simulation results
-
-cat("\n========================================\n")
-cat("Li & Ng (2000) — Real Data Test\n")
-cat("========================================\n")
-cat(sprintf("Horizon: %d periods\n", T))
-cat(sprintf("Lookback: %d days per scenario set\n", L))
-cat(sprintf("Initial wealth: %.0f\n", w0))
-cat(sprintf("Risk aversion (gamma): %.1f\n", gamma))
-cat(sprintf("Strategy: %s\n\n", strategy))
-
-cat("Global parameters:\n")
-cat(sprintf("  mu (drift): %.6f\n", result$global$mu))
-cat(sprintf("  nu (speculative capacity): %.6f\n", result$global$nu))
-cat(sprintf("  tau (second-moment multiplier): %.6f\n", result$global$tau))
-
-cat("\nPeriod-by-period:\n")
-for (t in 1:T) {
-  cat(sprintf("\nPeriod %d:\n", t))
-  cat(sprintf("  Wealth start: %.2f\n", sim$wealth[t]))
-  cat(sprintf("  Risky weights (fraction of wealth): %s\n",
-              paste(round(sim$allocations[[t]]$u_risk / sim$wealth[t], 4), collapse = ", ")))
-  cat(sprintf("  Reference weight (GOLD): %.4f\n", 
-              sim$allocations[[t]]$u_ref / sim$wealth[t]))
-  cat(sprintf("  Wealth end: %.2f\n", sim$wealth[t+1]))
+if (sys.nframe() == 0) {
+  source("load_data.r")
+  
+  set.seed(123)
+  
+  T <- 12
+  L <- 138
+  freq <- "monthly"
+  w0 <- 100000
+  gamma <- 2
+  strategy <- "E"
+  
+  returns <- load_returns()
+  data <- preprocess_returns(returns, ref_col = 7, L = L, T = T, freq = freq)
+  returns_list <- data$returns_list
+  
+  result <- compute_policy(returns_list, w0, gamma, strategy)
+  sim <- run_simulation(returns_list, result$policy, w0)
+  
+  cat("\n========================================\n")
+  cat("Li & Ng (2000) — Real Data Test\n")
+  cat("========================================\n")
+  cat(sprintf("Horizon: %d periods\n", T))
+  cat(sprintf("Lookback: %d days per scenario set\n", L))
+  cat(sprintf("Initial wealth: %.0f\n", w0))
+  cat(sprintf("Risk aversion (gamma): %.1f\n", gamma))
+  cat(sprintf("Strategy: %s\n\n", strategy))
+  
+  cat("Global parameters:\n")
+  cat(sprintf("  mu (drift): %.6f\n", result$global$mu))
+  cat(sprintf("  nu (speculative capacity): %.6f\n", result$global$nu))
+  cat(sprintf("  tau (second-moment multiplier): %.6f\n", result$global$tau))
+  
+  cat("\nPeriod-by-period:\n")
+  for (t in 1:T) {
+    cat(sprintf("\nPeriod %d:\n", t))
+    cat(sprintf("  Wealth start: %.2f\n", sim$wealth[t]))
+    cat(sprintf("  Risky weights: %s\n",
+                paste(round(sim$allocations[[t]]$u_risk / sim$wealth[t], 4), collapse = ", ")))
+    cat(sprintf("  Reference weight (GOLD): %.4f\n",
+                sim$allocations[[t]]$u_ref / sim$wealth[t]))
+    cat(sprintf("  Wealth end: %.2f\n", sim$wealth[t+1]))
+  }
+  
+  cat(sprintf("\nFinal wealth: %.2f\n", sim$wealth[T+1]))
+  cat(sprintf("Total return: %.2f%%\n", 100 * (sim$wealth[T+1]/w0 - 1)))
 }
-
-cat(sprintf("\nFinal wealth: %.2f\n", sim$wealth[T+1]))
-cat(sprintf("Total return: %.2f%%\n", 100 * (sim$wealth[T+1]/w0 - 1)))
-
