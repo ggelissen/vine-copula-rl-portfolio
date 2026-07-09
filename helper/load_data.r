@@ -34,15 +34,15 @@ preprocess_returns <- function(returns, ref_col = 7, L = 60,
   }
   
   # Aggregate data if needed
-  if (freq == "weekly") {
+  if (nfreq == "weekly") {
     ep <- endpoints(simple_returns, on = "weeks")
     simple_returns <- period.apply(simple_returns, INDEX = ep, FUN = function(x) apply(x, 2, prod))
-  } else if (freq == "monthly") {
+  } else if (nfreq == "monthly") {
     ep <- endpoints(simple_returns, on = "months")
     simple_returns <- period.apply(simple_returns, INDEX = ep, FUN = function(x) apply(x, 2, prod))
   }
   
-  cat(sprintf("After aggregation (%s): %d rows, %d columns\n", freq, nrow(simple_returns), ncol(simple_returns)))
+  cat(sprintf("After aggregation (%s): %d rows, %d columns\n", nfreq, nrow(simple_returns), ncol(simple_returns)))
   cat(sprintf("Columns: %s\n\n", paste(colnames(simple_returns), collapse = ", ")))
   
   simple_returns <- simple_returns[paste0("/", end_date)]

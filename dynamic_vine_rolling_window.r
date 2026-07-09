@@ -1,5 +1,5 @@
 # ============================================================
-# rolling_window_backtest.r
+# dynamic_vine_rolling_window.r
 # Rolling‑window D‑vine + Li‑Ng multi‑period mean–variance
 # ============================================================
 

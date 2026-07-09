@@ -1,8 +1,11 @@
 # ============================================================
-# dynamic_copula_test.r – Fast GAS(1,1) for Student t copula
+# dynamic_vine_GAS.r
+# Fast GAS(1,1) for Student t copula
 # ============================================================
 library(copula)
 library(parallel)
+
+RUN_TESTS <- FALSE
 
 # ---- Analytical score for t-copula (vectorised) ----
 t_score <- function(u, rho, nu, x1, x2) {
@@ -99,76 +102,78 @@ fit_gas_t_fast <- function(u, nu, beta_grid = c(0.80, 0.85, 0.90, 0.95)) {
 
 # ====================================================================================
 
-load("data/marginal_results.RData")
-load("data/vine_fit.RData")
+if (RUN_TESTS) {
+  load("data/marginal_results.RData")
+  load("data/vine_fit.RData")
 
-U_dev <- tail(U, 500)
+  U_dev <- tail(U, 500)
 
-order <- vine_fit$structure$order
-d <- length(order)
-tree1_edges <- cbind(order[1:(d-1)], order[2:d])
-tree1_pcs   <- vine_fit$pair_copulas[[1]]
+  order <- vine_fit$structure$order
+  d <- length(order)
+  tree1_edges <- cbind(order[1:(d-1)], order[2:d])
+  tree1_pcs   <- vine_fit$pair_copulas[[1]]
 
-edge_info <- data.frame(
-  edge = 1:nrow(tree1_edges),
-  v1   = tree1_edges[,1],
-  v2   = tree1_edges[,2],
-  family = sapply(tree1_pcs, function(pc) pc$family),
-  nu    = sapply(tree1_pcs, function(pc) if (pc$family %in% c("student","t")) pc$parameters[2] else NA),
-  stringsAsFactors = FALSE
-)
-
-t_edges <- which(edge_info$family %in% c("student", "t"))
-cat(sprintf("Fitting %d t‑copula edges...\n", length(t_edges)))
-
-tasks <- lapply(t_edges, function(k) {
-  list(
-    edge_name = paste(edge_info$v1[k], edge_info$v2[k], sep = "-"),
-    u = U_dev[, c(edge_info$v1[k], edge_info$v2[k])],
-    nu = edge_info$nu[k]
+  edge_info <- data.frame(
+    edge = 1:nrow(tree1_edges),
+    v1   = tree1_edges[,1],
+    v2   = tree1_edges[,2],
+    family = sapply(tree1_pcs, function(pc) pc$family),
+    nu    = sapply(tree1_pcs, function(pc) if (pc$family %in% c("student","t")) pc$parameters[2] else NA),
+    stringsAsFactors = FALSE
   )
-})
 
-# Initialise parallel cluster
-n_cores <- min(detectCores() - 1, length(tasks))
-cl <- makeCluster(n_cores, type = "PSOCK")
+  t_edges <- which(edge_info$family %in% c("student", "t"))
+  cat(sprintf("Fitting %d t‑copula edges...\n", length(t_edges)))
 
-# Export everything the workers need
-clusterExport(cl, c("fit_gas_t_fast", "gas_nll_t", "t_score", "tasks"))
-clusterEvalQ(cl, library(copula))
+  tasks <- lapply(t_edges, function(k) {
+    list(
+      edge_name = paste(edge_info$v1[k], edge_info$v2[k], sep = "-"),
+      u = U_dev[, c(edge_info$v1[k], edge_info$v2[k])],
+      nu = edge_info$nu[k]
+    )
+  })
 
-cat(sprintf("Running %d edges on %d cores...\n", length(tasks), n_cores))
+  # Initialise parallel cluster
+  n_cores <- min(detectCores() - 1, length(tasks))
+  cl <- makeCluster(n_cores, type = "PSOCK")
 
-# Run with a timing print
-start_time <- Sys.time()
-results <- parLapply(cl, seq_along(tasks), function(i) {
-  task <- tasks[[i]]
-  cat(sprintf("[Worker %d] Fitting edge %s...\n", i, task$edge_name))
-  result <- tryCatch(
-    fit_gas_t_fast(task$u, task$nu, beta_grid = c(0.80, 0.85, 0.90, 0.95)),
-    error = function(e) list(error = conditionMessage(e))
-  )
-  cat(sprintf("[Worker %d] Edge %s done.\n", i, task$edge_name))
-  result
-})
+  # Export everything the workers need
+  clusterExport(cl, c("fit_gas_t_fast", "gas_nll_t", "t_score", "tasks"))
+  clusterEvalQ(cl, library(copula))
 
-stopCluster(cl)
-cat(sprintf("All done in %.1f minutes.\n", difftime(Sys.time(), start_time, units = "mins")))
+  cat(sprintf("Running %d edges on %d cores...\n", length(tasks), n_cores))
 
-# Print results
-for (i in seq_along(results)) {
-  r <- results[[i]]
-  edge <- tasks[[i]]$edge_name
-  if (!is.null(r$error)) {
-    cat(sprintf("\nEdge %s: FAILED (%s)\n", edge, r$error))
-  } else {
-    cat(sprintf("\nEdge %s:\n", edge))
-    cat(sprintf("  theta_inf = %.4f\n", r$theta_inf))
-    cat(sprintf("  alpha     = %.4f\n", r$alpha))
-    cat(sprintf("  beta      = %.4f\n", r$beta))
-    cat(sprintf("  nll       = %.4f\n", r$nll))
-    cat(sprintf("  converged = %s\n", r$converged))
+  # Run with a timing print
+  start_time <- Sys.time()
+  results <- parLapply(cl, seq_along(tasks), function(i) {
+    task <- tasks[[i]]
+    cat(sprintf("[Worker %d] Fitting edge %s...\n", i, task$edge_name))
+    result <- tryCatch(
+      fit_gas_t_fast(task$u, task$nu, beta_grid = c(0.80, 0.85, 0.90, 0.95)),
+      error = function(e) list(error = conditionMessage(e))
+    )
+    cat(sprintf("[Worker %d] Edge %s done.\n", i, task$edge_name))
+    result
+  })
+
+  stopCluster(cl)
+  cat(sprintf("All done in %.1f minutes.\n", difftime(Sys.time(), start_time, units = "mins")))
+
+  # Print results
+  for (i in seq_along(results)) {
+    r <- results[[i]]
+    edge <- tasks[[i]]$edge_name
+    if (!is.null(r$error)) {
+      cat(sprintf("\nEdge %s: FAILED (%s)\n", edge, r$error))
+    } else {
+      cat(sprintf("\nEdge %s:\n", edge))
+      cat(sprintf("  theta_inf = %.4f\n", r$theta_inf))
+      cat(sprintf("  alpha     = %.4f\n", r$alpha))
+      cat(sprintf("  beta      = %.4f\n", r$beta))
+      cat(sprintf("  nll       = %.4f\n", r$nll))
+      cat(sprintf("  converged = %s\n", r$converged))
+    }
   }
-}
 
-save(results, t_edges, edge_info, file = "data/gas_results_500d.RData")
+  save(results, t_edges, edge_info, file = "data/gas_results_500d.RData")
+}

@@ -4,7 +4,9 @@
 # ============================================================================
 
 source("expected_utility_single.r")
+source("helper/timer.r")
 
+RUN_TESTS <- FALSE
 
 # Multi‑period optimisation via backward induction
 optimise_eu_multi <- function(simulator, vine_fits, gamma,
@@ -25,7 +27,8 @@ optimise_eu_multi <- function(simulator, vine_fits, gamma,
     R_ref  <- R[, simulator$ref_col]
     R_risk <- R[, simulator$risk_cols, drop = FALSE]
 
-    obj <- function(w) {
+        obj <- function(w) {
+      if (any(w < 0) || sum(w) > 1) return(1e10)
       w_full <- c(1 - sum(w), w)
       R_all  <- cbind(R_ref, R_risk)
       portf_return <- as.vector(R_all %*% w_full)
@@ -34,14 +37,13 @@ optimise_eu_multi <- function(simulator, vine_fits, gamma,
       } else {
         mean(pmax(portf_return, 1e-10)^(1 - gamma))
       }
-      -eu * v[t + 1]   # negative for minimisation
+      -eu * v[t + 1]
     }
 
     w0 <- rep(1 / (d_risk + 1), d_risk)
     opt <- optim(w0, obj, method = "L-BFGS-B",
                  lower = rep(0, d_risk), upper = rep(1, d_risk),
-                 control = list(maxit = 200, factr = 1e-8))
-    
+                 control = list(maxit = 500, factr = 1e-8))
     w_opt_multi[[t]] <- opt$par
 
     w_full <- c(1 - sum(opt$par), opt$par)
@@ -53,8 +55,8 @@ optimise_eu_multi <- function(simulator, vine_fits, gamma,
       mean(pmax(portf_return, 1e-10)^(1 - gamma)) * v[t + 1]
     }
 
-    cat(sprintf("  t=%d: v=%.6f, w=%s\n", t, v[t],
-                paste(round(opt$par, 4), collapse = ", ")))
+    #cat(sprintf("  t=%d: v=%.6f, w=%s\n", t, v[t],
+    #            paste(round(opt$par, 4), collapse = ", ")))
   }
 
   w_opt_multi
@@ -64,6 +66,7 @@ optimise_eu_multi <- function(simulator, vine_fits, gamma,
 run_eu_multi_backtest <- function(simulator, returns_xts, U,
                                    rebal_dates, L = 500, W0 = 100000,
                                    gamma = 2, n_sim = 5000) {
+  timer <- start_timer("Multi‑period EU")
   T_horizon <- length(rebal_dates)
 
   vine_fits <- lapply(rebal_dates, function(d) {
@@ -76,8 +79,8 @@ run_eu_multi_backtest <- function(simulator, returns_xts, U,
       selcrit    = "aic")
   })
 
-  cat(sprintf("Multi‑period EU: %d periods, %d sims\n",
-              T_horizon, n_sim))
+  #cat(sprintf("Multi‑period EU: %d periods, %d sims\n",
+  #            T_horizon, n_sim))
   w_opt_all <- optimise_eu_multi(simulator, vine_fits, gamma, n_sim)
 
   wealth <- numeric(T_horizon + 1)
@@ -92,9 +95,9 @@ run_eu_multi_backtest <- function(simulator, returns_xts, U,
     R_risk <- as.numeric(actual_gross[simulator$risk_cols])
     wealth[t + 1] <- wealth[t] * (R_ref + sum((R_risk - R_ref) * w_opt))
 
-    cat(sprintf("Period %d: %s → Wealth: %.2f | w: %s\n",
-                t, current_date, wealth[t + 1],
-                paste(round(w_opt, 4), collapse = ", ")))
+    #cat(sprintf("Period %d: %s → Wealth: %.2f | w: %s\n",
+    #            t, current_date, wealth[t + 1],
+    #            paste(round(w_opt, 4), collapse = ", ")))
   }
 
   rets <- diff(wealth) / wealth[1:T_horizon]
@@ -108,34 +111,37 @@ run_eu_multi_backtest <- function(simulator, returns_xts, U,
     max_drawdown  = max(1 - wealth / cummax(wealth)) * 100
   )
 
+  stop_timer(timer)
   list(wealth = wealth, weights = w_opt_all, metrics = metrics)
 }
 
 
 # ============================================================================
 
-source("helper/load_data.r")
-load("data/marginal_results.RData")
-returns <- load_returns()
-sim <- build_simulator(marginals, asset_names, ref_col = 7)
+if (RUN_TESTS) {
+  source("helper/load_data.r")
+  load("data/marginal_results.RData")
+  returns <- load_returns()
+  sim <- build_simulator(marginals, asset_names, ref_col = 7)
 
-L <- 500
-all_dates <- index(returns)
-rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-rebal_dates <- index(returns)[rebal_dates + L - 1]
-rebal_dates <- tail(rebal_dates, 36)
+  L <- 500
+  all_dates <- index(returns)
+  rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
+  rebal_dates <- index(returns)[rebal_dates + L - 1]
+  rebal_dates <- tail(rebal_dates, 36)
 
-eu_multi <- run_eu_multi_backtest(sim, returns, U, rebal_dates,
-                                    L = L, gamma = 3, n_sim = 20000)
+  eu_multi <- run_eu_multi_backtest(sim, returns, U, rebal_dates,
+                                      L = L, gamma = 3, n_sim = 20000)
 
-cat("\n===========================================================\n")
-cat("   MULTI‑PERIOD EXPECTED UTILITY\n")
-cat("===========================================================\n")
-m <- eu_multi$metrics
-cat(sprintf("Final wealth:  %.0f\n", m["final_wealth"]))
-cat(sprintf("Total return:  %.2f%%\n", m["total_return"]))
-cat(sprintf("Annual return: %.2f%%\n", m["annual_return"]))
-cat(sprintf("Annual vol:    %.2f%%\n", m["annual_vol"]))
-cat(sprintf("Sharpe ratio:  %.3f\n", m["sharpe_ratio"]))
-cat(sprintf("Max drawdown:  %.2f%%\n", m["max_drawdown"]))
-cat("===========================================================\n")
+  cat("\n===========================================================\n")
+  cat("   MULTI‑PERIOD EXPECTED UTILITY\n")
+  cat("===========================================================\n")
+  m <- eu_multi$metrics
+  cat(sprintf("Final wealth:  %.0f\n", m["final_wealth"]))
+  cat(sprintf("Total return:  %.2f%%\n", m["total_return"]))
+  cat(sprintf("Annual return: %.2f%%\n", m["annual_return"]))
+  cat(sprintf("Annual vol:    %.2f%%\n", m["annual_vol"]))
+  cat(sprintf("Sharpe ratio:  %.3f\n", m["sharpe_ratio"]))
+  cat(sprintf("Max drawdown:  %.2f%%\n", m["max_drawdown"]))
+  cat("===========================================================\n")
+}

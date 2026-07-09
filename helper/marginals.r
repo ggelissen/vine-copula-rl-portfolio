@@ -7,6 +7,8 @@
 library(rugarch)
 library(xts)
 
+RUN_TESTS <- FALSE
+
 source ("load_data.r")
 raw_returns <- load_returns()
 asset_names <- colnames(returns)
@@ -40,27 +42,29 @@ fit_marginal <- function(return_series, asset_name = "asset") {
   return(list(fit = fit, z = z, u = u, z_sorted = z_sorted))
 }
 
+# =========================================================================================
 
-# Call function to fit all marginals
-marginals <- list()
-U <- NULL
+if (RUN_TESTS) {
+  # Call function to fit all marginals
+  marginals <- list()
+  U <- NULL
 
-for (i in seq_along(asset_names)) {
-  name <- asset_names[i]
-  return <- as.numeric(returns[,i])
-  marginals[[name]] <- fit_marginal(return, name)
-  
-  if (is.null(U)) {
-    U <- marginals[[name]]$u
-  } else {
-    U <- cbind(U, marginals[[name]]$u)
+  for (i in seq_along(asset_names)) {
+    name <- asset_names[i]
+    return <- as.numeric(returns[,i])
+    marginals[[name]] <- fit_marginal(return, name)
+    
+    if (is.null(U)) {
+      U <- marginals[[name]]$u
+    } else {
+      U <- cbind(U, marginals[[name]]$u)
+    }
   }
+
+  colnames(U) <- asset_names
+  save(marginals, U, asset_names, file = "data/marginal_results.RData")
+  print("Data saved to marginal_results.RData")
 }
-
-colnames(U) <- asset_names
-save(marginals, U, asset_names, file = "data/marginal_results.RData")
-print("Data saved to marginal_results.RData")
-
 
 #################################
 # Note (07/07/2026):

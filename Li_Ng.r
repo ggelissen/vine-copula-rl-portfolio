@@ -1,9 +1,11 @@
 # =================================================================================
-# pre_commitment.r
+# Li_Ng.r
 # Replicated Li & Ng (2000) pre-commitment policy for multi-period mean-variance portfolio selection
 # =================================================================================
 
 source("helper/load_data.r")
+
+RUN_TESTS <- FALSE
 
 compute_policy <- function(returns, w0, strat_param, strat) {
   
@@ -153,19 +155,19 @@ run_simulation <- function(returns, policy, w0, seed=123) {
 
 # ==============================================================================================
 
-if (sys.nframe() == 0) {
+if (RUN_TESTS) {
   
   set.seed(123)
   
   T <- 12
   L <- 138
-  freq <- "monthly"
+  nfreq <- "monthly"
   w0 <- 100000
   gamma <- 2
   strategy <- "E"
   
   returns <- load_returns()
-  data <- preprocess_returns(returns, ref_col = 7, L = L, T = T, freq = freq)
+  data <- preprocess_returns(returns, ref_col = 7, L = L, T = T, nfreq = nfreq)
   returns_list <- data$returns_list
   
   result <- compute_policy(returns_list, w0, gamma, strategy)

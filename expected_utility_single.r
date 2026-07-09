@@ -1,9 +1,13 @@
 # ==============================================================================
-# expected_utility.r
+# expected_utility_single.r
 # Dynamic portfolio selection with CRRA utility and rolling‑window D‑vine copula
 # ==============================================================================
 
 library(rvinecopulib)
+
+source("helper/timer.r")
+
+RUN_TESTS <- FALSE
 
 crra_utility <- function(W, gamma) {
   if (gamma == 1) return(log(pmax(W, 1e-10)))
@@ -83,17 +87,20 @@ optimise_eu_portfolio <- function(simulator, vine_fit, W0, gamma, n_sim = 10000,
   R      <- sim$gross
   R_ref  <- R[, simulator$ref_col]
   R_risk <- R[, simulator$risk_cols, drop = FALSE]
-  excess <- R_risk - R_ref
   d      <- ncol(R_risk)
   
   obj <- function(w) {
-    W1 <- W0 * (R_ref + as.vector(excess %*% w))
+    # Penalise violations of constraints
+    if (any(w < 0) || sum(w) > 1) return(1e10)
+    w_full <- c(1 - sum(w), w)
+    R_all  <- cbind(R_ref, R_risk)
+    W1 <- W0 * as.vector(R_all %*% w_full)
     -expected_utility(W1, gamma)
   }
-  
+
   w0 <- rep(1 / (d + 1), d)
   opt <- optim(w0, obj, method = "L-BFGS-B",
-               lower = rep(-0.5, d), upper = rep(1, d),
+               lower = rep(0, d), upper = rep(1, d),
                control = list(maxit = 500, factr = 1e-10))
   opt$par
 }
@@ -101,6 +108,7 @@ optimise_eu_portfolio <- function(simulator, vine_fit, W0, gamma, n_sim = 10000,
 
 run_eu_backtest <- function(simulator, vine_fits, returns_xts, rebal_dates,
                              W0 = 100000, gamma = 2, n_sim = 10000) {
+  timer <- start_timer("Single‑period EU")
   T_horizon <- length(rebal_dates)
   wealth <- numeric(T_horizon + 1)
   wealth[1] <- W0
@@ -129,9 +137,9 @@ run_eu_backtest <- function(simulator, vine_fits, returns_xts, rebal_dates,
     
     wealth[t + 1] <- wealth[t] * portf_ret
     
-    cat(sprintf("Period %d: %s → Wealth: %.2f | Weights: %s\n",
-                t, current_date, wealth[t + 1],
-                paste(round(w_opt, 4), collapse = ", ")))
+    #cat(sprintf("Period %d: %s → Wealth: %.2f | Weights: %s\n",
+    #            t, current_date, wealth[t + 1],
+    #            paste(round(w_opt, 4), collapse = ", ")))
   }
   
   # Metrics
@@ -150,6 +158,7 @@ run_eu_backtest <- function(simulator, vine_fits, returns_xts, rebal_dates,
                sharpe_ratio  = sharpe,
                max_drawdown  = max_dd)
   
+  stop_timer(timer)
   list(wealth = wealth, weights = weights_history, metrics = metrics)
 }
 
@@ -180,74 +189,75 @@ build_simulator <- function(marginals, asset_names, ref_col = 7) {
 
 # ============================================================================================
 
+if (RUN_TESTS) {
+  source("helper/load_data.r")
+  source("Li_Ng.r")
+  load("data/marginal_results.RData")
 
-source("helper/load_data.r")
-source("Li_Ng.r")
-load("data/marginal_results.RData")
+  returns <- load_returns()
+  sim <- build_simulator(marginals, asset_names, ref_col = 7)
 
-returns <- load_returns()
-sim <- build_simulator(marginals, asset_names, ref_col = 7)
+  # ---- Rebalancing dates (same as benchmarks.r) ----
+  L <- 500
+  all_dates <- index(returns)
+  rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
+  rebal_dates <- index(returns)[rebal_dates + L - 1]
+  rebal_dates <- tail(rebal_dates, 36)
 
-# ---- Rebalancing dates (same as benchmarks.r) ----
-L <- 500
-all_dates <- index(returns)
-rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-rebal_dates <- index(returns)[rebal_dates + L - 1]
-rebal_dates <- tail(rebal_dates, 36)
+  # ---- Fit rolling‑window vine at each rebalancing date ----
+  vine_fits <- vector("list", length(rebal_dates))
+  for (t in seq_along(rebal_dates)) {
+    current_date <- rebal_dates[t]
+    window_end <- which(index(returns) == current_date)
+    window_start <- window_end - L + 1
+    U_window <- U[window_start:window_end, ]
+    
+    vine_fits[[t]] <- vinecop(
+      U_window,
+      var_types = rep("c", ncol(U_window)),
+      structure = dvine_structure(1:ncol(U_window)),
+      family_set = c("gaussian", "t", "clayton", "gumbel", "frank", "joe"),
+      selcrit = "aic"
+    )
+    cat(sprintf("✓ Vine fit %d/%d (date: %s)\n", t, length(rebal_dates), current_date))
+  }
 
-# ---- Fit rolling‑window vine at each rebalancing date ----
-vine_fits <- vector("list", length(rebal_dates))
-for (t in seq_along(rebal_dates)) {
-  current_date <- rebal_dates[t]
-  window_end <- which(index(returns) == current_date)
-  window_start <- window_end - L + 1
-  U_window <- U[window_start:window_end, ]
-  
-  vine_fits[[t]] <- vinecop(
-    U_window,
-    var_types = rep("c", ncol(U_window)),
-    structure = dvine_structure(1:ncol(U_window)),
-    family_set = c("gaussian", "t", "clayton", "gumbel", "frank", "joe"),
-    selcrit = "aic"
-  )
-  cat(sprintf("✓ Vine fit %d/%d (date: %s)\n", t, length(rebal_dates), current_date))
+  # ---- Run Expected Utility back‑test ----
+  for (gamma in c(3)) {
+    cat(sprintf("\nRunning Expected Utility back-test with gamma = %.1f...\n", gamma))
+    eu_result <- run_eu_backtest(
+      simulator   = sim,
+      vine_fits   = vine_fits,
+      returns_xts = returns,
+      rebal_dates = rebal_dates,
+      W0          = 100000,
+      gamma       = gamma,
+      n_sim       = 10000
+    )
+
+    # ---- Compare with existing benchmarks ----
+    cat("\n\n")
+    cat("===========================================================\n")
+    cat("   EXPECTED UTILITY vs. MEAN–VARIANCE BENCHMARKS           \n")
+    cat("===========================================================\n")
+    cat(sprintf("%-25s %12s %10s %10s %10s %10s %10s\n",
+                "Strategy", "Final W.", "Return%", "Ann.Ret%", "Vol%", "Sharpe", "Max DD"))
+    cat("-----------------------------------------------------------\n")
+    
+    metrics <- eu_result$metrics
+    cat(sprintf("%-25s %12.0f %10.2f %10.2f %10.2f %10.3f %10.2f\n",
+                paste("Expected Utility (gamma=", gamma, ")", sep=""),
+                metrics["final_wealth"],
+                metrics["total_return"],
+                metrics["annual_return"],
+                metrics["annual_vol"],
+                metrics["sharpe_ratio"],
+                metrics["max_drawdown"]))
+    cat("===========================================================\n\n")
+  }
+
+  # Save
+  save(eu_result, vine_fits, file = "data/eu_backtest_result.RData")
+  cat("✓ Results saved to data/eu_backtest_result.RData\n")
 }
-
-# ---- Run Expected Utility back‑test ----
-for (gamma in c(3)) {
-  cat(sprintf("\nRunning Expected Utility back-test with gamma = %.1f...\n", gamma))
-  eu_result <- run_eu_backtest(
-    simulator   = sim,
-    vine_fits   = vine_fits,
-    returns_xts = returns,
-    rebal_dates = rebal_dates,
-    W0          = 100000,
-    gamma       = gamma,
-    n_sim       = 10000
-  )
-
-  # ---- Compare with existing benchmarks ----
-  cat("\n\n")
-  cat("===========================================================\n")
-  cat("   EXPECTED UTILITY vs. MEAN–VARIANCE BENCHMARKS           \n")
-  cat("===========================================================\n")
-  cat(sprintf("%-25s %12s %10s %10s %10s %10s %10s\n",
-              "Strategy", "Final W.", "Return%", "Ann.Ret%", "Vol%", "Sharpe", "Max DD"))
-  cat("-----------------------------------------------------------\n")
   
-  metrics <- eu_result$metrics
-  cat(sprintf("%-25s %12.0f %10.2f %10.2f %10.2f %10.3f %10.2f\n",
-              paste("Expected Utility (gamma=", gamma, ")", sep=""),
-              metrics["final_wealth"],
-              metrics["total_return"],
-              metrics["annual_return"],
-              metrics["annual_vol"],
-              metrics["sharpe_ratio"],
-              metrics["max_drawdown"]))
-  cat("===========================================================\n\n")
-}
-
-# Save
-save(eu_result, vine_fits, file = "data/eu_backtest_result.RData")
-cat("✓ Results saved to data/eu_backtest_result.RData\n")
-

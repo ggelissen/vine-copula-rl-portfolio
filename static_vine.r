@@ -1,14 +1,14 @@
-# ============================================================
-# vine_copula.r
-# Fit static vine copula to uniform residuals, simulate returns,
-# and compute portfolio moments
-# ============================================================
+# =============================================================================================
+# static_vine.r
+# Fit static vine copula to uniform residuals, simulate returns, and compute portfolio moments
+# =============================================================================================
 
 library(rvinecopulib)
 library(xts)
 
 load("data/marginal_results.RData")
 source("helper/load_data.r")
+
 
 # Fit a static D-vine to residuals.
 # Select structures using AIC and choosing from (Gauss,t,Clayton,Gumbel,Frank,Joe).
