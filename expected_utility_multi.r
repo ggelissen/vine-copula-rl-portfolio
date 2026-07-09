@@ -123,7 +123,7 @@ L <- 500
 all_dates <- index(returns)
 rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
 rebal_dates <- index(returns)[rebal_dates + L - 1]
-rebal_dates <- tail(rebal_dates, 12)
+rebal_dates <- tail(rebal_dates, 36)
 
 eu_multi <- run_eu_multi_backtest(sim, returns, U, rebal_dates,
                                     L = L, gamma = 3, n_sim = 20000)

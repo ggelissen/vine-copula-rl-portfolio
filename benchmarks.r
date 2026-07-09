@@ -317,7 +317,7 @@ L <- 500
 all_dates <- index(returns)
 rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
 rebal_dates <- index(returns)[rebal_dates + L - 1]
-rebal_dates <- tail(rebal_dates, 12)
+rebal_dates <- tail(rebal_dates, 36)
 
 results <- run_all_benchmarks(
   returns_xts  = returns,
@@ -325,7 +325,7 @@ results <- run_all_benchmarks(
   marginals    = marginals,
   asset_names  = asset_names,
   rebal_dates  = rebal_dates,
-  T_horizon    = 12,
+  T_horizon    = 36,
   ref_col      = 7,
   L            = 500,
   w0           = 100000,

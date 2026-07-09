@@ -181,73 +181,73 @@ build_simulator <- function(marginals, asset_names, ref_col = 7) {
 # ============================================================================================
 
 
-# source("helper/load_data.r")
-# source("Li_Ng.r")
-# load("data/marginal_results.RData")
+source("helper/load_data.r")
+source("Li_Ng.r")
+load("data/marginal_results.RData")
 
-# returns <- load_returns()
-# sim <- build_simulator(marginals, asset_names, ref_col = 7)
+returns <- load_returns()
+sim <- build_simulator(marginals, asset_names, ref_col = 7)
 
-# # ---- Rebalancing dates (same as benchmarks.r) ----
-# L <- 500
-# all_dates <- index(returns)
-# rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-# rebal_dates <- index(returns)[rebal_dates + L - 1]
-# rebal_dates <- tail(rebal_dates, 12)
+# ---- Rebalancing dates (same as benchmarks.r) ----
+L <- 500
+all_dates <- index(returns)
+rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
+rebal_dates <- index(returns)[rebal_dates + L - 1]
+rebal_dates <- tail(rebal_dates, 36)
 
-# # ---- Fit rolling‑window vine at each rebalancing date ----
-# vine_fits <- vector("list", length(rebal_dates))
-# for (t in seq_along(rebal_dates)) {
-#   current_date <- rebal_dates[t]
-#   window_end <- which(index(returns) == current_date)
-#   window_start <- window_end - L + 1
-#   U_window <- U[window_start:window_end, ]
+# ---- Fit rolling‑window vine at each rebalancing date ----
+vine_fits <- vector("list", length(rebal_dates))
+for (t in seq_along(rebal_dates)) {
+  current_date <- rebal_dates[t]
+  window_end <- which(index(returns) == current_date)
+  window_start <- window_end - L + 1
+  U_window <- U[window_start:window_end, ]
   
-#   vine_fits[[t]] <- vinecop(
-#     U_window,
-#     var_types = rep("c", ncol(U_window)),
-#     structure = dvine_structure(1:ncol(U_window)),
-#     family_set = c("gaussian", "t", "clayton", "gumbel", "frank", "joe"),
-#     selcrit = "aic"
-#   )
-#   cat(sprintf("✓ Vine fit %d/%d (date: %s)\n", t, length(rebal_dates), current_date))
-# }
+  vine_fits[[t]] <- vinecop(
+    U_window,
+    var_types = rep("c", ncol(U_window)),
+    structure = dvine_structure(1:ncol(U_window)),
+    family_set = c("gaussian", "t", "clayton", "gumbel", "frank", "joe"),
+    selcrit = "aic"
+  )
+  cat(sprintf("✓ Vine fit %d/%d (date: %s)\n", t, length(rebal_dates), current_date))
+}
 
-# # ---- Run Expected Utility back‑test ----
-# for (gamma in c(2.5, 3)) {
-#   cat(sprintf("\nRunning Expected Utility back-test with gamma = %.1f...\n", gamma))
-#   eu_result <- run_eu_backtest(
-#     simulator   = sim,
-#     vine_fits   = vine_fits,
-#     returns_xts = returns,
-#     rebal_dates = rebal_dates,
-#     W0          = 100000,
-#     gamma       = gamma,
-#     n_sim       = 10000
-#   )
+# ---- Run Expected Utility back‑test ----
+for (gamma in c(3)) {
+  cat(sprintf("\nRunning Expected Utility back-test with gamma = %.1f...\n", gamma))
+  eu_result <- run_eu_backtest(
+    simulator   = sim,
+    vine_fits   = vine_fits,
+    returns_xts = returns,
+    rebal_dates = rebal_dates,
+    W0          = 100000,
+    gamma       = gamma,
+    n_sim       = 10000
+  )
 
-#   # ---- Compare with existing benchmarks ----
-#   cat("\n\n")
-#   cat("===========================================================\n")
-#   cat("   EXPECTED UTILITY vs. MEAN–VARIANCE BENCHMARKS           \n")
-#   cat("===========================================================\n")
-#   cat(sprintf("%-25s %12s %10s %10s %10s %10s %10s\n",
-#               "Strategy", "Final W.", "Return%", "Ann.Ret%", "Vol%", "Sharpe", "Max DD"))
-#   cat("-----------------------------------------------------------\n")
+  # ---- Compare with existing benchmarks ----
+  cat("\n\n")
+  cat("===========================================================\n")
+  cat("   EXPECTED UTILITY vs. MEAN–VARIANCE BENCHMARKS           \n")
+  cat("===========================================================\n")
+  cat(sprintf("%-25s %12s %10s %10s %10s %10s %10s\n",
+              "Strategy", "Final W.", "Return%", "Ann.Ret%", "Vol%", "Sharpe", "Max DD"))
+  cat("-----------------------------------------------------------\n")
   
-#   metrics <- eu_result$metrics
-#   cat(sprintf("%-25s %12.0f %10.2f %10.2f %10.2f %10.3f %10.2f\n",
-#               paste("Expected Utility (gamma=", gamma, ")", sep=""),
-#               metrics["final_wealth"],
-#               metrics["total_return"],
-#               metrics["annual_return"],
-#               metrics["annual_vol"],
-#               metrics["sharpe_ratio"],
-#               metrics["max_drawdown"]))
-#   cat("===========================================================\n\n")
-# }
+  metrics <- eu_result$metrics
+  cat(sprintf("%-25s %12.0f %10.2f %10.2f %10.2f %10.3f %10.2f\n",
+              paste("Expected Utility (gamma=", gamma, ")", sep=""),
+              metrics["final_wealth"],
+              metrics["total_return"],
+              metrics["annual_return"],
+              metrics["annual_vol"],
+              metrics["sharpe_ratio"],
+              metrics["max_drawdown"]))
+  cat("===========================================================\n\n")
+}
 
-# # Save
-# save(eu_result, vine_fits, file = "data/eu_backtest_result.RData")
-# cat("✓ Results saved to data/eu_backtest_result.RData\n")
+# Save
+save(eu_result, vine_fits, file = "data/eu_backtest_result.RData")
+cat("✓ Results saved to data/eu_backtest_result.RData\n")
 
