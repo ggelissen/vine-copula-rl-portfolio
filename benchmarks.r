@@ -6,6 +6,7 @@
 library(rvinecopulib)
 library(xts)
 library(torch)
+library(parallel)
 
 RUN_TESTS <- TRUE
 
@@ -39,14 +40,16 @@ compute_metrics <- function(wealth, T_horizon, w0 = 100000) {
 
 
 # Helper: plot wealth curves for all benchmarks
-plot_wealth <- function(empirical, static_vine, rolling_vine, rebal_dates, 
-                        save_path = NULL) {
+plot_wealth <- function(empirical, static_vine, rolling_vine, NN_vine, single_eu,
+                        multi_eu, nn_eu, rebal_dates, save_path = NULL) {
   # Combine into one data frame for plotting
   dates <- c(rebal_dates[1], rebal_dates)  # start date + end of each period
   df <- data.frame(
-    Date      = rep(dates, 3),
-    Wealth    = c(empirical$wealth, static_vine$wealth, rolling_vine$wealth),
-    Strategy  = rep(c("Empirical MV", "Static Vine MV", "Rolling Vine MV"), 
+    Date      = rep(dates, 7),
+    Wealth    = c(empirical$wealth, static_vine$wealth, rolling_vine$wealth, 
+                  NN_vine$wealth, single_eu$wealth, multi_eu$wealth, nn_eu$wealth),
+    Strategy  = rep(c("Empirical MV", "Static Vine MV", "Rolling Vine MV", 
+                      "NN Vine MV", "Single EU", "Multi EU", "NN EU"), 
                     each = length(dates))
   )
   
@@ -56,22 +59,27 @@ plot_wealth <- function(empirical, static_vine, rolling_vine, rebal_dates,
   # Base plot
   plot(dates, empirical$wealth, type = "n",
        xlab = "Date", ylab = "Wealth (€)",
-       main = "Multi‑Period Mean–Variance Portfolio Performance",
+       main = "Multi‑Period Portfolio Performance",
        ylim = range(df$Wealth))
   
   # Add grid and lines
   grid()
-  cols <- c("black", "blue", "red")
-  ltys <- c(3, 2, 1)
-  lwds <- c(2, 2, 2.5)
+  cols <- c("black", "blue", "red", "green", "purple", "orange", "brown")
+  ltys <- c(3, 2, 1, 4, 5, 6, 7)
+  lwds <- c(2, 2, 2.5, 2, 2, 2, 2)
   
   lines(dates, empirical$wealth,  col = cols[1], lty = ltys[1], lwd = lwds[1])
   lines(dates, static_vine$wealth, col = cols[2], lty = ltys[2], lwd = lwds[2])
   lines(dates, rolling_vine$wealth,col = cols[3], lty = ltys[3], lwd = lwds[3])
-  
+  lines(dates, NN_vine$wealth,    col = cols[4], lty = ltys[4], lwd = lwds[4])
+  lines(dates, single_eu$wealth,  col = cols[5], lty = ltys[5], lwd = lwds[5])
+  lines(dates, multi_eu$wealth,   col = cols[6], lty = ltys[6], lwd = lwds[6])
+  lines(dates, nn_eu$wealth,      col = cols[7], lty = ltys[7], lwd = lwds[7])
+
   # Legend
   legend("topleft",
-         legend = c("Empirical MV", "Static Vine MV", "Rolling Vine MV"),
+         legend = c("Empirical MV", "Static Vine MV", "Rolling Vine MV", 
+                    "NN Vine MV", "Single EU", "Multi EU", "NN EU"),
          col = cols, lty = ltys, lwd = lwds, bty = "n")
   
   if (!is.null(save_path)) dev.off()
@@ -291,7 +299,7 @@ get_nn_models <- function(U, vine_fit, marginals, returns_xts,
   
   nn_models <- train_all_edges(U_train, vine_fit, asset_names,
                                 z_train, sigma_train,
-                                epochs = 500, lr = 1e-3)
+                                epochs = 500, lr = 1e-3, patience = 50)
   stop_timer(timer_nn)
   
   save_nn_models(nn_models, model_dir)
@@ -413,54 +421,96 @@ benchmark_NN_eu <- function(returns_xts, U, marginals, asset_names,
 
 
 
-# Runner function: runs all three benchmarks and returns comparison table
+# Runner function: runs all benchmarks in parallel and returns comparison table
 run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
                                rebal_dates, T_horizon = 12, ref_col = 7,
                                L = 500, w0 = 100000, gamma = 2, n_sim = 10000,
-                               save_plot = NULL) {
+                               save_plot = "figures/wealth_curves.pdf") {
   
-  cat("\n#############################################################\n")
-  cat("#                    PORTFOLIO BENCHMARKS                     #\n")
-  cat("#############################################################\n\n")
-  
-  empirical  <- benchmark_empirical(returns_xts, rebal_dates, T_horizon, ref_col, L, w0, gamma)
-  cat(sprintf("✓ Empirical MV done  — Return: %.2f%%\n", empirical$metrics["total_return"]))
-  
-  static     <- benchmark_static_vine(returns_xts, U, marginals, asset_names,
-                                       rebal_dates, T_horizon, ref_col, L, w0, gamma, n_sim)
-  cat(sprintf("✓ Static Vine MV done — Return: %.2f%%\n", static$metrics["total_return"]))
-  
-  rolling    <- benchmark_rolling_vine(returns_xts, U, marginals, asset_names,
-                                        rebal_dates, T_horizon, ref_col, L, w0, gamma, n_sim)
-  cat(sprintf("✓ Rolling Vine MV done — Return: %.2f%%\n", rolling$metrics["total_return"]))
-
-  nn_models <- get_nn_models(U, vine_fit, marginals, returns_xts, rebal_dates, force_retrain = TRUE)
-  nn_mv <- benchmark_NN_vine(returns_xts, U, marginals, asset_names, rebal_dates, nn_models, 
-                          vine_fit, ref_col, L, w0, gamma, n_sim)
-  cat(sprintf("✓ NN Vine MV done — Return: %.2f%%\n", nn_mv$metrics["total_return"]))
-
+  # Build simulator and vine fits once (shared across EU strategies)
   sim_eu <- build_simulator(marginals, asset_names, ref_col)
-
+  
   vine_fits_eu <- vector("list", length(rebal_dates))
   for (t in seq_along(rebal_dates)) {
     window_end   <- which(index(returns_xts) == rebal_dates[t])
     window_start <- window_end - L + 1
     U_window <- U[window_start:window_end, ]
-    vine_fits_eu[[t]] <- vinecop(U_window, var_types  = rep("c", ncol(U_window)), structure  = dvine_structure(1:ncol(U_window)),
-      family_set = c("gaussian","t","clayton","gumbel","frank","joe"), selcrit    = "aic"
+    vine_fits_eu[[t]] <- vinecop(
+      U_window,
+      var_types  = rep("c", ncol(U_window)),
+      structure  = dvine_structure(1:ncol(U_window)),
+      family_set = c("gaussian","t","clayton","gumbel","frank","joe"),
+      selcrit    = "aic"
     )
   }
-  eu_single <- run_eu_backtest(sim_eu, vine_fits_eu, returns_xts, rebal_dates, w0, gamma, n_sim)
-  cat(sprintf("✓ Myopic EU done — Return: %.2f%%\n", as.numeric(eu_single$metrics["total_return"])))
-
-  eu_multi <- run_eu_multi_backtest(sim_eu, returns_xts, U, rebal_dates, L, w0, gamma, n_sim)
-  cat(sprintf("✓ Multi‑period EU done — Return: %.2f%%\n", as.numeric(eu_multi$metrics["total_return"])))
-
-  nn_eu <- benchmark_NN_eu(returns_xts, U, marginals, asset_names, rebal_dates, nn_models, 
-                            vine_fit, ref_col, L, w0, gamma, n_sim)
-  cat(sprintf("✓ NN Vine EU done — Return: %.2f%%\n", as.numeric(nn_eu$metrics["total_return"])))
-
   
+  # Train NN models once
+  nn_models <- get_nn_models(U, vine_fit, marginals, returns_xts, rebal_dates)
+  
+  # Define each benchmark as a task
+  tasks_parallel <- list(
+    empirical = function() benchmark_empirical(returns_xts, rebal_dates, T_horizon, ref_col, L, w0, gamma),
+    static    = function() benchmark_static_vine(returns_xts, U, marginals, asset_names, rebal_dates, T_horizon, ref_col, L, w0, gamma, n_sim),
+    rolling   = function() benchmark_rolling_vine(returns_xts, U, marginals, asset_names, rebal_dates, T_horizon, ref_col, L, w0, gamma, n_sim),
+    eu_single = function() {
+      eu <- run_eu_backtest(sim_eu, vine_fits_eu, returns_xts, rebal_dates, w0, gamma, n_sim)
+      list(wealth = eu$wealth, weights = eu$weights, metrics = eu$metrics)
+    },
+    eu_multi  = function() run_eu_multi_backtest(sim_eu, returns_xts, U, rebal_dates, L, w0, gamma, n_sim)
+  )
+  
+  n_cores <- min(detectCores() - 1, length(tasks_parallel))
+  cl <- makeCluster(n_cores)
+  
+  export_list <- list(
+    returns_xts = returns_xts, U = U, marginals = marginals, asset_names = asset_names,
+    rebal_dates = rebal_dates, T_horizon = T_horizon, ref_col = ref_col,
+    L = L, w0 = w0, gamma = gamma, n_sim = n_sim,
+    sim_eu = sim_eu, vine_fits_eu = vine_fits_eu
+  )
+  for (name in names(export_list)) {
+    clusterExport(cl, name, envir = environment())
+  }
+  
+  # Export all needed functions to workers
+  clusterExport(cl, c("benchmark_empirical", "benchmark_static_vine", "benchmark_rolling_vine",
+                      "benchmark_NN_vine", "benchmark_NN_eu", "run_eu_backtest", "run_eu_multi_backtest",
+                      "optimise_eu_portfolio", "optimise_eu_multi", "compute_policy", "compute_metrics", "build_simulator", "build_nn_vine",
+                      "extract_marginal_states", "start_timer", "stop_timer", "VineReturnSimulator", "crra_utility", "expected_utility",
+                      "predict_rho_nn", "predict_vine_params", "prepare_nn_data"))
+  
+  clusterEvalQ(cl, {
+    library(rvinecopulib)
+    library(xts)
+    library(copula)
+  })
+  
+  cat(sprintf("Running %d non‑NN benchmarks on %d cores...\n", length(tasks_parallel), n_cores))
+  results <- parLapply(cl, tasks_parallel, function(f) f())
+  stopCluster(cl)
+  
+  # Run NN benchmarks on master (torch objects can't be serialised to workers)
+  cat("Running NN benchmarks on master...\n")
+  results$nn_mv  <- benchmark_NN_vine(returns_xts, U, marginals, asset_names, rebal_dates, nn_models, vine_fit, ref_col, L, w0, gamma, n_sim)
+  results$nn_eu  <- benchmark_NN_eu(returns_xts, U, marginals, asset_names, rebal_dates, nn_models, vine_fit, ref_col, L, w0, gamma, n_sim)
+  
+  # Extract individual results
+  empirical  <- results$empirical
+  static     <- results$static
+  rolling    <- results$rolling
+  nn_mv      <- results$nn_mv
+  eu_single  <- results$eu_single
+  eu_multi   <- results$eu_multi
+  nn_eu      <- results$nn_eu
+  
+  cat("\n✓ All benchmarks complete.\n")
+  cat(sprintf("✓ Empirical MV     — Return: %.2f%%\n", as.numeric(empirical$metrics["total_return"])))
+  cat(sprintf("✓ Static Vine MV   — Return: %.2f%%\n", as.numeric(static$metrics["total_return"])))
+  cat(sprintf("✓ Rolling Vine MV  — Return: %.2f%%\n", as.numeric(rolling$metrics["total_return"])))
+  cat(sprintf("✓ NN Vine MV       — Return: %.2f%%\n", as.numeric(nn_mv$metrics["total_return"])))
+  cat(sprintf("✓ Myopic EU        — Return: %.2f%%\n", as.numeric(eu_single$metrics["total_return"])))
+  cat(sprintf("✓ Multi‑period EU  — Return: %.2f%%\n", as.numeric(eu_multi$metrics["total_return"])))
+  cat(sprintf("✓ NN Vine EU       — Return: %.2f%%\n", as.numeric(nn_eu$metrics["total_return"])))
   
   # ── Risk metrics table ──
   metrics_table <- matrix(NA, nrow = 7, ncol = 6)
@@ -494,15 +544,16 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
                 metrics_table[i, "max_drawdown"]))
   }
   cat("===========================================================\n\n")
-  
+
   # ── Wealth plot ──
-  plot_wealth(empirical, static, rolling, rebal_dates, save_path = save_plot)
+  plot_wealth(empirical, static, rolling, nn_mv, eu_single, eu_multi, nn_eu, 
+              rebal_dates, save_path = save_plot)
   cat("✓ Wealth curve plotted.\n")
   
   return(list(empirical = empirical, static = static, rolling = rolling,
+              nn_mv = nn_mv, eu_single = eu_single, eu_multi = eu_multi, nn_eu = nn_eu,
               metrics_table = metrics_table))
 }
-
 
 
 

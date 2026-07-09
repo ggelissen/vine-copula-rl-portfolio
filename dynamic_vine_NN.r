@@ -45,7 +45,7 @@ prepare_nn_data <- function(u, z, sigma, nu_fix, lookback = 1) {
 # Define the neural network model 
 nn_model <- nn_module(
   "nn_model", 
-  # Inputs: 8, Hidden layers: 16, 8, Output: 1
+  # Inputs: 8, Hidden layers: 16, 8, Output: 1 (version 1)
   initialize = function(input_dim = 8, hidden1 = 16, hidden2 = 8) {
     self$fc1 <- nn_linear(input_dim, hidden1)
     self$fc2 <- nn_linear(hidden1, hidden2)
@@ -61,7 +61,7 @@ nn_model <- nn_module(
 
 
 # Train the neural network model
-train_nn_model <- function(u, nu_fix, z, sigma, epochs = 500, lr = 1e-3, patience = 20) {
+train_nn_model <- function(u, nu_fix, z, sigma, epochs = 500, lr = 1e-3, patience = 50) {
   # Prepare the data
   data <- prepare_nn_data(u, z, sigma, nu_fix)
 
