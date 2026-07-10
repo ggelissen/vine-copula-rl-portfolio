@@ -5,6 +5,7 @@
 
 library(xts)
 library(zoo)
+library(moments)
 
 # Load raw log returns
 load_returns <- function(filepath = "data/portfolio_B_7assets_2013.csv") {
@@ -86,3 +87,45 @@ preprocess_returns <- function(returns, ref_col = 7, L = 60,
     L            = L
   ))
 }
+
+
+
+# Descriptive statistics
+compute_descriptive_stats <- function(returns) {
+  
+  stats <- data.frame(
+    Mean     = colMeans(returns) * 100,        # convert to %
+    Std_Dev  = apply(returns, 2, sd) * 100,    # convert to %
+    Skewness = apply(returns, 2, skewness),
+    Kurtosis = apply(returns, 2, kurtosis),
+    Min      = apply(returns, 2, min) * 100,
+    Max      = apply(returns, 2, max) * 100,
+    JB_Stat  = apply(returns, 2, function(x) {
+      n <- length(x)
+      s <- skewness(x)
+      k <- kurtosis(x)
+      n * (s^2 / 6 + k^2 / 24)
+    }),
+    JB_pval  = apply(returns, 2, function(x) {
+      n <- length(x)
+      s <- skewness(x)
+      k <- kurtosis(x)
+      jb <- n * (s^2 / 6 + k^2 / 24)
+      1 - pchisq(jb, df = 2)
+    })
+  )
+  
+  # Add Ljung–Box on squared returns (20 lags)
+  stats$LB_pval <- apply(returns, 2, function(x) {
+    Box.test(x^2, lag = 20, type = "Ljung-Box")$p.value
+  })
+  
+  rownames(stats) <- colnames(returns)
+  round(stats, 4)
+}
+
+# ========================================================================
+
+returns <- load_returns()
+desc_stats <- compute_descriptive_stats(returns)
+print(desc_stats)

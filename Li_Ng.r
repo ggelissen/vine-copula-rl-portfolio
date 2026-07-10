@@ -101,9 +101,7 @@ compute_policy <- function(returns, w0, strat_param, strat) {
 }
 
 
-run_simulation <- function(returns, policy, w0, seed=123) {
-  set.seed(seed)
-
+run_simulation <- function(returns, policy, w0) {
   T <- length(returns)         # number of time periods
   d <- ncol(returns[[1]]) - 1  # number of risky assets
 
@@ -156,8 +154,6 @@ run_simulation <- function(returns, policy, w0, seed=123) {
 # ==============================================================================================
 
 if (RUN_TESTS) {
-  
-  set.seed(123)
   
   T <- 12
   L <- 138

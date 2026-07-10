@@ -12,6 +12,7 @@ RUN_TESTS <- TRUE
 
 source("helper/load_data.r")
 source("Li_Ng.r")
+source("DCC.r")
 source("dynamic_vine_NN.r")
 source("expected_utility_single.r")
 source("expected_utility_multi.r")
@@ -40,47 +41,50 @@ compute_metrics <- function(wealth, T_horizon, w0 = 100000) {
 
 
 # Helper: plot wealth curves for all benchmarks
-plot_wealth <- function(empirical, static_vine, rolling_vine, NN_vine, single_eu,
+plot_wealth <- function(empirical, dcc, static_vine, rolling_vine, NN_vine, single_eu,
                         multi_eu, nn_eu, rebal_dates, save_path = NULL) {
-  # Combine into one data frame for plotting
-  dates <- c(rebal_dates[1], rebal_dates)  # start date + end of each period
-  df <- data.frame(
-    Date      = rep(dates, 7),
-    Wealth    = c(empirical$wealth, static_vine$wealth, rolling_vine$wealth, 
-                  NN_vine$wealth, single_eu$wealth, multi_eu$wealth, nn_eu$wealth),
-    Strategy  = rep(c("Empirical MV", "Static Vine MV", "Rolling Vine MV", 
-                      "NN Vine MV", "Single EU", "Multi EU", "NN EU"), 
-                    each = length(dates))
+  
+  # Build one data frame per strategy to avoid length mismatches
+  make_df <- function(wealth, name, rebal_dates) {
+    n <- length(wealth)
+    dates <- c(rebal_dates[1], rebal_dates)[1:n]
+    data.frame(Date = dates, Wealth = wealth, Strategy = name)
+  }
+  
+  df <- rbind(
+    make_df(empirical$wealth,      "Empirical MV",      rebal_dates),
+    make_df(dcc$wealth,            "DCC-GARCH",         rebal_dates),
+    make_df(static_vine$wealth,    "Static Vine MV",    rebal_dates),
+    make_df(rolling_vine$wealth,   "Rolling Vine MV",   rebal_dates),
+    make_df(NN_vine$wealth,        "NN Vine MV",        rebal_dates),
+    make_df(single_eu$wealth,      "Single EU",         rebal_dates),
+    make_df(multi_eu$wealth,       "Multi EU",          rebal_dates),
+    make_df(nn_eu$wealth,          "NN EU",             rebal_dates)
   )
   
-  # Open plot device if saving
-  if (!is.null(save_path)) pdf(save_path, width = 8, height = 5)
+  if (!is.null(save_path)) pdf(save_path, width = 10, height = 6)
   
-  # Base plot
-  plot(dates, empirical$wealth, type = "n",
-       xlab = "Date", ylab = "Wealth (€)",
+  plot(df$Date, df$Wealth, type = "n",
+       xlab = "Date", ylab = "Wealth (EUR)",
        main = "Multi‑Period Portfolio Performance",
-       ylim = range(df$Wealth))
+       ylim = range(df$Wealth, na.rm = TRUE))
   
-  # Add grid and lines
   grid()
-  cols <- c("black", "blue", "red", "green", "purple", "orange", "brown")
-  ltys <- c(3, 2, 1, 4, 5, 6, 7)
-  lwds <- c(2, 2, 2.5, 2, 2, 2, 2)
   
-  lines(dates, empirical$wealth,  col = cols[1], lty = ltys[1], lwd = lwds[1])
-  lines(dates, static_vine$wealth, col = cols[2], lty = ltys[2], lwd = lwds[2])
-  lines(dates, rolling_vine$wealth,col = cols[3], lty = ltys[3], lwd = lwds[3])
-  lines(dates, NN_vine$wealth,    col = cols[4], lty = ltys[4], lwd = lwds[4])
-  lines(dates, single_eu$wealth,  col = cols[5], lty = ltys[5], lwd = lwds[5])
-  lines(dates, multi_eu$wealth,   col = cols[6], lty = ltys[6], lwd = lwds[6])
-  lines(dates, nn_eu$wealth,      col = cols[7], lty = ltys[7], lwd = lwds[7])
-
-  # Legend
-  legend("topleft",
-         legend = c("Empirical MV", "Static Vine MV", "Rolling Vine MV", 
-                    "NN Vine MV", "Single EU", "Multi EU", "NN EU"),
-         col = cols, lty = ltys, lwd = lwds, bty = "n")
+  strategies <- c("Empirical MV", "DCC-GARCH", "Static Vine MV", "Rolling Vine MV", 
+                  "NN Vine MV", "Single EU", "Multi EU", "NN EU")
+  cols <- c("black", "darkblue", "red", "darkgreen", "purple", "orange", "brown", "darkcyan")
+  ltys <- c(3, 2, 1, 1, 4, 5, 6, 1)
+  lwds <- c(1.5, 1.5, 2.5, 1.5, 1.5, 1.5, 1.5, 2)
+  
+  for (i in seq_along(strategies)) {
+    s <- strategies[i]
+    sub <- df[df$Strategy == s, ]
+    lines(sub$Date, sub$Wealth, col = cols[i], lty = ltys[i], lwd = lwds[i])
+  }
+  
+  legend("topleft", legend = strategies, col = cols, lty = ltys, lwd = lwds, 
+         bty = "n", cex = 0.75)
   
   if (!is.null(save_path)) dev.off()
 }
@@ -90,6 +94,7 @@ plot_wealth <- function(empirical, static_vine, rolling_vine, NN_vine, single_eu
 # Benchmark 1: Empirical Li–Ng (raw historical moments)
 benchmark_empirical <- function(returns_xts, rebal_dates, T_horizon, ref_col = 7,
                                 L = 500, w0 = 100000, gamma = 2) {
+  cat("DEBUG: benchmark_empirical started\n")
   timer <- start_timer("Empirical MV")
 
   risk_cols <- setdiff(1:ncol(returns_xts), ref_col)
@@ -132,10 +137,70 @@ benchmark_empirical <- function(returns_xts, rebal_dates, T_horizon, ref_col = 7
 }
 
 
-# Benchmark 2: Static D‑vine MV (vine fitted once on pre‑sample, constant moments)
+
+# Benchmark 2: DCC‑GARCH(.,.)
+benchmark_DCC <- function(returns_xts, rebal_dates, T_horizon, ref_col = 7,
+                          L = 500, w0 = 100000, gamma = 2, n_sim = 10000,
+                          distribution = "norm") {
+  cat("DEBUG: benchmark_DCC started\n")
+  timer <- start_timer(paste0("DCC-GARCH (", distribution, ")"))
+
+  source("DCC.r")
+  
+  risk_cols <- setdiff(1:ncol(returns_xts), ref_col)
+  all_cols  <- c(ref_col, risk_cols)
+  wealth <- numeric(T_horizon + 1)
+  wealth[1] <- w0
+  weights_history <- vector("list", T_horizon)
+  
+  for (t in 1:T_horizon) {
+    current_date <- rebal_dates[t]
+    window_end   <- which(index(returns_xts) == current_date)
+    window_start <- window_end - L + 1
+    ret_window   <- returns_xts[window_start:window_end, all_cols]
+    
+    dcc_fit  <- fit_DCC(ret_window, distribution)
+    sim_gross <- simulate_DCC(dcc_fit, n_sim)
+    
+    ref_sim  <- sim_gross[, 1]
+    risk_sim <- sim_gross[, -1, drop = FALSE]
+    
+    returns_list <- list(cbind(ref_sim, risk_sim))
+    policy <- compute_policy(returns_list, wealth[t], gamma, "E")
+    ut <- policy$policy[[1]]$vt - policy$policy[[1]]$Kt * wealth[t]
+    w <- as.numeric(ut / wealth[t])
+    weights_history[[t]] <- w
+    
+    next_date <- if (t < T_horizon) rebal_dates[t + 1] else index(returns_xts)[nrow(returns_xts)]
+    actual_log   <- returns_xts[paste0(current_date + 1, "/", next_date), all_cols]
+    actual_gross <- exp(colSums(actual_log))
+    R_ref  <- as.numeric(actual_gross[1])
+    R_risk <- as.numeric(actual_gross[-1])
+    wealth[t + 1] <- wealth[t] * (R_ref + sum((R_risk - R_ref) * w))
+  }
+  
+  rets <- diff(wealth) / wealth[1:T_horizon]
+  metrics <- c(
+    final_wealth  = wealth[T_horizon + 1],
+    total_return  = (wealth[T_horizon + 1] / w0 - 1) * 100,
+    annual_return = ((wealth[T_horizon + 1] / w0)^(1/(T_horizon/12)) - 1) * 100,
+    annual_vol    = sd(rets) * sqrt(12) * 100,
+    sharpe_ratio  = ((wealth[T_horizon + 1] / w0)^(1/(T_horizon/12)) - 1) * 100 /
+                    (sd(rets) * sqrt(12) * 100),
+    max_drawdown  = max(1 - wealth / cummax(wealth)) * 100
+  )
+  
+  stop_timer(timer)
+  list(wealth = wealth, weights = weights_history, metrics = metrics)
+}
+
+
+
+# Benchmark 3: Static D‑vine MV (vine fitted once on pre‑sample, constant moments)
 benchmark_static_vine <- function(returns_xts, U, marginals, asset_names,
                                   rebal_dates, T_horizon, ref_col = 7,
                                   L = 500, w0 = 100000, gamma = 2, n_sim = 10000) {
+  cat("DEBUG: benchmark_static_vine started\n")
   timer <- start_timer("Static Vine MV")
   
   risk_cols <- setdiff(1:ncol(returns_xts), ref_col)
@@ -204,10 +269,11 @@ benchmark_static_vine <- function(returns_xts, U, marginals, asset_names,
 
 
 
-# Benchmark 3: Rolling‑window D‑vine MV (vine re‑estimated at each rebalancing date)
+# Benchmark 4: Rolling‑window D‑vine MV (vine re‑estimated at each rebalancing date)
 benchmark_rolling_vine <- function(returns_xts, U, marginals, asset_names,
                                    rebal_dates, T_horizon, ref_col = 7,
                                    L = 500, w0 = 100000, gamma = 2, n_sim = 10000) {
+  cat("DEBUG: benchmark_rolling_vine started\n")
   timer <- start_timer("Rolling Vine MV")
 
   risk_cols <- setdiff(1:ncol(returns_xts), ref_col)
@@ -308,10 +374,11 @@ get_nn_models <- function(U, vine_fit, marginals, returns_xts,
 
 
 
-# Benchmark 4: NN‑driven D‑vine MV
+# Benchmark 5: NN‑driven D‑vine MV
 benchmark_NN_vine <- function(returns_xts, U, marginals, asset_names,
                                rebal_dates, nn_models, full_vine, ref_col = 7,
                                L = 500, w0 = 100000, gamma = 2, n_sim = 10000) {
+  cat("DEBUG: benchmark_NN_vine started\n")
   timer <- start_timer("NN Vine MV")
 
   risk_cols <- setdiff(1:ncol(returns_xts), ref_col)
@@ -369,10 +436,11 @@ benchmark_NN_vine <- function(returns_xts, U, marginals, asset_names,
 
 
 
-# Benchmark 5: NN‑driven D‑vine Expected Utility
+# Benchmark 6: NN‑driven D‑vine Expected Utility
 benchmark_NN_eu <- function(returns_xts, U, marginals, asset_names,
                              rebal_dates, nn_models, full_vine, ref_col = 7,
                              L = 500, w0 = 100000, gamma = 2, n_sim = 10000) {
+  cat("DEBUG: benchmark_NN_eu started\n")
   timer <- start_timer("NN Vine EU")
 
   sim <- build_simulator(marginals, asset_names, ref_col)
@@ -450,6 +518,7 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   # Define each benchmark as a task
   tasks_parallel <- list(
     empirical = function() benchmark_empirical(returns_xts, rebal_dates, T_horizon, ref_col, L, w0, gamma),
+    dcc       = function() benchmark_DCC(returns_xts, rebal_dates, T_horizon, ref_col, L, w0, gamma, n_sim),
     static    = function() benchmark_static_vine(returns_xts, U, marginals, asset_names, rebal_dates, T_horizon, ref_col, L, w0, gamma, n_sim),
     rolling   = function() benchmark_rolling_vine(returns_xts, U, marginals, asset_names, rebal_dates, T_horizon, ref_col, L, w0, gamma, n_sim),
     eu_single = function() {
@@ -461,6 +530,17 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   
   n_cores <- min(detectCores() - 1, length(tasks_parallel))
   cl <- makeCluster(n_cores)
+
+  # validate seed for cluster RNG
+  .seed <- get0("seed", ifnotfound = NULL)
+  if (is.null(.seed)) {
+    .seed <- 123L
+  } else {
+    .seed <- suppressWarnings(as.integer(.seed))
+    if (is.na(.seed) || length(.seed) != 1L) .seed <- 123L
+  }
+
+  clusterSetRNGStream(cl, .seed)
   
   export_list <- list(
     returns_xts = returns_xts, U = U, marginals = marginals, asset_names = asset_names,
@@ -473,20 +553,45 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   }
   
   # Export all needed functions to workers
-  clusterExport(cl, c("benchmark_empirical", "benchmark_static_vine", "benchmark_rolling_vine",
-                      "benchmark_NN_vine", "benchmark_NN_eu", "run_eu_backtest", "run_eu_multi_backtest",
+  clusterExport(cl, c("benchmark_empirical", "benchmark_DCC", "benchmark_static_vine", "benchmark_rolling_vine",
+                      "benchmark_NN_vine", "benchmark_NN_eu", "run_eu_backtest", "run_eu_multi_backtest", "fit_DCC", "simulate_DCC",
                       "optimise_eu_portfolio", "optimise_eu_multi", "compute_policy", "compute_metrics", "build_simulator", "build_nn_vine",
                       "extract_marginal_states", "start_timer", "stop_timer", "VineReturnSimulator", "crra_utility", "expected_utility",
                       "predict_rho_nn", "predict_vine_params", "prepare_nn_data"))
   
   clusterEvalQ(cl, {
     library(rvinecopulib)
+    library(rmgarch)
     library(xts)
     library(copula)
+    library(mvtnorm)
+    set.seed(123)
   })
+
+  cat("Starting parallel benchmarks...\n")
+  cat(sprintf("Number of tasks: %d\n", length(tasks_parallel)))
+  for (name in names(tasks_parallel)) {
+    cat(sprintf("  Task: %s\n", name))
+  }
   
   cat(sprintf("Running %d non‑NN benchmarks on %d cores...\n", length(tasks_parallel), n_cores))
-  results <- parLapply(cl, tasks_parallel, function(f) f())
+  results <- tryCatch({
+    parLapply(cl, tasks_parallel, function(f) f())
+  }, error = function(e) {
+    cat("Parallel error caught:\n")
+    cat(conditionMessage(e), "\n")
+    # Try running each task sequentially to find the culprit
+    for (name in names(tasks_parallel)) {
+      cat(sprintf("Testing %s sequentially...\n", name))
+      tryCatch({
+        tasks_parallel[[name]]()
+        cat(sprintf("  %s: OK\n", name))
+      }, error = function(e2) {
+        cat(sprintf("  %s: FAILED — %s\n", name, conditionMessage(e2)))
+      })
+    }
+    stop(e)
+  })
   stopCluster(cl)
   
   # Run NN benchmarks on master (torch objects can't be serialised to workers)
@@ -496,6 +601,7 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   
   # Extract individual results
   empirical  <- results$empirical
+  dcc        <- results$dcc
   static     <- results$static
   rolling    <- results$rolling
   nn_mv      <- results$nn_mv
@@ -505,6 +611,7 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   
   cat("\n✓ All benchmarks complete.\n")
   cat(sprintf("✓ Empirical MV     — Return: %.2f%%\n", as.numeric(empirical$metrics["total_return"])))
+  cat(sprintf("✓ DCC-GARCH        — Return: %.2f%%\n", as.numeric(dcc$metrics["total_return"])))
   cat(sprintf("✓ Static Vine MV   — Return: %.2f%%\n", as.numeric(static$metrics["total_return"])))
   cat(sprintf("✓ Rolling Vine MV  — Return: %.2f%%\n", as.numeric(rolling$metrics["total_return"])))
   cat(sprintf("✓ NN Vine MV       — Return: %.2f%%\n", as.numeric(nn_mv$metrics["total_return"])))
@@ -513,19 +620,20 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   cat(sprintf("✓ NN Vine EU       — Return: %.2f%%\n", as.numeric(nn_eu$metrics["total_return"])))
   
   # ── Risk metrics table ──
-  metrics_table <- matrix(NA, nrow = 7, ncol = 6)
+  metrics_table <- matrix(NA, nrow = 8, ncol = 6)
   colnames(metrics_table) <- c("final_wealth", "total_return", "annual_return",
                                 "annual_vol", "sharpe_ratio", "max_drawdown")
-  rownames(metrics_table) <- c("Empirical MV", "Static Vine MV", "Rolling Vine MV",
+  rownames(metrics_table) <- c("Empirical MV", "DCC-GARCH", "Static Vine MV", "Rolling Vine MV",
                                 "NN Vine MV", "Single-Period EU", "Multi-period EU", "NN Vine EU")
   
   metrics_table[1, ] <- as.numeric(empirical$metrics)
-  metrics_table[2, ] <- as.numeric(static$metrics)
-  metrics_table[3, ] <- as.numeric(rolling$metrics)
-  metrics_table[4, ] <- as.numeric(nn_mv$metrics)
-  metrics_table[5, ] <- as.numeric(eu_single$metrics)
-  metrics_table[6, ] <- as.numeric(eu_multi$metrics)
-  metrics_table[7, ] <- as.numeric(nn_eu$metrics)
+  metrics_table[2, ] <- as.numeric(dcc$metrics)
+  metrics_table[3, ] <- as.numeric(static$metrics)
+  metrics_table[4, ] <- as.numeric(rolling$metrics)
+  metrics_table[5, ] <- as.numeric(nn_mv$metrics)
+  metrics_table[6, ] <- as.numeric(eu_single$metrics)
+  metrics_table[7, ] <- as.numeric(eu_multi$metrics)
+  metrics_table[8, ] <- as.numeric(nn_eu$metrics)
   
   cat("\n===========================================================\n")
   cat("                   RISK & PERFORMANCE METRICS               \n")
@@ -533,7 +641,7 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   cat(sprintf("%-20s %12s %10s %10s %10s %10s %10s\n",
               "Strategy", "Final W.", "Return%", "Ann.Ret%", "Vol%", "Sharpe", "MaxDD%"))
   cat("-----------------------------------------------------------\n")
-  for (i in 1:7) {
+  for (i in 1:8) {
     cat(sprintf("%-20s %12.0f %10.2f %10.2f %10.2f %10.3f %10.2f\n",
                 rownames(metrics_table)[i],
                 metrics_table[i, "final_wealth"],
@@ -546,11 +654,11 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
   cat("===========================================================\n\n")
 
   # ── Wealth plot ──
-  plot_wealth(empirical, static, rolling, nn_mv, eu_single, eu_multi, nn_eu, 
+  plot_wealth(empirical, dcc, static, rolling, nn_mv, eu_single, eu_multi, nn_eu, 
               rebal_dates, save_path = save_plot)
   cat("✓ Wealth curve plotted.\n")
   
-  return(list(empirical = empirical, static = static, rolling = rolling,
+  return(list(empirical = empirical, dcc = dcc, static = static, rolling = rolling,
               nn_mv = nn_mv, eu_single = eu_single, eu_multi = eu_multi, nn_eu = nn_eu,
               metrics_table = metrics_table))
 }
@@ -559,26 +667,26 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
 
 # ======================================================================
 
-load("data/marginal_results.RData")
-returns <- load_returns()
+# load("data/marginal_results.RData")
+# returns <- load_returns()
 
-L <- 500
-all_dates <- index(returns)
-rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-rebal_dates <- index(returns)[rebal_dates + L - 1]
-rebal_dates <- tail(rebal_dates, 36)
+# L <- 500
+# all_dates <- index(returns)
+# rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
+# rebal_dates <- index(returns)[rebal_dates + L - 1]
+# #rebal_dates <- tail(rebal_dates, 36)
 
-results <- run_all_benchmarks(
-  returns_xts  = returns,
-  U            = U,
-  marginals    = marginals,
-  asset_names  = asset_names,
-  rebal_dates  = rebal_dates,
-  T_horizon    = 36,
-  ref_col      = 7,
-  L            = 500,
-  w0           = 100000,
-  gamma        = 2,
-  n_sim        = 10000,
-  save_plot    = "figures/wealth_curves.pdf"
-)
+# results <- run_all_benchmarks(
+#   returns_xts  = returns,
+#   U            = U,
+#   marginals    = marginals,
+#   asset_names  = asset_names,
+#   rebal_dates  = rebal_dates,
+#   T_horizon    = 36,
+#   ref_col      = 7,
+#   L            = 500,
+#   w0           = 100000,
+#   gamma        = 2,
+#   n_sim        = 10000,
+#   save_plot    = "figures/wealth_curves.pdf"
+# )

@@ -81,8 +81,7 @@ VineReturnSimulator <- function(marginals, asset_names, ref_col) {
 
 
 # Expected utility portfolio optimizer (single-period)
-optimise_eu_portfolio <- function(simulator, vine_fit, W0, gamma, n_sim = 10000, seed = 42) {
-  set.seed(seed)
+optimise_eu_portfolio <- function(simulator, vine_fit, W0, gamma, n_sim = 10000) {
   sim    <- simulator$simulate_returns(vine_fit, n_sim)
   R      <- sim$gross
   R_ref  <- R[, simulator$ref_col]

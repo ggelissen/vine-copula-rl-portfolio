@@ -10,8 +10,7 @@ RUN_TESTS <- FALSE
 
 # Multi‑period optimisation via backward induction
 optimise_eu_multi <- function(simulator, vine_fits, gamma,
-                               n_sim = 5000, seed = 42) {
-  set.seed(seed)
+                               n_sim = 5000) {
   d_risk <- length(simulator$risk_cols)
   T_periods <- length(vine_fits)
 

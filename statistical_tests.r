@@ -43,10 +43,19 @@ dm_test <- function(returns_A, returns_B, loss = "squared") {
     u_B <- (1 + returns_B)^(1 - gamma) / (1 - gamma)
     d <- u_A - u_B
   }
+
+  d <- d[is.finite(d)]
+  
+  if (length(d) < 2 || all(d == 0)) {
+    return(c(DM = NA, p_value = NA))
+  }
   
   n <- length(d)
   reg <- lm(d ~ 1)
-  nw_se <- sqrt(vcovHAC(reg))[1, 1]
+  nw_se <- tryCatch(
+    sqrt(vcovHAC(reg))[1, 1],
+    error = function(e) sqrt(vcov(reg))[1, 1]  # fallback to OLS SE
+  )
   
   dm_stat <- mean(d) / (nw_se / sqrt(n))
   p_value <- 2 * (1 - pnorm(abs(dm_stat)))
@@ -88,12 +97,13 @@ compute_turnover <- function(weights_history, returns_xts, rebal_dates, ref_col 
 
 # 4. Run all tests
 run_statistical_tests <- function(results_list, returns_xts, rebal_dates) {
-  # results_list: output of run_all_benchmarks (list with empirical, static, rolling, nn_mv, eu_single, eu_multi, nn_eu)
+  # results_list: output of run_all_benchmarks (list with empirical, dcc, static, rolling, nn_mv, eu_single, eu_multi, nn_eu)
   # Each has $wealth and $weights
   
   # Extract monthly returns
   monthly_ret <- list(
     empirical   = extract_monthly_returns(results_list$empirical$wealth),
+    dcc         = extract_monthly_returns(results_list$dcc$wealth),
     static      = extract_monthly_returns(results_list$static$wealth),
     rolling     = extract_monthly_returns(results_list$rolling$wealth),
     nn_mv       = extract_monthly_returns(results_list$nn_mv$wealth),
@@ -136,31 +146,44 @@ run_statistical_tests <- function(results_list, returns_xts, rebal_dates) {
         cat(sprintf("%10s", "—"))
       } else {
         p <- dm_pvalues[i, j]
-        sig <- if (p < 0.01) "***" else if (p < 0.05) "**" else if (p < 0.10) "*" else ""
-        cat(sprintf("%7.3f%-3s", p, sig))
+        if (is.na(p)) {
+          cat(sprintf("%10s", "NA"))
+        } else {
+          sig <- if (p < 0.01) "***" else if (p < 0.05) "**" else if (p < 0.10) "*" else ""
+          cat(sprintf("%7.3f%-3s", p, sig))
+        }
       }
     }
     cat("\n")
   }
   cat("---\n")
-  cat("*** p<0.01, ** p<0.05, * p<0.10\n\n")
+  cat("*** p<0.01, ** p<0.05, * p<0.10\n")
+  cat("NA  = strategies are identical (loss differential is zero)\n\n")
   
   # ── Key pairwise comparisons ──
   cat("Key comparisons:\n")
   pairs <- list(
     c("rolling", "empirical"),
     c("rolling", "static"),
+    c("rolling", "dcc"),          # Vine vs. industry standard
     c("rolling", "nn_mv"),
+    c("static", "dcc"),           # Even static vine vs. DCC
     c("nn_eu", "eu_single"),
-    c("static", "empirical")
+    c("static", "empirical"),
+    c("dcc", "empirical")         # Does DCC beat raw empirical?
   )
   for (pair in pairs) {
     i <- match(pair[1], names_list)
     j <- match(pair[2], names_list)
     res <- dm_test(monthly_ret[[i]], monthly_ret[[j]], loss = "utility")
-    cat(sprintf("  %-25s vs %-25s: DM = %+.3f, p = %.3f %s\n",
-                names_list[i], names_list[j], res["DM"], res["p_value"],
-                if (res["p_value"] < 0.05) "**" else if (res["p_value"] < 0.10) "*" else ""))
+    if (any(is.na(res))) {
+      cat(sprintf("  %-25s vs %-25s: identical (DM = NA)\n",
+                  names_list[i], names_list[j]))
+    } else {
+      cat(sprintf("  %-25s vs %-25s: DM = %+.3f, p = %.3f %s\n",
+                  names_list[i], names_list[j], res["DM"], res["p_value"],
+                  if (res["p_value"] < 0.05) "**" else if (res["p_value"] < 0.10) "*" else ""))
+    }
   }
   
   # ── Turnover ──
@@ -180,36 +203,76 @@ run_statistical_tests <- function(results_list, returns_xts, rebal_dates) {
 }
 
 
-# ============================================================================
-
-
-# Set up rebalancing dates (same as benchmarks.r)
-L <- 500
-all_dates <- index(returns)
-rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-rebal_dates <- index(returns)[rebal_dates + L - 1]
-rebal_dates <- tail(rebal_dates, 36)
-
-# Run benchmarks first (or load saved results)
-if (!file.exists("data/benchmark_results.RData")) {
-  cat("Running benchmarks first...\n")
+# Function to run all benchmarks on one window
+run_window <- function(start_date, end_date, label) {
+  rebal_window <- rebal_dates[rebal_dates >= start_date & rebal_dates <= end_date]
+  cat(sprintf("\n\n===========================================================\n"))
+  cat(sprintf("   WINDOW: %s (%s to %s, %d periods)\n", 
+              label, start_date, end_date, length(rebal_window)))
+  cat(sprintf("===========================================================\n"))
+  
   results <- run_all_benchmarks(
     returns_xts  = returns,
     U            = U,
     marginals    = marginals,
     asset_names  = asset_names,
-    rebal_dates  = rebal_dates,
-    T_horizon    = 36,
+    rebal_dates  = rebal_window,
+    T_horizon    = length(rebal_window),
     ref_col      = 7,
     L            = 500,
     w0           = 100000,
     gamma        = 2,
     n_sim        = 10000
   )
-  save(results, file = "data/benchmark_results.RData")
-} else {
-  load("data/benchmark_results.RData")
+  
+  cat(sprintf("\n--- DM Tests and Turnover for %s ---\n", label))
+  run_statistical_tests(results, returns, rebal_window)
+  
+  results
 }
 
-# Run statistical tests
-run_statistical_tests(results, returns, rebal_dates)
+
+
+
+
+# ============================================================================
+
+
+# Set up rebalancing dates
+L <- 500
+all_dates <- index(returns)
+rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
+rebal_dates <- index(returns)[rebal_dates + L - 1]
+
+# Define three 36‑month windows
+windows <- list(
+  bear     = c("2018-01-01", "2020-12-31"),
+  recovery = c("2021-01-01", "2023-12-31"),
+  bull     = c("2024-01-01", "2026-07-01")
+)
+
+
+
+# ---- Run all windows ----
+all_results <- list()
+for (name in names(windows)) {
+  w <- windows[[name]]
+  all_results[[name]] <- run_window(w[1], w[2], name)
+}
+
+cat("\n\n===========================================================\n")
+cat("   CROSS‑WINDOW COMPARISON\n")
+cat("===========================================================\n")
+cat(sprintf("%-12s %-12s %-12s %-12s\n", "Strategy", "Bear Sharpe", "Recovery Sharpe", "Bull Sharpe"))
+cat("----------------------------------------------------------------\n")
+
+strategies <- rownames(all_results$bear$metrics_table)
+for (s in strategies) {
+  cat(sprintf("%-12s", abbreviate(s, 12)))
+  for (w in c("bear", "recovery", "bull")) {
+    idx <- which(rownames(all_results[[w]]$metrics_table) == s)
+    cat(sprintf(" %12.3f", all_results[[w]]$metrics_table[idx, "sharpe_ratio"]))
+  }
+  cat("\n")
+}
+cat("===========================================================\n")
