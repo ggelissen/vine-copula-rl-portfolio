@@ -1,7 +1,9 @@
 # ============================================================================
-# train_rl.r — DDPG + LSTM + Vine Copula State
+# train_rl.r 
+# DDPG + LSTM + Vine Copula State: Two-Stage Training with Synthetic Pre-Training
 # ============================================================================
 library(reticulate)
+library(parallel)
 
 # Source infrastructure
 source("rl/rl_environment.r")
@@ -9,29 +11,82 @@ load("data/marginal_results.RData")
 load("data/vine_fit.RData")
 returns <- load_returns()
 
-# Build vine sequence
+# Build real vine sequence
 L <- 500
 all_dates <- index(returns)
 rebal_idx <- endpoints(returns, on = "months")
 rebal_idx <- rebal_idx[rebal_idx >= (L + 1)]
 rebal_dates <- index(returns)[rebal_idx]
-vine_seq <- build_vine_sequence(returns, U, rebal_dates, L = L)
+vine_seq_real <- build_vine_sequence(returns, U, rebal_dates, L = L)
 
-# Create R environment
-env_r <- RLEnvironment$new(
-  marginals, asset_names,
-  vine = NULL, vine_sequence = vine_seq, dynamic = TRUE,
-  ref_col = 7, gamma = 2, T = 12, w0 = 100000
+cat(sprintf("Real vine sequence length: %d\n", length(vine_seq_real)))
+
+# Build synthetic vine sequence (for pre-training)
+cat("Generating synthetic data for pre-training...\n")
+
+# Build static vine from full dataset
+vine_static <- vinecop(
+    U,
+    var_types = rep("c", ncol(U)),
+    structure = dvine_structure(1:ncol(U)),
+    family_set = c("gaussian", "t", "clayton", "gumbel", "frank", "joe"),
+    selcrit = "aic"
 )
 
-# ---- Expose R6 methods ----
-r_env_reset <- function() env_r$reset()
-r_env_step  <- function(action) env_r$step(action)
-r_env_render <- function() env_r$render()
-r_env_get_action_dim <- function() env_r$get_action_dim()
-r_env_get_obs_dim   <- function() env_r$get_obs_dim()
+# Create synthetic data
+sim <- build_simulator(marginals, asset_names, ref_col = 7)
 
-# ---- Define Python Gym + DDPG + LSTM ----
+n_synth_paths <- 100000
+T_synth <- 12
+n_assets <- length(asset_names)
+
+synth_returns_array <- array(0, dim = c(n_synth_paths, T_synth, n_assets))
+vine_for_synth <- vine_static
+
+for (path in 1:n_synth_paths) {
+  sim_result <- sim$simulate_returns(vine_for_synth, n_sim = T_synth)
+  synth_returns_array[path, , ] <- log(sim_result$gross)  
+}
+
+# Setup R Environment for Training
+
+# Stage 1: pre-training on synthetic data
+env_pretrain <- RLEnvironment$new(
+  marginals, asset_names,
+  vine = vine_static, vine_sequence = NULL,
+  ref_col = 7, gamma = 2, lambda = 1.0, kappa = 0.05, 
+  T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
+)
+
+# Stage 2: fine-tuning on real vine sequence
+env_finetune <- RLEnvironment$new(
+  marginals, asset_names,
+  vine = NULL, vine_sequence = vine_seq_real,
+  ref_col = 7, gamma = 2, lambda = 1.0, kappa = 0.05, 
+  T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
+)
+
+
+# Expose R Methods to Python
+
+# Pre-training environment
+py$r_env_pretrain_reset <- function() env_pretrain$reset()
+py$r_env_pretrain_step <- function(action) env_pretrain$step(action)
+py$r_env_pretrain_get_action_dim <- function() as.integer(env_pretrain$get_action_dim())
+py$r_env_pretrain_get_obs_dim <- function() as.integer(env_pretrain$get_obs_dim())
+py$r_env_pretrain_get_seq_len <- function() as.integer(env_pretrain$get_seq_len())
+py$r_env_pretrain_get_history <- function() env_pretrain$get_history()
+
+# Fine-tuning environment
+py$r_env_finetune_reset <- function() env_finetune$reset()
+py$r_env_finetune_step <- function(action) env_finetune$step(action)
+py$r_env_finetune_get_action_dim <- function() as.integer(env_finetune$get_action_dim())
+py$r_env_finetune_get_obs_dim <- function() as.integer(env_finetune$get_obs_dim())
+py$r_env_finetune_get_seq_len <- function() as.integer(env_finetune$get_seq_len())
+py$r_env_finetune_get_history <- function() env_finetune$get_history()
+
+
+# Python Code for Full Framework Implementation
 py_run_string("
 import gym
 from gym import spaces
@@ -44,248 +99,320 @@ import random
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-
-# ── Gym Environment ──────────────────────────────────────
+# ── Gym Environment (wraps R environment) ──────────────────────────────
 class VinePortfolioEnv(gym.Env):
-    def __init__(self, reset_fn, step_fn, render_fn, action_dim, obs_dim):
+    def __init__(self, reset_fn, step_fn, render_fn, get_history_fn, action_dim, obs_dim, seq_len):
         super().__init__()
         self.reset_fn = reset_fn
         self.step_fn = step_fn
         self.render_fn = render_fn
+        self.get_history_fn = get_history_fn
+        self.seq_len = int(seq_len)
+        self.obs_dim = int(obs_dim)
+        self.action_dim = int(action_dim)
+        
         self.action_space = spaces.Box(low=-0.5, high=1.0,
-                                        shape=(int(action_dim),), dtype=np.float32)
+                                        shape=(self.action_dim,), dtype=np.float32)
+        # Observation is (seq_len, obs_dim) — the LSTM processes the sequence
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf,
-                                            shape=(int(obs_dim),), dtype=np.float32)
+                                            shape=(self.seq_len, self.obs_dim), dtype=np.float32)
+        self.history = None
+    
     def reset(self):
-        return np.array(self.reset_fn(), dtype=np.float32)
+        obs = self.reset_fn()
+        # Build history from R environment's history
+        self.history = self.get_history_from_r()
+        return np.array(self.history, dtype=np.float32)
+    
+    def get_history_from_r(self):
+        # Call R's get_history method
+        hist = self.get_history_fn()
+        # Ensure correct shape: (seq_len, obs_dim)
+        if len(hist) == 0:
+            return np.zeros((self.seq_len, self.obs_dim), dtype=np.float32)
+        return np.array(hist, dtype=np.float32)
+    
     def step(self, action):
-        res = self.step_fn(action)
+        res = self.step_fn(action.tolist())
         obs = np.array(res['observation'], dtype=np.float32)
         reward = float(res['reward'])
         done = bool(res['done'])
         info = dict(res['info'])
-        return obs, reward, done, info
+        
+        # Update history (append new obs, remove oldest)
+        self.history = np.roll(self.history, -1, axis=0)
+        self.history[-1] = obs
+        
+        return self.history.copy(), reward, done, info
+    
     def render(self, mode='human'):
         self.render_fn()
 
-# ── LSTM Actor (policy network) ──────────────────────────
+# ── LSTM Actor ───────────────────────────────────────────────────────────
 class LSTMActor(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden=128):
+    def __init__(self, obs_dim, action_dim, hidden=128, num_layers=2):
         super().__init__()
-        self.lstm = nn.LSTM(int(obs_dim), hidden, batch_first=True)
+        self.lstm = nn.LSTM(int(obs_dim), hidden, num_layers, batch_first=True)
         self.fc = nn.Sequential(
             nn.Linear(hidden, hidden),
             nn.ReLU(),
-            nn.Linear(hidden, action_dim),
-            nn.Tanh()   # output in (-1, 1), scaled to action bounds
+            nn.Linear(hidden, int(action_dim)),
+            nn.Tanh()
         )
-
+    
     def forward(self, state_seq, hidden=None):
         # state_seq: (batch, seq_len, obs_dim)
         out, hidden = self.lstm(state_seq, hidden)
-        action = self.fc(out[:, -1, :])   # last time step
+        action = self.fc(out[:, -1, :])
         return action, hidden
 
-# ── LSTM Critic (Q‑network) ──────────────────────────────
+# ── LSTM Critic ──────────────────────────────────────────────────────────
 class LSTMCritic(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden=128):
+    def __init__(self, obs_dim, action_dim, hidden=128, num_layers=2):
         super().__init__()
-        self.lstm = nn.LSTM(int(obs_dim + action_dim), hidden, batch_first=True)
+        self.lstm = nn.LSTM(int(obs_dim + action_dim), hidden, num_layers, batch_first=True)
         self.fc = nn.Sequential(
             nn.Linear(hidden, hidden),
             nn.ReLU(),
             nn.Linear(hidden, 1)
         )
-
+    
     def forward(self, state_seq, action_seq, hidden=None):
-        # Concatenate state and action along feature dimension
+        if action_seq.dim() == 2:
+            action_seq = action_seq.unsqueeze(1)
         x = torch.cat([state_seq, action_seq], dim=-1)
         out, hidden = self.lstm(x, hidden)
         q = self.fc(out[:, -1, :])
         return q, hidden
 
-# ── Replay Buffer ────────────────────────────────────────
+# ── Replay Buffer (stores sequences) ──────────────────────────────────
 class ReplayBuffer:
     def __init__(self, capacity=100000):
         self.buffer = deque(maxlen=capacity)
+    
+    def push(self, state_seq, action, reward, next_state_seq, done):
+        seq_len = state_seq.shape[0]
+        action_seq = np.tile(action, (seq_len, 1))
 
-    def push(self, state, action, reward, next_state, done):
-        # Store as numpy arrays; state/next_state are (obs_dim,) vectors
         self.buffer.append((
-            np.array(state, dtype=np.float32),
-            np.array(action, dtype=np.float32),
+            np.array(state_seq, dtype=np.float32),
+            np.array(action_seq, dtype=np.float32),
             float(reward),
-            np.array(next_state, dtype=np.float32),
+            np.array(next_state_seq, dtype=np.float32),
             float(done)
         ))
-
-    def sample(self, batch_size, seq_len):
+    
+    def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
         states, actions, rewards, next_states, dones = zip(*batch)
-
-        # Stack into batches: each is (batch, obs_dim) or (batch, action_dim)
-        states      = torch.FloatTensor(np.stack(states))
-        actions     = torch.FloatTensor(np.stack(actions))
-        rewards     = torch.FloatTensor(rewards).unsqueeze(1)
+        
+        # (batch, seq_len, dim)
+        states = torch.FloatTensor(np.stack(states))
+        actions = torch.FloatTensor(np.stack(actions))
+        if actions.dim() == 2:
+            actions = actions.unsqueeze(1)
+        rewards = torch.FloatTensor(list(rewards)).unsqueeze(1)
         next_states = torch.FloatTensor(np.stack(next_states))
-        dones       = torch.FloatTensor(dones).unsqueeze(1)
-
-        # Add sequence dimension: (batch, 1, dim) — the LSTM expects (batch, seq_len, dim)
-        states      = states.unsqueeze(1)
-        actions     = actions.unsqueeze(1)
-        next_states = next_states.unsqueeze(1)
-
+        dones = torch.FloatTensor(list(dones)).unsqueeze(1)
+        
         return states, actions, rewards, next_states, dones
-
+    
     def __len__(self):
         return len(self.buffer)
 
-# ── DDPG Agent ───────────────────────────────────────────
+# ── DDPG Agent ──────────────────────────────────────────────────────────
 class DDPGAgent:
-    def __init__(self, obs_dim, action_dim, lr_actor=1e-4, lr_critic=1e-3,
-                 gamma=0.99, tau=0.005):
-        self.actor = LSTMActor(obs_dim, action_dim)
-        self.actor_target = LSTMActor(obs_dim, action_dim)
+    def __init__(self, obs_dim, action_dim, hidden=128, num_layers=2,
+                 lr_actor=1e-4, lr_critic=1e-3, gamma=0.99, tau=0.005):
+        self.actor = LSTMActor(obs_dim, action_dim, hidden, num_layers)
+        self.actor_target = LSTMActor(obs_dim, action_dim, hidden, num_layers)
         self.actor_target.load_state_dict(self.actor.state_dict())
-
-        self.critic = LSTMCritic(obs_dim, action_dim)
-        self.critic_target = LSTMCritic(obs_dim, action_dim)
+        
+        self.critic = LSTMCritic(obs_dim, action_dim, hidden, num_layers)
+        self.critic_target = LSTMCritic(obs_dim, action_dim, hidden, num_layers)
         self.critic_target.load_state_dict(self.critic.state_dict())
-
+        
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr_actor)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr_critic)
-
+        
         self.gamma = gamma
         self.tau = tau
         self.action_dim = int(action_dim)
-        self.update_count = 0   # debug counter
-
+        self.obs_dim = int(obs_dim)
+        self.update_count = 0
+    
     def select_action(self, state_seq, noise_scale=0.1):
         self.actor.eval()
         with torch.no_grad():
-            action, _ = self.actor(state_seq)
+            if state_seq.ndim == 2:
+                state_tensor = torch.FloatTensor(state_seq).unsqueeze(0)
+            else:
+                state_tensor = torch.FloatTensor(state_seq)
+            action, _ = self.actor(state_tensor)
         self.actor.train()
         action = action.squeeze(0).numpy()
         if action.ndim > 1:
             action = action[0]
         action += noise_scale * np.random.randn(self.action_dim)
         return np.clip(action, -0.5, 1.0)
-
-    def update(self, replay_buffer, batch_size=64, seq_len=8):
+    
+    def update(self, replay_buffer, batch_size=64):
         if len(replay_buffer) < batch_size:
             return
-
-        states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size, seq_len)
-
-        # ---- DEBUG: print shapes ----
-        if self.update_count == 0:
-            print(f'DEBUG update     {self.update_count}')
-            eprint(f'  states shape:      {states.shape}')
-            print(f'  actions shape:     {actions.shape}')
-            print(f'  rewards shape:     {rewards.shape}')
-            print(f'  next_states shape: {next_states.shape}')
-            print(f'  dones shape:       {dones.shape}')
-
+        
+        states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size)
+        
         # Critic update
         with torch.no_grad():
             next_actions, _ = self.actor_target(next_states)
-            if self.update_count == 0:
-                print(f'  next_actions shape: {next_actions.shape}')
             target_q, _ = self.critic_target(next_states, next_actions)
-            if self.update_count == 0:
-                print(f'  target_q shape:     {target_q.shape}')
             target_q = rewards + (1 - dones) * self.gamma * target_q
-
+        
         current_q, _ = self.critic(states, actions)
-        if self.update_count == 0:
-            print(f'  current_q shape:    {current_q.shape}')
-
         critic_loss = nn.MSELoss()(current_q, target_q)
-
+        
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1.0)
         self.critic_optimizer.step()
-
+        
         # Actor update
         pred_actions, _ = self.actor(states)
         actor_loss, _ = self.critic(states, pred_actions)
         actor_loss = -actor_loss.mean()
-
+        
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1.0)
         self.actor_optimizer.step()
-
-        # Soft update targets
+        
+        # Soft update target networks
         for target, source in zip(self.actor_target.parameters(), self.actor.parameters()):
             target.data.copy_(self.tau * source.data + (1 - self.tau) * target.data)
         for target, source in zip(self.critic_target.parameters(), self.critic.parameters()):
             target.data.copy_(self.tau * source.data + (1 - self.tau) * target.data)
-
+        
         self.update_count += 1
+    
+    def save(self, path):
+        torch.save({
+            'actor': self.actor.state_dict(),
+            'critic': self.critic.state_dict(),
+            'actor_optimizer': self.actor_optimizer.state_dict(),
+            'critic_optimizer': self.critic_optimizer.state_dict(),
+            'update_count': self.update_count
+        }, path)
+    
+    def load(self, path):
+        ckpt = torch.load(path)
+        self.actor.load_state_dict(ckpt['actor'])
+        self.critic.load_state_dict(ckpt['critic'])
+        self.actor_optimizer.load_state_dict(ckpt['actor_optimizer'])
+        self.critic_optimizer.load_state_dict(ckpt['critic_optimizer'])
+        self.update_count = ckpt['update_count']
 
-# ── Training Loop ────────────────────────────────────────
-def train(env, agent, total_steps=200000, batch_size=64, seq_len=1):
+# ── Training Functions ──────────────────────────────────────────────────
+def train_stage(env, agent, episodes, batch_size=64, noise_scale=0.3,
+                noise_decay=0.999, log_interval=100):
     replay_buffer = ReplayBuffer()
     episode_rewards = []
-    episode_reward = 0
-    obs = env.reset()
-    obs_history = []
+    
+    for ep in range(episodes):
+        state_seq = env.reset()
+        episode_reward = 0
+        current_noise = noise_scale * (noise_decay ** ep)
+        
+        for t in range(env.seq_len):
+            action = agent.select_action(state_seq, noise_scale=current_noise)
+            next_state_seq, reward, done, _ = env.step(action)
+            episode_reward += reward
+            
+            replay_buffer.push(state_seq, action, reward, next_state_seq, done)
+            agent.update(replay_buffer, batch_size)
+            
+            state_seq = next_state_seq
+            if done:
+                break
+        
+        episode_rewards.append(episode_reward)
+        
+        if (ep + 1) % log_interval == 0:
+            avg_reward = np.mean(episode_rewards[-log_interval:])
+            print(f'Episode {ep+1:6d}  AvgReward: {avg_reward:8.2f}  Noise: {current_noise:.4f}')
+    
+    return episode_rewards
 
-    for step in range(total_steps):
-        obs_history.append(obs)
-        if len(obs_history) > seq_len:
-            obs_history = obs_history[-seq_len:]
+# ── Setup wrapper functions ───────────────────────────────────────────
+def create_env(reset_fn, step_fn, render_fn, get_history_fn, action_dim, obs_dim, seq_len):
+    return VinePortfolioEnv(reset_fn, step_fn, render_fn, get_history_fn, action_dim, obs_dim, seq_len)
 
-        pad_len = seq_len - len(obs_history)
-        seq = np.array(obs_history)
-        if pad_len > 0:
-            seq = np.pad(seq, ((pad_len, 0), (0, 0)), mode='constant')
-
-        state_tensor = torch.FloatTensor(seq).unsqueeze(0)
-        noise = max(0.3 * (0.99995**step), 0.02)
-        action = agent.select_action(state_tensor, noise_scale=noise)
-        next_obs, reward, done, _ = env.step(action)
-        episode_reward += reward
-
-        replay_buffer.push(obs, action, reward, next_obs, done)
-        agent.update(replay_buffer, batch_size, seq_len)
-
-        obs = next_obs
-        if done:
-            episode_rewards.append(episode_reward)
-            obs = env.reset()
-            obs_history = []
-            episode_reward = 0
-
-        if step % 5000 == 0 and len(episode_rewards) > 0:
-            print('Step {:6d}  Episodes: {:4d}  Avg100 Reward: {:8.2f}'.format(
-                  step, len(episode_rewards), np.mean(episode_rewards[-100:])))
-
-    return agent
+def create_agent(obs_dim, action_dim, lr_actor=1e-4, lr_critic=1e-3, gamma=0.99, tau=0.005):
+    return DDPGAgent(obs_dim, action_dim, lr_actor=lr_actor, lr_critic=lr_critic,
+                     gamma=gamma, tau=tau)
 
 def save_agent(agent, path):
-    torch.save({
-        'actor': agent.actor.state_dict(),
-        'critic': agent.critic.state_dict(),
-    }, path)
+    agent.save(path)
 
 def load_agent(agent, path):
-    ckpt = torch.load(path)
-    agent.actor.load_state_dict(ckpt['actor'])
-    agent.critic.load_state_dict(ckpt['critic'])
-    return agent
+    agent.load(path)
 ")
 
-# ---- Instantiate environment and agent ----
-py_env <- py$VinePortfolioEnv(
-  reset_fn = r_env_reset, step_fn = r_env_step, render_fn = r_env_render,
-  action_dim = r_env_get_action_dim(), obs_dim = r_env_get_obs_dim()
+
+cat(paste0("\n", paste(rep("=", 60), collapse = ""), "\n"))
+cat("Stage 1: Pre-training on Synthetic Data\n")
+cat(paste0(paste(rep("=", 60), collapse = ""), "\n"))
+
+# Create environment and train using Python, with R functions passed directly
+py_run_string("
+# Create pre-training environment using R functions
+env_pretrain = create_env(
+    reset_fn = r_env_pretrain_reset,
+    step_fn = r_env_pretrain_step,
+    render_fn = lambda: None,
+    get_history_fn = r_env_pretrain_get_history,
+    action_dim = int(r_env_pretrain_get_action_dim()),
+    obs_dim = int(r_env_pretrain_get_obs_dim()),
+    seq_len = int(r_env_pretrain_get_seq_len())
 )
 
-agent <- py$DDPGAgent(as.integer(r_env_get_obs_dim()), as.integer(r_env_get_action_dim()))
+# Create agent
+agent = create_agent(int(r_env_pretrain_get_obs_dim()), int(r_env_pretrain_get_action_dim()), 
+                     lr_actor=1e-4, lr_critic=1e-3)
 
-cat("Training DDPG + LSTM agent on vine environment...\n")
-py$train(py_env, agent, total_steps = 200000L)
+print('Pre-training on synthetic data...')
+pretrain_rewards = train_stage(env_pretrain, agent, episodes=5000, batch_size=64,
+                               noise_scale=0.3, noise_decay=0.999, log_interval=500)
+save_agent(agent, 'data/ddpg_lstm_vine_pretrained.pt')
+print('Pre-training complete. Agent saved.')
+")
 
-py$save_agent(agent, "data/ddpg_lstm_vine_agent.pt")
-cat("Agent saved.\n")
+cat(paste0("\n", paste(rep("=", 60), collapse = ""), "\n"))
+cat("Stage 2: Fine-tuning on Real Data\n")
+cat(paste0(paste(rep("=", 60), collapse = ""), "\n"))
+
+py_run_string("
+# Create fine-tuning environment using R functions
+env_finetune = create_env(
+    reset_fn = r_env_finetune_reset,
+    step_fn = r_env_finetune_step,
+    render_fn = lambda: None,
+    get_history_fn = r_env_finetune_get_history,
+    action_dim = int(r_env_finetune_get_action_dim()),
+    obs_dim = int(r_env_finetune_get_obs_dim()),
+    seq_len = int(r_env_finetune_get_seq_len())
+)
+
+# Load pre-trained agent with lower learning rate
+agent_finetune = create_agent(int(r_env_finetune_get_obs_dim()), int(r_env_finetune_get_action_dim()), 
+                              lr_actor=1e-5, lr_critic=1e-4, gamma=0.99, tau=0.005)
+load_agent(agent_finetune, 'data/ddpg_lstm_vine_pretrained.pt')
+print('Loaded pre-trained agent. Starting fine-tuning...')
+finetune_rewards = train_stage(env_finetune, agent_finetune, episodes=2000, batch_size=64,
+                               noise_scale=0.1, noise_decay=0.999, log_interval=200)
+save_agent(agent_finetune, 'data/ddpg_lstm_vine_full.pt')
+print('Fine-tuning complete. Final agent saved.')
+")
+
+cat(paste0("\n", paste(rep("=", 60), collapse = ""), "\n"))
+cat("TRAINING COMPLETE\n")
+cat(paste0(paste(rep("=", 60), collapse = ""), "\n"))

@@ -13,72 +13,58 @@ load("data/vine_fit.RData")           # vine_fit (static D‑vine)
 
 # Helper: extract first‑tree parameters and tail dependence
 extract_vine_state <- function(vine) {
-  pc_list <- vine$pair_copulas[[1]]
-  n_edges <- length(pc_list)
+  if (is.null(vine)) return(numeric(0))
   
-  state <- numeric(n_edges * 3)  # tau, lower tail dep, upper tail dep
-  idx <- 1
-  for (i in seq_len(n_edges)) {
-    pc <- pc_list[[i]]
-    fam <- pc$family
-    params <- pc$parameters
-    rot <- pc$rotation
+  n_trees <- length(vine$pair_copulas)
+  all_features <- c()
+  
+  for (tree_idx in seq_len(n_trees)) {
+    pc_list <- vine$pair_copulas[[tree_idx]]
+    tree_features <- numeric(length(pc_list) * 3)
     
-    # Kendall's tau using rvinecopulib's function (handles rotation)
-    tau <- tryCatch(
-      as.numeric(par_to_ktau(fam, params, rotation = rot)),
-      error = function(e) NA
-    )
-    
-    # Tail dependence (lower, upper)
-    lt <- 0; ut <- 0
-    if (fam == "t") {
-      rho <- params[1]; nu <- params[2]
-      lt <- 2 * pt(-sqrt((nu+1)*(1-rho)/(1+rho)), df = nu+1)
-      ut <- lt
-    } else if (fam == "gumbel") {
-      theta <- params[1]
-      if (rot == 0) {
-        ut <- 2 - 2^(1/theta)
-      } else if (rot == 180) {
-        lt <- 2 - 2^(1/theta)
-      } else if (rot == 90) {
-        ut <- 2 - 2^(1/theta) 
-      } else if (rot == 270) {
-        lt <- 2 - 2^(1/theta)
+    for (i in seq_along(pc_list)) {
+      pc <- pc_list[[i]]
+      fam <- pc$family
+      params <- pc$parameters
+      rot <- pc$rotation %||% 0
+      
+      # Kendall's tau
+      tau <- tryCatch(
+        as.numeric(par_to_ktau(fam, params, rotation = rot)),
+        error = function(e) NA
+      )
+      
+      # Tail dependence
+      lt <- 0; ut <- 0
+      if (fam == "t") {
+        rho <- params[1]; nu <- params[2]
+        lt <- 2 * pt(-sqrt((nu+1)*(1-rho)/(1+rho)), df = nu+1)
+        ut <- lt
+      } else if (fam == "gumbel") {
+        theta <- params[1]
+        if (rot == 0 || rot == 90) ut <- 2 - 2^(1/theta)
+        if (rot == 180 || rot == 270) lt <- 2 - 2^(1/theta)
+      } else if (fam == "clayton") {
+        theta <- params[1]
+        if (rot == 0 || rot == 90) lt <- 2^(-1/theta)
+        if (rot == 180 || rot == 270) ut <- 2^(-1/theta)
+      } else if (fam == "joe") {
+        theta <- params[1]
+        if (rot == 0 || rot == 90) ut <- 2 - 2^(1/theta)
+        if (rot == 180 || rot == 270) lt <- 2 - 2^(1/theta)
       }
-    } else if (fam == "clayton") {
-      theta <- params[1]
-      if (rot == 0) {
-        lt <- 2^(-1/theta)
-      } else if (rot == 180) {
-        ut <- 2^(-1/theta) 
-      } else if (rot == 90) {
-        lt <- 2^(-1/theta)
-      } else if (rot == 270) {
-        ut <- 2^(-1/theta)
-      }
-    } else if (fam == "joe") {
-      theta <- params[1]
-      if (rot == 0) {
-        ut <- 2 - 2^(1/theta)
-      } else if (rot == 180) {
-        lt <- 2 - 2^(1/theta)
-      } else if (rot == 90) {
-        ut <- 2 - 2^(1/theta)
-      } else if (rot == 270) {
-        lt <- 2 - 2^(1/theta)
-      }
+      # Gaussian and Frank: no tail dependence
+      
+      idx <- (i-1)*3 + 1
+      tree_features[idx]   <- ifelse(is.na(tau), 0, tau)
+      tree_features[idx+1] <- lt
+      tree_features[idx+2] <- ut
     }
-    # Gaussian and Frank have no tail dependence (lt=0, ut=0)
-    
-    state[idx]   <- tau
-    state[idx+1] <- lt
-    state[idx+2] <- ut
-    idx <- idx + 3
+    all_features <- c(all_features, tree_features)
   }
-  state
+  all_features
 }
+
 
 
 build_vine_sequence <- function(returns_xts, U, rebal_dates, L = 500) {
@@ -87,8 +73,6 @@ build_vine_sequence <- function(returns_xts, U, rebal_dates, L = 500) {
   
   for (t in seq_along(rebal_dates)) {
     window_end   <- which(index(returns_xts) == rebal_dates[t])
-    
-    # Skip if not enough history or window extends past data
     if (window_end < L || window_end > T_max) next
     
     window_start <- window_end - L + 1
@@ -103,11 +87,18 @@ build_vine_sequence <- function(returns_xts, U, rebal_dates, L = 500) {
     )
   }
   
-  # Remove empty slots
-  vine_seq <- vine_seq[!sapply(vine_seq, is.null)]
-  vine_seq
+  vine_seq[!sapply(vine_seq, is.null)]
 }
 
+
+# CRRA Utility Function
+crra_utility <- function(wealth, gamma) {
+  if (gamma == 1) {
+    return(log(wealth))
+  } else {
+    return((wealth^(1-gamma) - 1) / (1 - gamma))
+  }
+}
 
 
 
@@ -115,62 +106,82 @@ build_vine_sequence <- function(returns_xts, U, rebal_dates, L = 500) {
 RLEnvironment <- R6Class(
   "RLEnvironment",
   public = list(
-    initialize = function(marginals, asset_names, vine = NULL,
-                          ref_col = 7, gamma = 2, T = 12, w0 = 100000,
-                          n_sim = 1,
-                          vine_sequence = NULL, 
-                          dynamic = FALSE) {
+    
+    # Constructor
+    initialize = function(marginals, asset_names, 
+                          vine = NULL, vine_sequence = NULL, 
+                          ref_col = 7, 
+                          gamma = 2,           # CRRA risk aversion
+                          lambda = 1.0,        # CVaR penalty
+                          kappa = 0.05,        # Transaction cost penalty
+                          T = 12,              # Episode length
+                          w0 = 100000, 
+                          n_sim_cvar = 10000,
+                          seq_len = 30) {      # LSTM lookback window
+      
       private$simulator <- build_simulator(marginals, asset_names, ref_col)
       private$ref_col <- ref_col
       private$gamma <- gamma
+      private$lambda <- lambda
+      private$kappa <- kappa
       private$T <- T
       private$w0 <- w0
-      private$n_sim <- n_sim
-      private$dynamic <- dynamic
+      private$n_sim_cvar <- n_sim_cvar
+      private$seq_len <- seq_len
+      private$obs_history <- list()
       
-      # Static vine (fallback if no sequence)
+      # Vine setup
       if (!is.null(vine)) {
         private$vine_static <- vine
         private$vine_current <- vine
       }
       
-      # Dynamic vine sequence
-      private$vine_sequence <- vine_sequence
-      private$vine_seq_len <- if (!is.null(vine_sequence)) length(vine_sequence) else 0
-      private$vine_seq_idx <- 1
-      
-      # Pre‑compute state dimensions
-      d <- length(asset_names)
-      private$action_dim <- d - 1   # risky assets only
-      
-      # Observation dim: wealth + d returns + d volatilities + vine_state (n_edges*3)
-      # We'll compute n_edges dynamically from the first vine
-      if (!is.null(vine)) {
-        n_edges <- length(vine$pair_copulas[[1]])
-      } else if (!is.null(vine_sequence) && length(vine_sequence) > 0) {
-        n_edges <- length(vine_sequence[[1]]$pair_copulas[[1]])
+      if (!is.null(vine_sequence) && length(vine_sequence) > 0) {
+        private$vine_sequence <- vine_sequence
+        private$vine_seq_len <- length(vine_sequence)
+        private$vine_seq_idx <- 1
+        private$dynamic <- TRUE
       } else {
-        stop("Either vine or vine_sequence must be provided.")
+        private$dynamic <- FALSE
       }
-      private$obs_dim <- 1 + d + d + n_edges * 3
+      
+      # Compute dimensions
+      d <- length(asset_names)
+      private$action_dim <- d - 1
+      
+      # Get vine features dimension
+      vine_for_dim <- private$vine_current
+      if (is.null(vine_for_dim) && private$vine_seq_len > 0) {
+        vine_for_dim <- private$vine_sequence[[1]]
+      }
+      
+      if (!is.null(vine_for_dim)) {
+        n_edges <- sum(sapply(vine_for_dim$pair_copulas, length))
+      } else {
+        n_edges <- 0
+      }
+      
+      # obs_dim = wealth(1) + returns(d) + volatilities(d) + vine_features(n_edges*3) + CVaR(1)
+      private$obs_dim <- 1 + d + d + n_edges * 3 + 1
+      
+      # Store asset names for reference
+      private$asset_names <- asset_names
     },
     
+    # Reset
     reset = function() {
       private$wealth <- private$w0
       private$t <- 0
-      private$last_returns <- rep(0, length(asset_names))
+      private$done <- FALSE
+      private$obs_history <- list()
+      private$previous_action <- rep(0, private$action_dim)
       
-      # Initial volatilities (unconditional)
-      vols <- numeric(length(asset_names))
-      for (i in seq_along(asset_names)) {
-        name <- asset_names[i]
-        vols[i] <- private$simulator$marginals[[name]]$sigma_uncond
-      }
-      private$last_vols <- vols
+      # Initial returns and volatilities
+      private$last_returns <- rep(0, length(private$asset_names))
+      private$last_vols <- rep(0.01, length(private$asset_names))
       
-      # Choose starting vine
+      # Initialize vine
       if (private$dynamic && private$vine_seq_len > 0) {
-        # Random start point in the sequence
         private$vine_seq_idx <- sample(private$vine_seq_len, 1)
         private$vine_current <- private$vine_sequence[[private$vine_seq_idx]]
       } else if (!is.null(private$vine_static)) {
@@ -178,100 +189,222 @@ RLEnvironment <- R6Class(
       }
       
       private$vine_state <- extract_vine_state(private$vine_current)
-      private$done <- FALSE
-      self$get_obs()
+      
+      # Initial CVaR
+      private$last_cvar <- 0
+      
+      # Initial observation (prepend zeros for history)
+      obs <- self$get_obs()
+      for (i in 1:private$seq_len) {
+        private$obs_history[[i]] <- obs
+      }
+      
+      return(obs)
     },
     
+    # Step
     step = function(action) {
       if (private$done) stop("Episode finished. Call reset().")
       
-      # Simulate one‑step returns from current vine
+      # Handle different input types for action
+      if (is.list(action)) {
+        # Unlist and convert to numeric
+        action_vec <- as.numeric(unlist(action))
+      } else if (is.array(action) || is.matrix(action)) {
+        # Convert array/matrix to vector
+        action_vec <- as.numeric(as.vector(action))
+      } else {
+        action_vec <- as.numeric(action)
+      }
+
+      # Ensure we have the right length
+      if (length(action_vec) > private$action_dim) {
+        action_vec <- action_vec[1:private$action_dim]
+      }
+      
+      # Ensure no NA values
+      if (any(is.na(action_vec))) {
+        action_vec[is.na(action_vec)] <- 0
+      }
+      
+      # 1. Simulate one-step returns from current vine
       sim <- private$simulator$simulate_returns(private$vine_current, n_sim = 1)
       R <- sim$gross[1, ]
       R_ref <- R[private$ref_col]
       R_risk <- R[-private$ref_col]
       
-      portf_ret <- R_ref + sum((R_risk - R_ref) * action)
+      # 2. Compute portfolio return
+      portf_ret <- R_ref + sum((R_risk - R_ref) * action_vec)
       private$wealth <- private$wealth * portf_ret
       private$last_returns <- log(R)
       
-      # Advance time
-      private$t <- private$t + 1
+      # 3. Compute CVaR from vine
+      # Simulate many returns to compute CVaR
+      n_sim <- private$n_sim_cvar
+      sim_many <- private$simulator$simulate_returns(private$vine_current, n_sim = n_sim)
+      R_many <- sim_many$gross
       
-      # Update vine if dynamic
+      # Compute portfolio returns for all simulations
+      weights_full <- c(action_vec, 1 - sum(action_vec)) 
+      portf_ret_many <- R_many %*% weights_full
+      
+      # CVaR at 95%
+      alpha <- 0.95
+      sorted_ret <- sort(portf_ret_many)
+      cvar_idx <- floor((1 - alpha) * n_sim)
+      cvar <- -mean(sorted_ret[1:cvar_idx])
+      private$last_cvar <- cvar
+      
+      # 4. Compute turnover
+      turnover <- sum(abs(action_vec - private$previous_action))
+      private$previous_action <- action_vec
+      
+      # 5. Compute reward
+      # Utility component
+      utility <- crra_utility(portf_ret, private$gamma)
+      reward <- utility - private$lambda * cvar - private$kappa * turnover
+      
+      # 6. Advance time
+      private$t <- private$t + 1
+      if (private$t >= private$T) private$done <- TRUE
+      
+      # 7. Update vine
       if (private$dynamic && private$vine_seq_len > 0) {
-        # Move to next vine in sequence (circular)
         private$vine_seq_idx <- private$vine_seq_idx + 1
         if (private$vine_seq_idx > private$vine_seq_len) {
-          private$vine_seq_idx <- 1 
+          private$vine_seq_idx <- 1
         }
         private$vine_current <- private$vine_sequence[[private$vine_seq_idx]]
         private$vine_state <- extract_vine_state(private$vine_current)
       }
       
-      if (private$t >= private$T) private$done <- TRUE
+      # 8. Update volatilities (rolling estimate)
+      # Simple approximation: EWMA
+      if (is.null(private$vol_history)) {
+        private$vol_history <- matrix(0.01, nrow = 20, ncol = length(private$asset_names))
+      }
+      new_vol <- 0.94 * private$last_vols + 0.06 * (private$last_returns^2)
+      private$vol_history <- rbind(private$vol_history[-1, ], new_vol)
+      private$last_vols <- sqrt(apply(private$vol_history, 2, mean)) * sqrt(252)
       
-      #reward <- crra_utility(private$wealth, private$gamma)
-      reward = log(portf_ret) * 100.0 
+      # 9. Get observation
       obs <- self$get_obs()
-      list(observation = obs, reward = reward, done = private$done, info = list(wealth = private$wealth))
+      
+      # 10. Update history for LSTM
+      private$obs_history <- c(private$obs_history[-1], list(obs))
+      
+      return(list(
+        observation = obs,
+        reward = reward,
+        done = private$done,
+        info = list(
+          wealth = private$wealth,
+          portf_ret = portf_ret,
+          cvar = cvar,
+          turnover = turnover,
+          utility = utility
+        )
+      ))
     },
     
+    # Get Observation (with LSTM window)
     get_obs = function() {
-    c(private$wealth / 100000,
-      private$last_returns * 100,
-      private$last_vols * 100,
-      private$vine_state)
+      # Flatten the history into a single vector
+      # Each history element is: wealth + returns + vols + vine_state + cvar
+      # We return the most recent observation as the current state
+      obs <- c(
+        private$wealth / private$w0,
+        private$last_returns * 100,
+        private$last_vols * 100,
+        private$vine_state,
+        private$last_cvar
+      )
+      return(obs)
     },
     
+    # Get observation history (for LSTM input)
+    get_history = function() {
+      # Returns the full history as a matrix: (seq_len, obs_dim)
+      if (length(private$obs_history) == 0) {
+        return(matrix(0, nrow = private$seq_len, ncol = private$obs_dim))
+      }
+      obs_list <- private$obs_history
+      hist_matrix <- do.call(rbind, obs_list)
+      return(hist_matrix)
+    },
+    
+    # Utility methods
     render = function() {
-      cat(sprintf("t=%d/%d  wealth=%.2f\n", private$t, private$T, private$wealth))
+      cat(sprintf("t=%d/%d | Wealth: %.0f | CVaR: %.4f | Turnover: %.4f\n",
+                  private$t, private$T, private$wealth, 
+                  private$last_cvar, 
+                  sum(abs(private$previous_action - private$previous_action))))
     },
     
     get_action_dim = function() private$action_dim,
-    get_obs_dim   = function() private$obs_dim
+    get_obs_dim   = function() private$obs_dim,
+    get_seq_len   = function() private$seq_len
   ),
   
   private = list(
+    # Core components
     simulator = NULL,
-    vine_static = NULL,
-    vine_current = NULL,
+    asset_names = NULL,
     ref_col = NULL,
+    
+    # Hyperparameters
     gamma = NULL,
+    lambda = NULL,
+    kappa = NULL,
     T = NULL,
     w0 = NULL,
-    n_sim = NULL,
-    dynamic = FALSE,
+    n_sim_cvar = NULL,
+    seq_len = NULL,
+    
+    # Vine
+    vine_static = NULL,
+    vine_current = NULL,
     vine_sequence = NULL,
     vine_seq_len = 0,
     vine_seq_idx = 1,
+    dynamic = FALSE,
+    vine_state = NULL,
+    
+    # State
     wealth = NULL,
     t = NULL,
+    done = NULL,
     last_returns = NULL,
     last_vols = NULL,
-    done = NULL,
-    vine_state = NULL,
+    last_cvar = NULL,
+    previous_action = NULL,
+    obs_history = list(),
+    vol_history = NULL,
+    
+    # Dimensions
     obs_dim = NULL,
     action_dim = NULL
   )
 )
 
+cat("RLEnvironment (full framework) loaded.\n")
+
 
 # ================================================================================================
 
-# Set up rebalancing dates (full range)
-L <- 500
-all_dates <- index(returns)
-rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-rebal_dates <- index(returns)[rebal_dates + L - 1]
+# # Set up rebalancing dates (full range)
+# L <- 500
+# all_dates <- index(returns)
+# rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
+# rebal_dates <- index(returns)[rebal_dates + L - 1]
 
-# Build vine sequence (only a subset if needed, e.g., 36 months)
-vine_seq <- build_vine_sequence(returns, U, rebal_dates, L = 500)
+# # Build vine sequence (only a subset if needed, e.g., 36 months)
+# vine_seq <- build_vine_sequence(returns, U, rebal_dates, L = 500)
 
-env_dyn <- RLEnvironment$new(
-  marginals, asset_names,
-  vine = NULL,               
-  vine_sequence = vine_seq,
-  dynamic = TRUE,
-  ref_col = 7, gamma = 2, T = 12, w0 = 100000
-)
+# env_dyn <- RLEnvironment$new(
+#   marginals, asset_names,
+#   vine = NULL,               
+#   vine_sequence = vine_seq,
+#   dynamic = TRUE,
+#   ref_col = 7, gamma = 2, T = 12, w0 = 100000
+# )
