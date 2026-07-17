@@ -55,12 +55,12 @@ benchmark_metrics <- benchmark_results$metrics_table
 
 
 # Define Evaluation Window
-L <- 500
+L <- 250
 all_dates <- index(returns)
 rebal_idx <- endpoints(returns, on = "months")
 rebal_idx <- rebal_idx[rebal_idx >= (L + 1)]
 rebal_dates <- index(returns)[rebal_idx]
-eval_dates <- tail(rebal_dates, 36)  # 36 months for evaluation
+eval_dates <- tail(rebal_dates, 24)  # 24 months for evaluation
 
 vine_seq_eval <- build_vine_sequence(returns, U, eval_dates, L = L)
 
@@ -72,9 +72,9 @@ env_eval <- RLEnvironment$new(
   vine_sequence = vine_seq_eval,
   ref_col = 7,
   gamma = 2,
-  lambda = 1.0,
-  kappa = 0.05,
-  T = 36,                   
+  lambda = 0.1,
+  kappa = 0.01,
+  T = 24,                   
   w0 = 100000,
   n_sim_cvar = 10000,
   seq_len = 30
@@ -105,7 +105,7 @@ class LSTMActor(nn.Module):
             nn.Linear(hidden, hidden),
             nn.ReLU(),
             nn.Linear(hidden, action_dim),
-            nn.Tanh()
+            nn.Softmax(dim=-1)
         )
     def forward(self, state_seq, hidden=None):
         out, hidden = self.lstm(state_seq, hidden)
@@ -158,7 +158,9 @@ class DDPGAgent:
             action = action[0]
         if noise_scale > 0:
             action += noise_scale * np.random.randn(self.action_dim)
-        return np.clip(action, -0.5, 1.0)
+            action = np.clip(action, 0.0, 1.0)
+            action = action / np.sum(action)  # Normalize to sum to 1
+        return action
     
     def load(self, path):
         ckpt = torch.load(path, map_location='cpu')
@@ -215,7 +217,7 @@ def evaluate_model(agent_path, env, obs_dim, action_dim, seq_len, model_name):
     env.reset()
     state = env.history.copy()
     
-    for t in range(36):
+    for t in range(24):
         action = agent.select_action(state, noise_scale=0.0)
         next_state, reward, done, info = env.step(action)
         state = next_state
@@ -261,8 +263,8 @@ wealth_final <- as.numeric(wealth_final)
 source("benchmarks.r")
 
 # Compute metrics for both models
-rl_pretrained_metrics <- compute_metrics(wealth_pretrained, T_horizon = 36, w0 = 100000)
-rl_final_metrics <- compute_metrics(wealth_final, T_horizon = 36, w0 = 100000)
+rl_pretrained_metrics <- compute_metrics(wealth_pretrained, T_horizon = 24, w0 = 100000)
+rl_final_metrics <- compute_metrics(wealth_final, T_horizon = 24, w0 = 100000)
 
 cat("\n========== PRE-TRAINED RL MODEL PERFORMANCE ==========\n")
 cat(sprintf("  Final wealth:   %.0f\n", rl_pretrained_metrics["final_wealth"]))

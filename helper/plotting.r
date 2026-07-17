@@ -1,10 +1,11 @@
 # ============================================================================
-# plotting_theme.r
-# Unified ggplot2 theme for all paper figures
+# plotting.r
+# Unified file for all plots and a common theme.
 # ============================================================================
 
 library(ggplot2)
 library(showtext)
+library(RColorBrewer)
 
 # Import Computer Modern font
 font_add("CMU",
@@ -13,6 +14,7 @@ font_add("CMU",
          italic  = "C:/Users/gabri/AppData/Local/Microsoft/Windows/Fonts/cmunti.otf",
          bolditalic = "C:/Users/gabri/AppData/Local/Microsoft/Windows/Fonts/cmunbi.otf")
 showtext_auto()
+
 
 # Unified theme for plots
 theme_paper <- function(base_size = 9) {
@@ -84,7 +86,7 @@ linewidth_paper <- c(
   "NN Vine EU"        = 0.55
 )
 
-# ---- Main plotting function ----
+# Plot wealth curves for multiple strategies
 plot_wealth_curves <- function(results_list, rebal_dates, 
                                 strategies = NULL, 
                                 custom_labels = NULL,
@@ -140,4 +142,245 @@ plot_wealth_curves <- function(results_list, rebal_dates,
   }
   
   p
+}
+
+
+# Plot training convergence for pre-training and fine-tuning
+plot_training_convergence <- function(pretrain_rewards, finetune_rewards,
+                                       save_path = NULL,
+                                       width_cm = 8.7, height_cm = 6.5) {
+  
+  # Create data frames
+  df_pretrain <- data.frame(
+    Episode = seq_along(pretrain_rewards),
+    Reward = pretrain_rewards,
+    Stage = "Pre-training"
+  )
+  
+  df_finetune <- data.frame(
+    Episode = seq_along(finetune_rewards),
+    Reward = finetune_rewards,
+    Stage = "Fine-tuning"
+  )
+  
+  df <- rbind(df_pretrain, df_finetune)
+  
+  # Add smoothed line
+  p <- ggplot(df, aes(x = Episode, y = Reward, colour = Stage)) +
+    geom_line(alpha = 0.3, linewidth = 0.3) +
+    geom_smooth(se = FALSE, method = "loess", span = 0.1, linewidth = 0.8) +
+    scale_colour_manual(values = c("Pre-training" = "#2166AC", 
+                                   "Fine-tuning" = "#B2182B")) +
+    labs(x = "Episode", y = "Average Reward") +
+    theme_paper() +
+    theme(legend.position = "bottom")
+  
+  if (!is.null(save_path)) {
+    ggsave(save_path, plot = p, width = width_cm, height = height_cm,
+           units = "cm", dpi = 600, device = "pdf")
+  }
+  
+  return(p)
+}
+
+
+# Plot weight evolution over time for a given strategy
+plot_weight_evolution <- function(weights_list, rebal_dates, asset_names,
+                                   save_path = NULL,
+                                   width_cm = 8.7, height_cm = 5.5) {
+  
+  # Convert weights to data frame
+  n_assets <- length(asset_names)
+  n_dates <- length(rebal_dates)
+  
+  # Ensure weights_list is matrix or list
+  if (is.list(weights_list)) {
+    weights_matrix <- do.call(rbind, weights_list)
+  } else {
+    weights_matrix <- weights_list
+  }
+  
+  # Create long format
+  df <- data.frame(
+    Date = rep(rebal_dates[1:nrow(weights_matrix)], n_assets),
+    Weight = as.vector(weights_matrix),
+    Asset = rep(asset_names[1:ncol(weights_matrix)], each = nrow(weights_matrix))
+  )
+  
+  # Palette for assets (using ColorBrewer Set1 or similar)
+  asset_palette <- RColorBrewer::brewer.pal(max(n_assets, 3), "Set1")
+  names(asset_palette) <- asset_names
+  
+  p <- ggplot(df, aes(x = Date, y = Weight, colour = Asset, fill = Asset)) +
+    geom_area(alpha = 0.7, position = "stack") +
+    scale_colour_manual(values = asset_palette) +
+    scale_fill_manual(values = asset_palette) +
+    scale_y_continuous(labels = scales::percent) +
+    labs(x = NULL, y = "Portfolio Weight") +
+    theme_paper() +
+    theme(legend.position = "bottom",
+          legend.text = element_text(size = 6))
+  
+  if (!is.null(save_path)) {
+    ggsave(save_path, plot = p, width = width_cm, height = height_cm,
+           units = "cm", dpi = 600, device = "pdf")
+  }
+  
+  return(p)
+}
+
+
+
+# Plot ablation study results
+plot_ablation <- function(ablation_results, metric = "sharpe_ratio",
+                           save_path = NULL,
+                           width_cm = 8.7, height_cm = 5.5) {
+  
+  # Ensure the metric column exists
+  if (!(metric %in% colnames(ablation_results))) {
+    stop(sprintf("Metric '%s' not found in ablation_results", metric))
+  }
+  
+  # Remove rows with NA for the selected metric
+  df <- ablation_results[!is.na(ablation_results[[metric]]), ]
+  
+  if (nrow(df) == 0) {
+    stop("No data available for the selected metric after removing NAs.")
+  }
+  
+  # Define variant order
+  variant_order <- c(
+    "Full Model",
+    "- Vine state augmentation",
+    "- Synthetic pre-training",
+    "- CVaR reward penalty",
+    "- LSTM temporal encoding"
+  )
+  
+  # Reorder factor levels
+  df$Variant <- factor(df$Variant, levels = rev(variant_order))
+  
+  # Metric labels
+  metric_labels <- c(
+    "sharpe_ratio" = "Sharpe Ratio",
+    "cvar" = "CVaR (95%)",
+    "max_drawdown" = "Maximum Drawdown",
+    "annual_return" = "Annual Return (%)",
+    "annual_vol" = "Annual Volatility (%)"
+  )
+  
+  # Define colour palette for variants
+  variant_colours <- c(
+    "Full Model" = "#1B7837",
+    "- Vine state augmentation" = "#E08214",
+    "- Synthetic pre-training" = "#E08214",
+    "- CVaR reward penalty" = "#E08214",
+    "- LSTM temporal encoding" = "#B2182B"
+  )
+  
+  p <- ggplot(df, aes(x = Variant, y = .data[[metric]], fill = Variant)) +
+    geom_col(width = 0.6) +
+    geom_text(aes(label = sprintf("%.3f", .data[[metric]])), 
+              vjust = -0.3, size = 2.8, colour = "black") +
+    scale_fill_manual(values = variant_colours) +
+    labs(x = NULL, y = metric_labels[metric]) +
+    theme_paper() +
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 25, hjust = 1, size = 7))
+  
+  # Remove y-axis grid for cleaner look
+  p <- p + theme(panel.grid.major.y = element_line(colour = "grey90", linewidth = 0.25))
+  
+  if (!is.null(save_path)) {
+    ggsave(save_path, plot = p, width = width_cm, height = height_cm,
+           units = "cm", dpi = 600, device = "pdf")
+  }
+  
+  return(p)
+}
+
+
+# Plot sensitivity analysis in a heatmap
+plot_sensitivity_heatmap <- function(sensitivity_df,
+                                      save_path = NULL,
+                                      width_cm = 8.7, height_cm = 6.5) {
+  
+  # Expected structure:
+  # lambda | kappa | sharpe_ratio
+  # 0.00   | 0.00  | 0.12
+  # 0.00   | 0.01  | 0.15
+  # ...
+  
+  p <- ggplot(sensitivity_df, aes(x = factor(kappa), y = factor(lambda), 
+                                   fill = sharpe_ratio)) +
+    geom_tile() +
+    geom_text(aes(label = sprintf("%.3f", sharpe_ratio)), size = 2.5) +
+    scale_fill_gradient2(
+      low = "#B2182B", 
+      mid = "#F7F7F7", 
+      high = "#2166AC",
+      midpoint = 0,
+      name = "Sharpe\nRatio"
+    ) +
+    labs(x = expression(kappa ~ "(Transaction Cost Penalty)"),
+         y = expression(lambda ~ "(Risk Aversion)")) +
+    theme_paper() +
+    theme(legend.position = "right",
+          legend.key.size = unit(4, "mm"),
+          legend.text = element_text(size = 6),
+          legend.title = element_text(size = 7))
+  
+  if (!is.null(save_path)) {
+    ggsave(save_path, plot = p, width = width_cm, height = height_cm,
+           units = "cm", dpi = 600, device = "pdf")
+  }
+  
+  return(p)
+}
+
+
+# Plot rolling correlation heatmap for a given strategy
+plot_rolling_correlation <- function(correlation_array, dates, asset_names,
+                                      save_path = NULL,
+                                      width_cm = 8.7, height_cm = 10) {
+  
+  # Convert to long format
+  n_assets <- length(asset_names)
+  n_dates <- dim(correlation_array)[1]
+  
+  # Flatten the correlation matrix (upper triangle only)
+  pairs <- combn(asset_names, 2, simplify = FALSE)
+  df_list <- lapply(pairs, function(pair) {
+    i <- which(asset_names == pair[1])
+    j <- which(asset_names == pair[2])
+    data.frame(
+      Date = dates,
+      Pair = paste(pair[1], pair[2], sep = " - "),
+      Correlation = correlation_array[, i, j]
+    )
+  })
+  df <- do.call(rbind, df_list)
+  
+  p <- ggplot(df, aes(x = Date, y = Pair, fill = Correlation)) +
+    geom_tile() +
+    scale_fill_gradient2(
+      low = "#B2182B", 
+      mid = "#F7F7F7", 
+      high = "#2166AC",
+      midpoint = 0,
+      limits = c(-1, 1),
+      name = "Correlation"
+    ) +
+    labs(x = NULL, y = NULL) +
+    theme_paper() +
+    theme(legend.position = "right",
+          axis.text.y = element_text(size = 5),
+          axis.text.x = element_text(angle = 45, hjust = 1, size = 6))
+  
+  if (!is.null(save_path)) {
+    ggsave(save_path, plot = p, width = width_cm, height = height_cm,
+           units = "cm", dpi = 600, device = "pdf")
+  }
+  
+  return(p)
 }

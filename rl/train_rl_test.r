@@ -15,7 +15,7 @@ load("data/vine_fit.RData")
 returns <- load_returns()
 
 # Build real vine sequence
-L <- 500
+L <- 250
 all_dates <- index(returns)
 rebal_idx <- endpoints(returns, on = "months")
 rebal_idx <- rebal_idx[rebal_idx >= (L + 1)]
@@ -35,11 +35,11 @@ vine_static <- vinecop(
 
 sim <- build_simulator(marginals, asset_names, ref_col = 7)
 n_synth_paths <- 100000
-T_synth <- 12
+T_synth <-24
 n_assets <- length(asset_names)
 synth_returns_array <- array(0, dim = c(n_synth_paths, T_synth, n_assets))
 vine_for_synth <- vine_static
-for (path in 1:min(n_synth_paths, 100)) {  # Reduced for speed
+for (path in 1:n_synth_paths) {
   sim_result <- sim$simulate_returns(vine_for_synth, n_sim = T_synth)
   synth_returns_array[path, , ] <- log(sim_result$gross)  
 }
@@ -49,30 +49,30 @@ env_pretrain <- RLEnvironment$new(
   marginals, asset_names,
   vine = vine_static, vine_sequence = NULL,
   ref_col = 7, gamma = 2, lambda = 0.1, kappa = 0.01, 
-  T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
+  T = 24, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
 )
 
 env_finetune <- RLEnvironment$new(
   marginals, asset_names,
   vine = NULL, vine_sequence = vine_seq_real,
   ref_col = 7, gamma = 2, lambda = 0.1, kappa = 0.01, 
-  T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
+  T = 24, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
 )
 
 # Expose R functions to Python
-py$r_env_pretrain_reset <- function() env_pretrain$reset()
-py$r_env_pretrain_step <- function(action) env_pretrain$step(action)
-py$r_env_pretrain_get_action_dim <- function() as.integer(env_pretrain$get_action_dim())
-py$r_env_pretrain_get_obs_dim <- function() as.integer(env_pretrain$get_obs_dim())
-py$r_env_pretrain_get_seq_len <- function() as.integer(env_pretrain$get_seq_len())
-py$r_env_pretrain_get_history <- function() env_pretrain$get_history()
+r_env_pretrain_reset <- function() env_pretrain$reset()
+r_env_pretrain_step <- function(action) env_pretrain$step(action)
+r_env_pretrain_get_action_dim <- function() as.integer(env_pretrain$get_action_dim())
+r_env_pretrain_get_obs_dim <- function() as.integer(env_pretrain$get_obs_dim())
+r_env_pretrain_get_seq_len <- function() as.integer(env_pretrain$get_seq_len())
+r_env_pretrain_get_history <- function() env_pretrain$get_history()
 
-py$r_env_finetune_reset <- function() env_finetune$reset()
-py$r_env_finetune_step <- function(action) env_finetune$step(action)
-py$r_env_finetune_get_action_dim <- function() as.integer(env_finetune$get_action_dim())
-py$r_env_finetune_get_obs_dim <- function() as.integer(env_finetune$get_obs_dim())
-py$r_env_finetune_get_seq_len <- function() as.integer(env_finetune$get_seq_len())
-py$r_env_finetune_get_history <- function() env_finetune$get_history()
+r_env_finetune_reset <- function() env_finetune$reset()
+r_env_finetune_step <- function(action) env_finetune$step(action)
+r_env_finetune_get_action_dim <- function() as.integer(env_finetune$get_action_dim())
+r_env_finetune_get_obs_dim <- function() as.integer(env_finetune$get_obs_dim())
+r_env_finetune_get_seq_len <- function() as.integer(env_finetune$get_seq_len())
+r_env_finetune_get_history <- function() env_finetune$get_history()
 
 # ============================================================================
 # Python Code — with File Logging
@@ -121,7 +121,7 @@ class VinePortfolioEnv(gym.Env):
         self.seq_len = int(seq_len)
         self.obs_dim = int(obs_dim)
         self.action_dim = int(action_dim)
-        self.action_space = spaces.Box(low=-0.5, high=1.0, shape=(self.action_dim,), dtype=np.float32)
+        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(self.action_dim,), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf,
                                             shape=(self.seq_len, self.obs_dim), dtype=np.float32)
         self.history = None
@@ -159,7 +159,7 @@ class LSTMActor(nn.Module):
             nn.Linear(hidden, hidden),
             nn.ReLU(),
             nn.Linear(hidden, int(action_dim)),
-            nn.Tanh()
+            nn.Softmax(dim=-1)
         )
     def forward(self, state_seq, hidden=None):
         out, hidden = self.lstm(state_seq, hidden)
@@ -201,8 +201,7 @@ class ReplayBuffer:
 
     def push(self, state_seq, action, reward, next_state_seq, done):
         seq_len = state_seq.shape[0]
-        # --- CRITICAL FIX: repeat action to match sequence length ---
-        action_seq = np.tile(action, (seq_len, 1))  # (seq_len, action_dim)
+        action_seq = np.tile(action, (seq_len, 1))
         self.buffer.append((
             np.array(state_seq, dtype=np.float32),
             np.array(action_seq, dtype=np.float32),
@@ -256,7 +255,7 @@ class DDPGAgent:
         # if action.ndim > 1:
         #     action = action[0]
         action += noise_scale * np.random.randn(self.action_dim)
-        action_clipped = np.clip(action, -0.5, 1.0)
+        action_clipped = np.clip(action, 0.0, 1.0)
         return action_clipped
 
     def update(self, replay_buffer, batch_size=64):
@@ -375,21 +374,18 @@ log_print('='*60)
 log_print('STAGE 1: PRE-TRAINING')
 log_print('='*60)
 
-obs_dim = int(r_env_pretrain_get_obs_dim())
-action_dim = int(r_env_pretrain_get_action_dim())
-seq_len = int(r_env_pretrain_get_seq_len())
-
 env_pretrain = create_env(
-    reset_fn = r_env_pretrain_reset,
-    step_fn = r_env_pretrain_step,
+    reset_fn = r.r_env_pretrain_reset,
+    step_fn = r.r_env_pretrain_step,
     render_fn = lambda: None,
-    get_history_fn = r_env_pretrain_get_history,
-    action_dim = action_dim,
-    obs_dim = obs_dim,
-    seq_len = seq_len
+    get_history_fn = r.r_env_pretrain_get_history,
+    action_dim = int(r.r_env_pretrain_get_action_dim()),
+    obs_dim = int(r.r_env_pretrain_get_obs_dim()),
+    seq_len = int(r.r_env_pretrain_get_seq_len())
 )
 
-agent = create_agent(obs_dim, action_dim, lr_actor=1e-4, lr_critic=1e-3)
+agent = create_agent(int(r.r_env_pretrain_get_obs_dim()), int(r.r_env_pretrain_get_action_dim()), 
+                     lr_actor=1e-4, lr_critic=1e-3)
 
 pretrain_rewards = train_stage(env_pretrain, agent, episodes=500, batch_size=64,
                                noise_scale=0.3, noise_decay=0.999, log_interval=10)
@@ -409,17 +405,17 @@ log_print('STAGE 2: FINE-TUNING')
 log_print('='*60)
 
 env_finetune = create_env(
-    reset_fn = r_env_finetune_reset,
-    step_fn = r_env_finetune_step,
+    reset_fn = r.r_env_finetune_reset,
+    step_fn = r.r_env_finetune_step,
     render_fn = lambda: None,
-    get_history_fn = r_env_finetune_get_history,
-    action_dim = int(r_env_finetune_get_action_dim()),
-    obs_dim = int(r_env_finetune_get_obs_dim()),
-    seq_len = int(r_env_finetune_get_seq_len())
+    get_history_fn = r.r_env_finetune_get_history,
+    action_dim = int(r.r_env_finetune_get_action_dim()),
+    obs_dim = int(r.r_env_finetune_get_obs_dim()),
+    seq_len = int(r.r_env_finetune_get_seq_len())
 )
 
 # Load pre-trained agent with lower learning rate
-agent_finetune = create_agent(int(r_env_finetune_get_obs_dim()), int(r_env_finetune_get_action_dim()), 
+agent_finetune = create_agent(int(r.r_env_finetune_get_obs_dim()), int(r.r_env_finetune_get_action_dim()), 
                               lr_actor=1e-5, lr_critic=1e-4, gamma=0.99, tau=0.005)
 load_agent(agent_finetune, 'data/ddpg_lstm_vine_pretrained.pt')
 print('Loaded pre-trained agent. Starting fine-tuning...')

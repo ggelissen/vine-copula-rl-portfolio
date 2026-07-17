@@ -262,12 +262,7 @@ RLEnvironment <- R6Class(
       # 5. Compute reward
       # Utility component
       utility <- crra_utility(portf_ret, private$gamma)
-      #reward <- utility - private$lambda * cvar - private$kappa * turnover
-      if (private$t >= private$T) {
-        reward <- log(private$wealth / private$w0) * 100
-      } else {
-        reward <- 0
-      }
+      reward <- utility - private$lambda * cvar - private$kappa * turnover
       
       # 6. Advance time
       private$t <- private$t + 1
@@ -393,23 +388,3 @@ RLEnvironment <- R6Class(
 )
 
 cat("RLEnvironment (full framework) loaded.\n")
-
-
-# ================================================================================================
-
-# # Set up rebalancing dates (full range)
-# L <- 500
-# all_dates <- index(returns)
-# rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-# rebal_dates <- index(returns)[rebal_dates + L - 1]
-
-# # Build vine sequence (only a subset if needed, e.g., 36 months)
-# vine_seq <- build_vine_sequence(returns, U, rebal_dates, L = 500)
-
-# env_dyn <- RLEnvironment$new(
-#   marginals, asset_names,
-#   vine = NULL,               
-#   vine_sequence = vine_seq,
-#   dynamic = TRUE,
-#   ref_col = 7, gamma = 2, T = 12, w0 = 100000
-# )
