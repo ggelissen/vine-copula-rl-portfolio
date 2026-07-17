@@ -262,7 +262,12 @@ RLEnvironment <- R6Class(
       # 5. Compute reward
       # Utility component
       utility <- crra_utility(portf_ret, private$gamma)
-      reward <- utility - private$lambda * cvar - private$kappa * turnover
+      #reward <- utility - private$lambda * cvar - private$kappa * turnover
+      if (private$t >= private$T) {
+        reward <- log(private$wealth / private$w0) * 100
+      } else {
+        reward <- 0
+      }
       
       # 6. Advance time
       private$t <- private$t + 1

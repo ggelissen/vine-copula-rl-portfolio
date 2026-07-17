@@ -126,6 +126,5 @@ compute_descriptive_stats <- function(returns) {
 
 # ========================================================================
 
-returns <- load_returns()
-desc_stats <- compute_descriptive_stats(returns)
-print(desc_stats)
+#returns <- load_returns()
+#desc_stats <- compute_descriptive_stats(returns)

@@ -54,7 +54,7 @@ for (path in 1:n_synth_paths) {
 env_pretrain <- RLEnvironment$new(
   marginals, asset_names,
   vine = vine_static, vine_sequence = NULL,
-  ref_col = 7, gamma = 2, lambda = 1.0, kappa = 0.05, 
+  ref_col = 7, gamma = 2, lambda = 0.1, kappa = 0.01, 
   T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
 )
 
@@ -62,7 +62,7 @@ env_pretrain <- RLEnvironment$new(
 env_finetune <- RLEnvironment$new(
   marginals, asset_names,
   vine = NULL, vine_sequence = vine_seq_real,
-  ref_col = 7, gamma = 2, lambda = 1.0, kappa = 0.05, 
+  ref_col = 7, gamma = 2, lambda = 0.1, kappa = 0.01, 
   T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
 )
 
@@ -380,8 +380,8 @@ agent = create_agent(int(r_env_pretrain_get_obs_dim()), int(r_env_pretrain_get_a
                      lr_actor=1e-4, lr_critic=1e-3)
 
 print('Pre-training on synthetic data...')
-pretrain_rewards = train_stage(env_pretrain, agent, episodes=5000, batch_size=64,
-                               noise_scale=0.3, noise_decay=0.999, log_interval=500)
+pretrain_rewards = train_stage(env_pretrain, agent, episodes=500, batch_size=64,
+                               noise_scale=0.3, noise_decay=0.999, log_interval=10)
 save_agent(agent, 'data/ddpg_lstm_vine_pretrained.pt')
 print('Pre-training complete. Agent saved.')
 ")
@@ -407,8 +407,8 @@ agent_finetune = create_agent(int(r_env_finetune_get_obs_dim()), int(r_env_finet
                               lr_actor=1e-5, lr_critic=1e-4, gamma=0.99, tau=0.005)
 load_agent(agent_finetune, 'data/ddpg_lstm_vine_pretrained.pt')
 print('Loaded pre-trained agent. Starting fine-tuning...')
-finetune_rewards = train_stage(env_finetune, agent_finetune, episodes=2000, batch_size=64,
-                               noise_scale=0.1, noise_decay=0.999, log_interval=200)
+finetune_rewards = train_stage(env_finetune, agent_finetune, episodes=200, batch_size=64,
+                               noise_scale=0.1, noise_decay=0.999, log_interval=10)
 save_agent(agent_finetune, 'data/ddpg_lstm_vine_full.pt')
 print('Fine-tuning complete. Final agent saved.')
 ")

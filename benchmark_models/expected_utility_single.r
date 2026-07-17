@@ -190,7 +190,7 @@ build_simulator <- function(marginals, asset_names, ref_col = 7) {
 
 if (RUN_TESTS) {
   source("helper/load_data.r")
-  source("Li_Ng.r")
+  source("benchmark_models/Li_Ng.r")
   load("data/marginal_results.RData")
 
   returns <- load_returns()

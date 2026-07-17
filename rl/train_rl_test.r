@@ -48,14 +48,14 @@ for (path in 1:min(n_synth_paths, 100)) {  # Reduced for speed
 env_pretrain <- RLEnvironment$new(
   marginals, asset_names,
   vine = vine_static, vine_sequence = NULL,
-  ref_col = 7, gamma = 2, lambda = 1.0, kappa = 0.05, 
+  ref_col = 7, gamma = 2, lambda = 0.1, kappa = 0.01, 
   T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
 )
 
 env_finetune <- RLEnvironment$new(
   marginals, asset_names,
   vine = NULL, vine_sequence = vine_seq_real,
-  ref_col = 7, gamma = 2, lambda = 1.0, kappa = 0.05, 
+  ref_col = 7, gamma = 2, lambda = 0.1, kappa = 0.01, 
   T = 12, w0 = 100000, n_sim_cvar = 10000, seq_len = 30
 )
 
@@ -333,7 +333,6 @@ def train_stage(env, agent, episodes, batch_size=64, noise_scale=0.3,
             agent.update(replay_buffer, batch_size)
             state_seq = next_state_seq
             if done:
-                log_print(f'  DONE at step {t}')
                 break
         episode_rewards.append(episode_reward)
         log_print(f'Episode {ep+1}  Reward: {episode_reward:8.2f}')
@@ -367,38 +366,38 @@ os.fsync(log_file.fileno())
 # Run Training
 # ============================================================================
 
-# print_sep()
-# cat("Stage 1: Pre-training on Synthetic Data\n")
-# print_sep()
+print_sep()
+cat("Stage 1: Pre-training on Synthetic Data\n")
+print_sep()
 
-# py_run_string("
-# log_print('='*60)
-# log_print('STAGE 1: PRE-TRAINING')
-# log_print('='*60)
+py_run_string("
+log_print('='*60)
+log_print('STAGE 1: PRE-TRAINING')
+log_print('='*60)
 
-# obs_dim = int(r_env_pretrain_get_obs_dim())
-# action_dim = int(r_env_pretrain_get_action_dim())
-# seq_len = int(r_env_pretrain_get_seq_len())
+obs_dim = int(r_env_pretrain_get_obs_dim())
+action_dim = int(r_env_pretrain_get_action_dim())
+seq_len = int(r_env_pretrain_get_seq_len())
 
-# env_pretrain = create_env(
-#     reset_fn = r_env_pretrain_reset,
-#     step_fn = r_env_pretrain_step,
-#     render_fn = lambda: None,
-#     get_history_fn = r_env_pretrain_get_history,
-#     action_dim = action_dim,
-#     obs_dim = obs_dim,
-#     seq_len = seq_len
-# )
+env_pretrain = create_env(
+    reset_fn = r_env_pretrain_reset,
+    step_fn = r_env_pretrain_step,
+    render_fn = lambda: None,
+    get_history_fn = r_env_pretrain_get_history,
+    action_dim = action_dim,
+    obs_dim = obs_dim,
+    seq_len = seq_len
+)
 
-# agent = create_agent(obs_dim, action_dim, lr_actor=1e-4, lr_critic=1e-3)
+agent = create_agent(obs_dim, action_dim, lr_actor=1e-4, lr_critic=1e-3)
 
-# pretrain_rewards = train_stage(env_pretrain, agent, episodes=5000, batch_size=64,
-#                                noise_scale=0.3, noise_decay=0.999, log_interval=1)
-# save_agent(agent, 'data/ddpg_lstm_vine_pretrained.pt')
-# log_print('Pre-training complete. Agent saved.')
+pretrain_rewards = train_stage(env_pretrain, agent, episodes=500, batch_size=64,
+                               noise_scale=0.3, noise_decay=0.999, log_interval=10)
+save_agent(agent, 'data/ddpg_lstm_vine_pretrained.pt')
+log_print('Pre-training complete. Agent saved.')
 
-# # log_file.close()
-# ")
+# log_file.close()
+")
 
 print_sep()
 cat("Stage 2: Fine-tuning on Real Data\n")
@@ -424,8 +423,8 @@ agent_finetune = create_agent(int(r_env_finetune_get_obs_dim()), int(r_env_finet
                               lr_actor=1e-5, lr_critic=1e-4, gamma=0.99, tau=0.005)
 load_agent(agent_finetune, 'data/ddpg_lstm_vine_pretrained.pt')
 print('Loaded pre-trained agent. Starting fine-tuning...')
-finetune_rewards = train_stage(env_finetune, agent_finetune, episodes=2000, batch_size=64,
-                               noise_scale=0.1, noise_decay=0.999, log_interval=200)
+finetune_rewards = train_stage(env_finetune, agent_finetune, episodes=200, batch_size=64,
+                               noise_scale=0.1, noise_decay=0.999, log_interval=10)
 save_agent(agent_finetune, 'data/ddpg_lstm_vine_full.pt')
 print('Fine-tuning complete. Final agent saved.')
 ")

@@ -11,11 +11,11 @@ library(parallel)
 RUN_TESTS <- TRUE
 
 source("helper/load_data.r")
-source("Li_Ng.r")
-source("DCC.r")
-source("dynamic_vine_NN.r")
-source("expected_utility_single.r")
-source("expected_utility_multi.r")
+source("benchmark_models/Li_Ng.r")
+source("benchmark_models/DCC.r")
+source("benchmark_models/dynamic_vine_NN.r")
+source("benchmark_models/expected_utility_single.r")
+source("benchmark_models/expected_utility_multi.r")
 source("helper/timer.r")
 source("helper/plotting.r")
 
@@ -616,26 +616,26 @@ run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
 
 # ======================================================================
 
-load("data/marginal_results.RData")
-returns <- load_returns()
+# load("data/marginal_results.RData")
+# returns <- load_returns()
 
-L <- 500
-all_dates <- index(returns)
-rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
-rebal_dates <- index(returns)[rebal_dates + L - 1]
-rebal_dates <- tail(rebal_dates, 36)
+# L <- 500
+# all_dates <- index(returns)
+# rebal_dates <- endpoints(returns[L:nrow(returns)], on = "months")
+# rebal_dates <- index(returns)[rebal_dates + L - 1]
+# rebal_dates <- tail(rebal_dates, 36)
 
-results <- run_all_benchmarks(
-  returns_xts  = returns,
-  U            = U,
-  marginals    = marginals,
-  asset_names  = asset_names,
-  rebal_dates  = rebal_dates,
-  T_horizon    = 36,
-  ref_col      = 7,
-  L            = 500,
-  w0           = 100000,
-  gamma        = 2,
-  n_sim        = 10000,
-  save_plot    = "figures/wealth_curves.pdf"
-)
+# results <- run_all_benchmarks(
+#   returns_xts  = returns,
+#   U            = U,
+#   marginals    = marginals,
+#   asset_names  = asset_names,
+#   rebal_dates  = rebal_dates,
+#   T_horizon    = 36,
+#   ref_col      = 7,
+#   L            = 500,
+#   w0           = 100000,
+#   gamma        = 2,
+#   n_sim        = 10000,
+#   save_plot    = "figures/wealth_curves.pdf"
+# )

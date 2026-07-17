@@ -3,7 +3,7 @@
 # Multi‑period expected utility via backward induction (Bellman)
 # ============================================================================
 
-source("expected_utility_single.r")
+source("benchmark_models/expected_utility_single.r")
 source("helper/timer.r")
 
 RUN_TESTS <- FALSE

@@ -6,7 +6,7 @@
 library(rvinecopulib)
 library(xts)
 source("helper/load_data.r")
-source("Li_Ng.r")
+source("benchmark_models/Li_Ng.r")
 load("data/marginal_results.RData")
 returns <- load_returns()
 
