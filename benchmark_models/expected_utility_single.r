@@ -38,8 +38,12 @@ VineReturnSimulator <- function(marginals, asset_names, ref_col) {
     cdf_grids       = cdf_grids,
     
     # Simulate one‑period‑ahead returns
-    simulate_returns = function(vine_fit, n_sim = 10000) {
-      sim_U <- rvinecop(n_sim, vine_fit)
+    simulate_returns = function(vine_fit, n_sim = 10000, cores = 1L) {
+      # rvinecop parallelizes independent simulation batches in its C++ backend.
+      # Keep this argument explicit so RL runs can use available CPU cores while
+      # other callers retain the serial default.
+      cores <- max(1L, as.integer(cores))
+      sim_U <- rvinecop(n_sim, vine_fit, cores = cores)
       sim_log <- matrix(0, n_sim, length(asset_names))
       
       for (i in seq_along(asset_names)) {

@@ -117,6 +117,7 @@ RLEnvironment <- R6Class(
                           T = 12,              # Episode length
                           w0 = 100000, 
                           n_sim_cvar = 10000,
+                          sim_cores = 1L,
                           seq_len = 30) {      # LSTM lookback window
       
       private$simulator <- build_simulator(marginals, asset_names, ref_col)
@@ -127,6 +128,7 @@ RLEnvironment <- R6Class(
       private$T <- T
       private$w0 <- w0
       private$n_sim_cvar <- n_sim_cvar
+      private$sim_cores <- max(1L, as.integer(sim_cores))
       private$seq_len <- seq_len
       private$obs_history <- list()
       
@@ -147,7 +149,7 @@ RLEnvironment <- R6Class(
       
       # Compute dimensions
       d <- length(asset_names)
-      private$action_dim <- d - 1
+      private$action_dim <- d
       
       # Get vine features dimension
       vine_for_dim <- private$vine_current
@@ -179,6 +181,7 @@ RLEnvironment <- R6Class(
       # Initial returns and volatilities
       private$last_returns <- rep(0, length(private$asset_names))
       private$last_vols <- rep(0.01, length(private$asset_names))
+      private$last_var <- 0.01^2
       
       # Initialize vine
       if (private$dynamic && private$vine_seq_len > 0) {
@@ -227,43 +230,50 @@ RLEnvironment <- R6Class(
         action_vec[is.na(action_vec)] <- 0
       }
       
-      # 1. Simulate one-step returns from current vine
-      sim <- private$simulator$simulate_returns(private$vine_current, n_sim = 1)
-      R <- sim$gross[1, ]
-      R_ref <- R[private$ref_col]
-      R_risk <- R[-private$ref_col]
+      # 1. Simulate realized return and CVaR paths together.  The first row is
+      # an independent realized return; the remainder are independent CVaR
+      # draws.  This eliminates one R/C++ call per environment step.
+      n_sim <- private$n_sim_cvar
+      sim_all <- private$simulator$simulate_returns(
+        private$vine_current, n_sim = n_sim + 1L, cores = private$sim_cores
+      )
+      R <- sim_all$gross[1, ]
       
       # 2. Compute portfolio return
-      portf_ret <- R_ref + sum((R_risk - R_ref) * action_vec)
+      portf_ret <- sum(R * action_vec)
       private$wealth <- private$wealth * portf_ret
       private$last_returns <- log(R)
       
-      # 3. Compute CVaR from vine
-      # Simulate many returns to compute CVaR
-      n_sim <- private$n_sim_cvar
-      sim_many <- private$simulator$simulate_returns(private$vine_current, n_sim = n_sim)
-      R_many <- sim_many$gross
+      # 3. Compute CVaR from the remaining simulated paths.
+      R_many <- sim_all$gross[-1, , drop = FALSE]
       
       # Compute portfolio returns for all simulations
-      weights_full <- c(action_vec, 1 - sum(action_vec)) 
+      weights_full <- action_vec
       portf_ret_many <- R_many %*% weights_full
       
       # CVaR at 95%
       alpha <- 0.95
-      sorted_ret <- sort(portf_ret_many)
-      cvar_idx <- floor((1 - alpha) * n_sim)
-      cvar <- -mean(sorted_ret[1:cvar_idx])
+      losses <- 1 - portf_ret_many           
+      sorted_losses <- sort(losses, decreasing = TRUE)
+      cvar_idx <- floor((1 - alpha) * n_sim)  
+      cvar <- mean(sorted_losses[1:cvar_idx])  
       private$last_cvar <- cvar
       
       # 4. Compute turnover
       turnover <- sum(abs(action_vec - private$previous_action))
       private$previous_action <- action_vec
+      private$last_turnover <- turnover
       
       # 5. Compute reward
       # Utility component
-      utility <- crra_utility(portf_ret, private$gamma)
+      utility <- log(portf_ret)
       reward <- utility - private$lambda * cvar - private$kappa * turnover
-      
+      # utility <- crra_utility(private$wealth / private$w0, private$gamma)
+      # if (private$t == private$T - 1) {
+      #   # At the final step, compute utility of final wealth
+      #   reward <- utility
+      # }
+
       # 6. Advance time
       private$t <- private$t + 1
       if (private$t >= private$T) private$done <- TRUE
@@ -281,11 +291,12 @@ RLEnvironment <- R6Class(
       # 8. Update volatilities (rolling estimate)
       # Simple approximation: EWMA
       if (is.null(private$vol_history)) {
-        private$vol_history <- matrix(0.01, nrow = 20, ncol = length(private$asset_names))
+          private$vol_history <- matrix(0.01^2, nrow = 20, ncol = length(private$asset_names))  # variance
       }
-      new_vol <- 0.94 * private$last_vols + 0.06 * (private$last_returns^2)
-      private$vol_history <- rbind(private$vol_history[-1, ], new_vol)
-      private$last_vols <- sqrt(apply(private$vol_history, 2, mean)) * sqrt(252)
+      new_var <- 0.97 * private$last_var + 0.03 * (private$last_returns^2)
+      private$vol_history <- rbind(private$vol_history[-1, ], new_var)
+      private$last_var <- new_var
+      private$last_vols <- sqrt(apply(private$vol_history, 2, mean)) * sqrt(12)
       
       # 9. Get observation
       obs <- self$get_obs()
@@ -337,8 +348,7 @@ RLEnvironment <- R6Class(
     render = function() {
       cat(sprintf("t=%d/%d | Wealth: %.0f | CVaR: %.4f | Turnover: %.4f\n",
                   private$t, private$T, private$wealth, 
-                  private$last_cvar, 
-                  sum(abs(private$previous_action - private$previous_action))))
+                  private$last_cvar, private$last_turnover))
     },
     
     get_action_dim = function() private$action_dim,
@@ -359,6 +369,7 @@ RLEnvironment <- R6Class(
     T = NULL,
     w0 = NULL,
     n_sim_cvar = NULL,
+    sim_cores = NULL,
     seq_len = NULL,
     
     # Vine
@@ -376,7 +387,9 @@ RLEnvironment <- R6Class(
     done = NULL,
     last_returns = NULL,
     last_vols = NULL,
+    last_var = NULL,
     last_cvar = NULL,
+    last_turnover = NULL,
     previous_action = NULL,
     obs_history = list(),
     vol_history = NULL,
