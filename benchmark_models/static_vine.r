@@ -1,4 +1,6 @@
 # =============================================================================================
+
+stop("Legacy standalone static-vine script is disabled: it fits on the full sample. Use a training-only weight generator plus eval/research_protocol.r.")
 # static_vine.r
 # Fit static vine copula to uniform residuals, simulate returns, and compute portfolio moments
 # =============================================================================================

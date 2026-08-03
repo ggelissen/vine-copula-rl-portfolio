@@ -13,9 +13,10 @@ stateful and does not implement distributed/vectorized rollouts.
 
 Before submission, create an environment containing a CUDA-enabled PyTorch,
 NumPy, Gym, and the R installation/packages used by this repository.  Then
-set its name and submit:
+generate the corrected episodic bundle once, set its name, and submit:
 
 ```bash
+Rscript --vanilla rl/synthetic_returns.r config/config.yaml
 export RL_CONDA_ENV=vine-rl
 sbatch hpc/train_rl_gpu_array.sbatch
 ```

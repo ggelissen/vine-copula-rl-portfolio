@@ -39,4 +39,4 @@ export OPENBLAS_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 
 nvidia-smi
-Rscript --vanilla rl/train_rl.r
+Rscript --vanilla run_with_config.r "${RL_CONFIG:-config/config.yaml}"

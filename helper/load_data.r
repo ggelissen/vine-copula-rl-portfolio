@@ -9,9 +9,24 @@ library(moments)
 
 # Load raw log returns
 load_returns <- function(filepath = "data/portfolio_B_7assets_2013.csv") {
-  prices_df <- read.csv(filepath)
-  prices <- xts(prices_df[, -1], order.by = as.Date(prices_df[, 1]))
+  if (!file.exists(filepath)) stop("Price file not found: ", filepath)
+  prices_df <- read.csv(filepath, check.names = FALSE)
+  if (ncol(prices_df) < 2L || nrow(prices_df) < 3L) stop("Price file is empty or malformed.")
+  dates <- as.Date(prices_df[[1L]])
+  if (anyNA(dates) || anyDuplicated(dates) || is.unsorted(dates, strictly = TRUE)) {
+    stop("Dates must be valid, unique, and strictly increasing; input is never silently reordered.")
+  }
+  values <- as.matrix(prices_df[, -1L, drop = FALSE])
+  storage.mode(values) <- "double"
+  if (any(!is.finite(values)) || any(values <= 0)) stop("Prices must be finite and strictly positive.")
+  if (anyDuplicated(colnames(values))) stop("Asset names must be unique.")
+  prices <- xts(values, order.by = dates)
   returns <- na.omit(diff(log(prices)))
+  if (nrow(returns) != nrow(prices) - 1L || any(!is.finite(returns))) {
+    stop("Log-return construction produced missing/non-finite observations.")
+  }
+  attr(returns, "source_file") <- normalizePath(filepath, winslash = "/", mustWork = TRUE)
+  attr(returns, "source_md5") <- unname(tools::md5sum(filepath))
   return(returns)
 }
 

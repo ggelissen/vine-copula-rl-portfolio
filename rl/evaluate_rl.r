@@ -1,426 +1,236 @@
-# ============================================================================
-# evaluate_rl.r
-# Evaluate trained RL agents (pre-trained and final) against benchmarks
-# ============================================================================
+# Historical out-of-sample evaluation for the episodic vine-RL policy.
+# The benchmark strategies and RL policy must be scored on the same realised
+# monthly returns; stochastic simulated evaluation is a separate robustness
+# experiment and must not be pooled with this backtest.
 
-library(reticulate)
-library(xts)
-
+suppressPackageStartupMessages({ library(reticulate); library(xts); library(ggplot2); library(data.table) })
 source("rl/rl_environment.r")
+source("helper/time_split.r")
 source("helper/load_data.r")
-source("helper/plotting.r")
 
-load("data/marginal_results.RData")
-load("data/vine_fit.RData")
+eval_model_dir <- Sys.getenv("EVAL_MODEL_DIR")
+eval_seed <- as.integer(Sys.getenv("EVAL_SEED"))
+eval_gamma <- as.numeric(Sys.getenv("EVAL_GAMMA")); eval_lambda <- as.numeric(Sys.getenv("EVAL_LAMBDA")); eval_kappa <- as.numeric(Sys.getenv("EVAL_KAPPA"))
+L <- as.integer(Sys.getenv("L")); ref_col <- as.integer(Sys.getenv("REF_COL")); n_sim_cvar <- as.integer(Sys.getenv("N_SIM_CVAR")); seq_len <- as.integer(Sys.getenv("ENV_SEQ_LEN"))
+holding_days <- as.integer(Sys.getenv("ENV_HOLDING_DAYS", "21"))
+gross_leverage <- as.numeric(Sys.getenv("ENV_GROSS_LEVERAGE", "1.5"))
+net_exposure <- as.numeric(Sys.getenv("ENV_NET_EXPOSURE", "1"))
+short_borrow_rate <- as.numeric(Sys.getenv("ENV_SHORT_BORROW_RATE", "0.03"))
+cash_borrow_rate <- as.numeric(Sys.getenv("ENV_CASH_BORROW_RATE", "0.02"))
+utility_mode <- Sys.getenv("ENV_UTILITY_MODE", "terminal_wealth_crra")
+vine_model <- Sys.getenv("VINE_MODEL", "nn_dynamic_t_vine")
+nn_vine_epochs <- as.integer(Sys.getenv("NN_VINE_EPOCHS", "200"))
+nn_vine_lr <- as.numeric(Sys.getenv("NN_VINE_LR", "0.001"))
+nn_vine_patience <- as.integer(Sys.getenv("NN_VINE_PATIENCE", "20"))
+nn_vine_model_dir <- Sys.getenv("NN_VINE_MODEL_DIR", "data/nn_vine_models")
+hidden <- as.integer(Sys.getenv("HIDDEN", "128")); num_layers <- as.integer(Sys.getenv("NUM_LAYERS", "2"))
+benchmark_file <- Sys.getenv("BENCHMARK_RESULTS_FILE", "data/benchmark_results.RData")
+training_marginals_file <- Sys.getenv("TRAINING_MARGINALS_FILE", "data/training_marginal_results.RData")
+if (!nzchar(eval_model_dir) || any(is.na(c(eval_seed, eval_gamma, eval_lambda, eval_kappa, L, ref_col, n_sim_cvar, seq_len, holding_days, hidden, num_layers)))) stop("Missing evaluation configuration.")
+
+set.seed(eval_seed)
+if (!file.exists(training_marginals_file)) stop(sprintf("Training-only marginal file not found: %s\nRun rl/synthetic_returns.r and retrain first.", training_marginals_file))
+load(training_marginals_file)
 returns <- load_returns()
-
-# Helper: Print separator
-print_sep <- function() {
-  cat(paste0("\n", paste(rep("=", 60), collapse = ""), "\n"))
+T_eval <- as.integer(Sys.getenv("EVALUATION_PERIODS", "24"))
+if (T_eval != 24L) stop("The locked historical evaluation must contain exactly 24 monthly holding periods.")
+period_split <- split_monthly_periods(
+  build_monthly_periods(returns, min_history = L), T_eval
+)
+validate_period_split(period_split, T_eval)
+eval_periods <- period_split$evaluation
+eval_dates <- eval_periods$decision_date
+train_periods <- period_split$train
+train_end <- tail(period_split$train$decision_idx, 1L)
+if (!identical(vine_model, "nn_dynamic_t_vine")) stop("Evaluation supports only the NN-driven dynamic t-vine; rolling vines are disabled.")
+source("helper/marginals.r")
+nn_states <- filter_training_marginals(returns, marginals)
+nn_fit <- load_nn_dynamic_vine_fit(nn_vine_model_dir)
+if (as.integer(nn_fit$training_observations) != as.integer(train_end) ||
+    as.integer(nn_fit$dynamic_edge_count) != length(asset_names) * (length(asset_names) - 1L) / 2L) {
+  stop("Persisted NN vine does not match the locked training split/all-tree architecture. Regenerate it.")
 }
+if (nrow(train_periods) < seq_len) stop("Not enough pre-evaluation periods for the LSTM burn-in.")
+burnin_periods <- tail(train_periods, seq_len)
+context_dates <- c(burnin_periods$decision_date, eval_dates)
+vine_seq_context <- build_nn_vine_sequence(nn_fit, U, nn_states$z, nn_states$sigma, context_dates, index(returns))
+vine_seq_burnin <- vine_seq_context[seq.int(1L, seq_len)]
+vine_seq_eval <- vine_seq_context[seq.int(seq_len + 1L, seq_len + T_eval)]
+if (length(vine_seq_eval) != T_eval) stop("Could not build every NN-vine evaluation snapshot.")
 
-
-# Benchmark Results From benchmarks.r
-if (file.exists("data/benchmark_results.RData")) {
-  cat("Loading pre-computed benchmark results...\n")
-  load("data/benchmark_results.RData")
-  benchmark_results <- results
-} else {
-  cat("Benchmark results not found. Running benchmarks...\n")
-  source("benchmarks.r")
-  # Need to define rebal_dates first
-  L <- 500
-  all_dates <- index(returns)
-  rebal_idx <- endpoints(returns, on = "months")
-  rebal_idx <- rebal_idx[rebal_idx >= (L + 1)]
-  rebal_dates <- index(returns)[rebal_idx + L - 1]
-  rebal_dates <- tail(rebal_dates, 36)
-  
-  benchmark_results <- run_all_benchmarks(
-    returns_xts  = returns,
-    U            = U,
-    marginals    = marginals,
-    asset_names  = asset_names,
-    rebal_dates  = rebal_dates,
-    T_horizon    = 36,
-    ref_col      = 7,
-    L            = 500,
-    w0           = 100000,
-    gamma        = 2,
-    n_sim        = 10000,
-    save_plot    = "figures/wealth_curves_benchmarks.pdf"
+# Each row 1 is the historical realised monthly gross return; remaining rows
+# are only for the ex-ante CVaR feature and penalty.  This exactly aligns the
+# realised wealth series with the common research protocol. Scenario marginals
+# use the same training-only monthly empirical transform as pre-training.
+training_gross <- do.call(rbind, lapply(seq_len(nrow(train_periods)), function(i) {
+  as.numeric(realised_gross_for_period(
+    returns, train_periods$decision_date[i], train_periods$holding_end_date[i]
+  ))
+}))
+colnames(training_gross) <- asset_names
+training_log <- log(training_gross)
+historical_log_sorted <- lapply(seq_along(asset_names), function(j) sort(training_log[, j]))
+monthly_ar1 <- vapply(seq_along(asset_names), function(j) {
+  estimate <- cor(head(training_log[, j], -1L), tail(training_log[, j], -1L),
+                  use = "complete.obs")
+  if (!is.finite(estimate)) estimate <- 0
+  pmax(pmin(estimate, 0.5), -0.5)
+}, numeric(1))
+simulate_evaluation_scenarios <- function(vine, n_draws, previous_log_returns) {
+  u <- rvinecop(n_draws, vine, cores = 1L)
+  previous_latent <- vapply(seq_along(asset_names), function(j) {
+    probability <- (findInterval(previous_log_returns[j], historical_log_sorted[[j]]) + 0.5) /
+      (length(historical_log_sorted[[j]]) + 1)
+    qnorm(pmin(pmax(probability, 1e-6), 1 - 1e-6))
+  }, numeric(1))
+  latent <- sweep(qnorm(pmin(pmax(u, 1e-6), 1 - 1e-6)), 2L,
+                  sqrt(1 - monthly_ar1^2), "*")
+  latent <- sweep(latent, 2L, monthly_ar1 * previous_latent, "+")
+  u <- pnorm(latent)
+  out <- matrix(NA_real_, nrow = n_draws, ncol = length(asset_names))
+  for (j in seq_along(asset_names)) {
+    sorted_log <- historical_log_sorted[[j]]
+    probabilities <- seq_len(length(sorted_log)) / (length(sorted_log) + 1)
+    out[, j] <- exp(approx(probabilities, sorted_log, xout = u[, j], rule = 2)$y)
+  }
+  out
+}
+previous_returns <- training_log[nrow(training_log), ]
+eval_steps <- vector("list", T_eval)
+for (t in seq_len(T_eval)) {
+  actual_gross <- realised_gross_for_period(
+    returns, eval_periods$decision_date[t], eval_periods$holding_end_date[t]
   )
+  scenarios <- simulate_evaluation_scenarios(
+    vine_seq_eval[[t]], n_sim_cvar, previous_returns
+  )
+  eval_steps[[t]] <- rbind(as.numeric(actual_gross), scenarios)
+  previous_returns <- log(pmax(actual_gross, 1e-12))
 }
-benchmark_metrics <- benchmark_results$metrics_table
 
+burnin_returns <- lapply(seq_len(nrow(burnin_periods)), function(i) {
+  as.numeric(realised_gross_for_period(returns, burnin_periods$decision_date[i],
+                                       burnin_periods$holding_end_date[i]))
+})
+evaluation_episode <- list(
+  burnin_returns = burnin_returns,
+  burnin_vine_states = lapply(vine_seq_burnin, extract_vine_state),
+  returns = eval_steps, vine_states = lapply(vine_seq_eval, extract_vine_state),
+  vine_start = 1L, source = "historical_oos")
 
-# Define Evaluation Window
-L <- 250
-all_dates <- index(returns)
-rebal_idx <- endpoints(returns, on = "months")
-rebal_idx <- rebal_idx[rebal_idx >= (L + 1)]
-rebal_dates <- index(returns)[rebal_idx]
-eval_dates <- tail(rebal_dates, 24)  # 24 months for evaluation
+env_eval <- RLEnvironment$new(marginals, asset_names, vine = NULL, vine_sequence = vine_seq_eval,
+  ref_col = ref_col, gamma = eval_gamma, lambda = eval_lambda, kappa = eval_kappa,
+  T = T_eval, w0 = 100000, n_sim_cvar = n_sim_cvar, seq_len = seq_len, sim_cores = 1L, holding_days = holding_days,
+  gross_leverage = gross_leverage, net_exposure = net_exposure,
+  short_borrow_rate = short_borrow_rate, cash_borrow_rate = cash_borrow_rate,
+  utility_mode = utility_mode)
+env_eval$set_precomputed_returns(list(evaluation_episode))
+r_env_reset <- function() env_eval$reset(); r_env_step <- function(action) env_eval$step(action)
+r_env_get_action_dim <- function() as.integer(env_eval$get_action_dim()); r_env_get_obs_dim <- function() as.integer(env_eval$get_obs_dim()); r_env_get_seq_len <- function() as.integer(env_eval$get_seq_len()); r_env_get_history <- function() env_eval$get_history()
 
-vine_seq_eval <- build_vine_sequence(returns, U, eval_dates, L = L)
-
-
-# Setup R Environment
-env_eval <- RLEnvironment$new(
-  marginals, asset_names,
-  vine = NULL,
-  vine_sequence = vine_seq_eval,
-  ref_col = 7,
-  gamma = 2,
-  lambda = 0.1,
-  kappa = 0.01,
-  T = 24,                   
-  w0 = 100000,
-  n_sim_cvar = 10000,
-  seq_len = 30
-)
-
-# Expose methods to Python via py$
-py$r_env_reset <- function() env_eval$reset()
-py$r_env_step <- function(action) env_eval$step(action)
-py$r_env_get_action_dim <- function() env_eval$get_action_dim()
-py$r_env_get_obs_dim <- function() env_eval$get_obs_dim()
-py$r_env_get_seq_len <- function() env_eval$get_seq_len()
-py$r_env_get_history <- function() env_eval$get_history()
-
-
-# Python Code: Load and Evaluate Both Models
 py_run_string("
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
+import os, numpy as np, pandas as pd, torch, torch.nn as nn
+OUTPUT_DIR = os.environ['EVAL_MODEL_DIR']
+HIDDEN, NUM_LAYERS = int(os.environ.get('HIDDEN', '128')), int(os.environ.get('NUM_LAYERS', '2'))
+GROSS_LEVERAGE = float(os.environ.get('ENV_GROSS_LEVERAGE', '1.5'))
+NET_EXPOSURE = float(os.environ.get('ENV_NET_EXPOSURE', '1.0'))
+SHORT_BORROW_RATE = float(os.environ.get('ENV_SHORT_BORROW_RATE', '0.03'))
+CASH_BORROW_RATE = float(os.environ.get('ENV_CASH_BORROW_RATE', '0.02'))
+UTILITY_MODE = os.environ.get('ENV_UTILITY_MODE', 'terminal_wealth_crra')
 
-# ── LSTM Actor ──────────────────────────────────────────────────────────────
 class LSTMActor(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden=128, num_layers=2):
+    def __init__(self, obs_dim, action_dim, hidden, num_layers):
         super().__init__()
+        self.input_norm = nn.LayerNorm(obs_dim)
         self.lstm = nn.LSTM(obs_dim, hidden, num_layers, batch_first=True)
-        self.fc = nn.Sequential(
-            nn.Linear(hidden, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, action_dim),
-            nn.Softmax(dim=-1)
-        )
-    def forward(self, state_seq, hidden=None):
-        out, hidden = self.lstm(state_seq, hidden)
-        action = self.fc(out[:, -1, :])
-        return action, hidden
+        self.layernorm = nn.LayerNorm(hidden)
+        self.fc = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Linear(hidden, action_dim))
+    def forward(self, state):
+        x, _ = self.lstm(self.input_norm(state))
+        return self.fc(self.layernorm(x[:, -1, :]))
 
-# ── LSTM Critic ─────────────────────────────────────────────────────────────
-class LSTMCritic(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden=128, num_layers=2):
-        super().__init__()
-        self.lstm = nn.LSTM(obs_dim + action_dim, hidden, num_layers, batch_first=True)
-        self.fc = nn.Sequential(
-            nn.Linear(hidden, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, 1)
-        )
-    def forward(self, state_seq, action_seq, hidden=None):
-        if action_seq.dim() == 2:
-            action_seq = action_seq.unsqueeze(1)
-        x = torch.cat([state_seq, action_seq], dim=-1)
-        out, hidden = self.lstm(x, hidden)
-        q = self.fc(out[:, -1, :])
-        return q, hidden
+def load_actor(path, obs_dim, action_dim):
+    checkpoint = torch.load(path, map_location='cpu')
+    architecture = checkpoint.get('architecture')
+    expected = {'obs_dim': obs_dim, 'action_dim': action_dim, 'hidden': HIDDEN, 'num_layers': NUM_LAYERS,
+                'agent': 'td3', 'state_normalization': 'layer_norm',
+                'action_mode': 'long_short_two_book', 'gross_leverage': GROSS_LEVERAGE,
+                'net_exposure': NET_EXPOSURE, 'short_borrow_rate': SHORT_BORROW_RATE,
+                'cash_borrow_rate': CASH_BORROW_RATE, 'utility_mode': UTILITY_MODE}
+    if architecture is None:
+        raise RuntimeError(f'{path} predates architecture metadata; retrain after the state/reward correction.')
+    mismatches = {k: (architecture.get(k), v) for k, v in expected.items() if architecture.get(k) != v}
+    if mismatches:
+        raise RuntimeError(f'Checkpoint architecture does not match evaluation environment: {mismatches}. Retrain the model.')
+    actor = LSTMActor(obs_dim, action_dim, HIDDEN, NUM_LAYERS)
+    state = {k.replace('_orig_mod.', ''): v for k, v in checkpoint['actor'].items()}
+    actor.load_state_dict(state); actor.eval()
+    return actor
 
-# ── DDPG Agent ──────────────────────────────────────────────────────────────
-class DDPGAgent:
-    def __init__(self, obs_dim, action_dim, hidden=128, num_layers=2,
-                 lr_actor=1e-4, lr_critic=1e-3, gamma=0.99, tau=0.005):
-        self.actor = LSTMActor(obs_dim, action_dim, hidden, num_layers)
-        self.actor_target = LSTMActor(obs_dim, action_dim, hidden, num_layers)
-        self.actor_target.load_state_dict(self.actor.state_dict())
-        self.critic = LSTMCritic(obs_dim, action_dim, hidden, num_layers)
-        self.critic_target = LSTMCritic(obs_dim, action_dim, hidden, num_layers)
-        self.critic_target.load_state_dict(self.critic.state_dict())
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr_actor)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr_critic)
-        self.gamma = gamma
-        self.tau = tau
-        self.action_dim = int(action_dim)
-        self.obs_dim = int(obs_dim)
-    
-    def select_action(self, state_seq, noise_scale=0.0):
-        self.actor.eval()
-        with torch.no_grad():
-            state_tensor = torch.FloatTensor(state_seq).unsqueeze(0)
-            action, _ = self.actor(state_tensor)
-        self.actor.train()
-        action = action.squeeze(0).numpy()
-        if action.ndim > 1:
-            action = action[0]
-        if noise_scale > 0:
-            action += noise_scale * np.random.randn(self.action_dim)
-            action = np.clip(action, 0.0, 1.0)
-            action = action / np.sum(action)  # Normalize to sum to 1
-        return action
-    
-    def load(self, path):
-        ckpt = torch.load(path, map_location='cpu')
-        self.actor.load_state_dict(ckpt['actor'])
-        self.critic.load_state_dict(ckpt['critic'])
+def portfolio_weights(logits):
+    long_budget = 0.5 * (GROSS_LEVERAGE + NET_EXPOSURE)
+    short_budget = 0.5 * (GROSS_LEVERAGE - NET_EXPOSURE)
+    return long_budget * torch.softmax(logits, dim=-1) - short_budget * torch.softmax(-logits, dim=-1)
 
-# ── Evaluation Environment Wrapper ─────────────────────────────────────────
-class EvalEnv:
-    def __init__(self, reset_fn, step_fn, get_history_fn, action_dim, obs_dim, seq_len):
-        self.reset_fn = reset_fn
-        self.step_fn = step_fn
-        self.get_history_fn = get_history_fn
-        self.action_dim = int(action_dim)
-        self.obs_dim = int(obs_dim)
-        self.seq_len = int(seq_len)
-        self.history = None
-        self.wealth_history = []
-    
+class HistoricalEnv:
     def reset(self):
-        obs = self.reset_fn()
-        self.history = self.get_history_fn()
-        self.wealth_history = [100000]
-        if len(self.history) == 0:
-            self.history = np.zeros((self.seq_len, self.obs_dim), dtype=np.float32)
-        elif self.history.shape[0] != self.seq_len:
-            if self.history.shape[0] < self.seq_len:
-                pad = np.zeros((self.seq_len - self.history.shape[0], self.obs_dim), dtype=np.float32)
-                self.history = np.vstack([self.history, pad])
-            else:
-                self.history = self.history[-self.seq_len:]
-        return np.array(self.history, dtype=np.float32)
-    
+        r.r_env_reset(); self.state = np.asarray(r.r_env_get_history(), dtype=np.float32); self.logs = []; return self.state
     def step(self, action):
-        res = self.step_fn(action.tolist())
-        obs = np.array(res['observation'], dtype=np.float32)
-        reward = float(res['reward'])
-        done = bool(res['done'])
-        info = dict(res['info'])
-        self.wealth_history.append(info['wealth'])
-        self.history = np.roll(self.history, -1, axis=0)
-        self.history[-1] = obs
-        return self.history.copy(), reward, done, info
-    
-    def get_history(self):
-        return np.array(self.get_history_fn(), dtype=np.float32)
-    
-    def get_wealth_path(self):
-        return self.wealth_history
+        result = r.r_env_step(action.tolist())
+        obs = np.asarray(result['observation'], dtype=np.float32)
+        self.state = np.roll(self.state, -1, axis=0); self.state[-1] = obs
+        info = dict(result['info'])
+        row = {'step': len(self.logs) + 1, 'wealth': info['wealth'],
+               'gross_return': info['portf_ret'] - 1.0,
+               'net_return': info['net_portf_ret'] - 1.0,
+               'cvar': info['cvar'], 'turnover': info['turnover'],
+               'transaction_cost': info['transaction_cost'],
+               'financing_cost': info['financing_cost'],
+               'utility': info['utility'], 'reward': float(result['reward'])}
+        row.update({f'w{i+1}': float(w) for i, w in enumerate(action)})
+        self.logs.append(row); return bool(result['done'])
 
-def evaluate_model(agent_path, env, obs_dim, action_dim, seq_len, model_name):
-    print(f'Evaluating {model_name}...')
-    agent = DDPGAgent(obs_dim, action_dim)
-    agent.load(agent_path)
-    env.reset()
-    state = env.history.copy()
-    
-    for t in range(24):
-        action = agent.select_action(state, noise_scale=0.0)
-        next_state, reward, done, info = env.step(action)
-        state = next_state
-    
-    wealth_path = env.get_wealth_path()
-    print(f'{model_name} complete. Final wealth: {wealth_path[-1]:.0f}')
-    return wealth_path
+obs_dim, action_dim = int(r.r_env_get_obs_dim()), int(r.r_env_get_action_dim())
+def run(path):
+    actor, env = load_actor(path, obs_dim, action_dim), HistoricalEnv(); state = env.reset()
+    with torch.no_grad():
+        for _ in range(24):
+            action = portfolio_weights(actor(torch.from_numpy(state).unsqueeze(0))).squeeze(0).numpy()
+            if env.step(action): break
+    return pd.DataFrame(env.logs)
 
-# ── Set up evaluation ──────────────────────────────────────────────────────
-# Get dimensions using the R functions exposed via py$
-obs_dim = int(r_env_get_obs_dim())
-action_dim = int(r_env_get_action_dim())
-seq_len = int(r_env_get_seq_len())
-
-# Create a single environment for evaluation
-eval_env = EvalEnv(r_env_reset, r_env_step, r_env_get_history, action_dim, obs_dim, seq_len)
-
-# Evaluate Pre-trained Model
-wealth_pretrained = evaluate_model(
-    'data/ddpg_lstm_vine_pretrained.pt',
-    eval_env,
-    obs_dim, action_dim, seq_len,
-    'Pre-trained RL'
-)
-
-# Evaluate Final Model
-wealth_final = evaluate_model(
-    'data/ddpg_lstm_vine_full.pt',
-    eval_env,
-    obs_dim, action_dim, seq_len,
-    'Final RL'
-)
+run_name = os.path.basename(OUTPUT_DIR)
+logs_pretrained, logs_full = run(os.path.join(OUTPUT_DIR, 'td3_lstm_vine_pretrained.pt')), run(os.path.join(OUTPUT_DIR, 'td3_lstm_vine_full.pt'))
+logs_pretrained['model'] = 'pretrained'; logs_full['model'] = 'full'
+all_logs = pd.concat([logs_pretrained, logs_full], ignore_index=True)
+all_logs.to_csv(f'data/evaluation_logs_{run_name}.csv', index=False)
 ")
 
-# Retrieve wealth paths
-wealth_pretrained <- py$wealth_pretrained
-wealth_pretrained <- as.numeric(wealth_pretrained)
-
-wealth_final <- py$wealth_final
-wealth_final <- as.numeric(wealth_final)
-
-# Source compute_metrics function
-source("benchmarks.r")
-
-# Compute metrics for both models
-rl_pretrained_metrics <- compute_metrics(wealth_pretrained, T_horizon = 24, w0 = 100000)
-rl_final_metrics <- compute_metrics(wealth_final, T_horizon = 24, w0 = 100000)
-
-cat("\n========== PRE-TRAINED RL MODEL PERFORMANCE ==========\n")
-cat(sprintf("  Final wealth:   %.0f\n", rl_pretrained_metrics["final_wealth"]))
-cat(sprintf("  Total return:   %.2f%%\n", rl_pretrained_metrics["total_return"]))
-cat(sprintf("  Annual return:  %.2f%%\n", rl_pretrained_metrics["annual_return"]))
-cat(sprintf("  Annual vol:     %.2f%%\n", rl_pretrained_metrics["annual_vol"]))
-cat(sprintf("  Sharpe ratio:   %.3f\n", rl_pretrained_metrics["sharpe_ratio"]))
-cat(sprintf("  Max drawdown:   %.2f%%\n", rl_pretrained_metrics["max_drawdown"]))
-
-cat("\n========== FINAL RL MODEL PERFORMANCE ==========\n")
-cat(sprintf("  Final wealth:   %.0f\n", rl_final_metrics["final_wealth"]))
-cat(sprintf("  Total return:   %.2f%%\n", rl_final_metrics["total_return"]))
-cat(sprintf("  Annual return:  %.2f%%\n", rl_final_metrics["annual_return"]))
-cat(sprintf("  Annual vol:     %.2f%%\n", rl_final_metrics["annual_vol"]))
-cat(sprintf("  Sharpe ratio:   %.3f\n", rl_final_metrics["sharpe_ratio"]))
-cat(sprintf("  Max drawdown:   %.2f%%\n", rl_final_metrics["max_drawdown"]))
-
-
-# Combine into Comparison Table
-benchmark_df <- data.frame(
-  Strategy = rownames(benchmark_metrics),
-  benchmark_metrics,
-  stringsAsFactors = FALSE
-)
-
-rl_pretrained_row <- data.frame(
-  Strategy = "RL (Pre-trained)",
-  final_wealth   = rl_pretrained_metrics["final_wealth"],
-  total_return   = rl_pretrained_metrics["total_return"],
-  annual_return  = rl_pretrained_metrics["annual_return"],
-  annual_vol     = rl_pretrained_metrics["annual_vol"],
-  sharpe_ratio   = rl_pretrained_metrics["sharpe_ratio"],
-  max_drawdown   = rl_pretrained_metrics["max_drawdown"]
-)
-
-rl_final_row <- data.frame(
-  Strategy = "RL (Full)",
-  final_wealth   = rl_final_metrics["final_wealth"],
-  total_return   = rl_final_metrics["total_return"],
-  annual_return  = rl_final_metrics["annual_return"],
-  annual_vol     = rl_final_metrics["annual_vol"],
-  sharpe_ratio   = rl_final_metrics["sharpe_ratio"],
-  max_drawdown   = rl_final_metrics["max_drawdown"]
-)
-
-comparison_table <- rbind(benchmark_df, rl_pretrained_row, rl_final_row)
-
-
-# Print Final Comparison Table
-print_sep()
-cat("TABLE 11: OUT-OF-SAMPLE PERFORMANCE COMPARISON\n")
-print_sep()
-cat(sprintf("%-25s %12s %10s %10s %10s %10s %10s\n",
-            "Strategy", "Final W.", "Return%", "Ann.Ret%", "Vol%", "Sharpe", "MaxDD%"))
-print_sep()
-
-for (i in 1:nrow(comparison_table)) {
-  cat(sprintf("%-25s %12.0f %10.2f %10.2f %10.2f %10.3f %10.2f\n",
-              comparison_table$Strategy[i],
-              comparison_table$final_wealth[i],
-              comparison_table$total_return[i],
-              comparison_table$annual_return[i],
-              comparison_table$annual_vol[i],
-              comparison_table$sharpe_ratio[i],
-              comparison_table$max_drawdown[i]))
-}
-print_sep()
-
-
-# Save Results
-save(
-  list = c("comparison_table", "wealth_pretrained", "wealth_final", 
-           "rl_pretrained_metrics", "rl_final_metrics", "benchmark_results"),
-  file = "data/evaluation_results.RData"
-)
-
-cat("\n✓ Results saved to data/evaluation_results.RData\n")
-
-
-# Plot Wealth Curves (All Models + Both RL)
-wealth_paths <- list(
-  "Empirical MV" = benchmark_results$empirical$wealth,
-  "DCC-GARCH" = benchmark_results$dcc$wealth,
-  "Static Vine MV" = benchmark_results$static$wealth,
-  "Rolling Vine MV" = benchmark_results$rolling$wealth,
-  "NN Vine MV" = benchmark_results$nn_mv$wealth,
-  "Myopic EU" = benchmark_results$eu_single$wealth,
-  "Multi-period EU" = benchmark_results$eu_multi$wealth,
-  "NN Vine EU" = benchmark_results$nn_eu$wealth,
-  "RL (Pre-trained)" = wealth_pretrained,
-  "RL (Full)" = wealth_final
-)
-
-dates <- seq(as.Date("2019-01-31"), by = "month", length.out = 37)
-pdf("figures/wealth_curves_full_comparison.pdf", width = 12, height = 8)
-par(mar = c(5, 5, 4, 2))
-
-all_wealth <- unlist(wealth_paths)
-ylim <- c(min(all_wealth) * 0.95, max(all_wealth) * 1.05)
-
-colors <- c(
-  "grey70", "grey60", "grey50", "grey40", "grey30",  # Benchmarks
-  "blue", "blue3", "blue4",                          # EU models
-  "orange",                                         # Pre-trained RL
-  "red"                                             # Full RL
-)
-
-plot(dates, wealth_paths[[1]], type = "l", col = colors[1],
-     ylim = ylim, lwd = 1.5,
-     xlab = "Date", ylab = "Wealth ($)",
-     main = "Out-of-Sample Cumulative Wealth Paths")
-
-for (i in 2:length(wealth_paths)) {
-  lwd_val <- ifelse(i == length(wealth_paths), 3, 1.5)
-  lines(dates, wealth_paths[[i]], col = colors[i], lwd = lwd_val)
+all_logs <- as.data.frame(py$all_logs)
+run_name <- basename(eval_model_dir)
+source("eval/ablation.r")
+all_logs$decision_date <- rep(eval_periods$decision_date, 2L)
+all_logs$holding_end_date <- rep(eval_periods$holding_end_date, 2L)
+for (j in seq_along(asset_names)) names(all_logs)[names(all_logs) == paste0("w", j)] <- paste0("w_", asset_names[j])
+rl_rows <- lapply(c("pretrained", "full"), function(model) {
+  returns_model <- all_logs$net_return[all_logs$model == model]
+  data.frame(Strategy = paste("RL", model),
+             t(annualised_path_metrics(returns_model)), check.names = FALSE)
+})
+rl_df <- rbindlist(rl_rows, fill = TRUE)
+comparison_table <- rl_df
+save(comparison_table, file = paste0("data/evaluation_comparison_", run_name, ".RData"))
+write.csv(comparison_table, paste0("data/evaluation_comparison_", run_name, ".csv"), row.names = FALSE)
+write.csv(all_logs, paste0("data/evaluation_logs_", run_name, ".csv"), row.names = FALSE)
+for (model in c("pretrained", "full")) {
+  weight_columns <- c("decision_date", paste0("w_", asset_names))
+  write.csv(all_logs[all_logs$model == model, weight_columns, drop = FALSE],
+            paste0("data/weights_rl_", model, "_", run_name, ".csv"), row.names = FALSE)
 }
 
-legend_names <- names(wealth_paths)
-legend_colors <- colors
-legend_lwd <- c(rep(1.5, 8), 1.5, 3)
-
-legend("topleft", legend = legend_names, 
-       col = legend_colors, lwd = legend_lwd,
-       cex = 0.7, ncol = 2, bty = "n")
-
-dev.off()
-
-cat("\n✓ Wealth curve plot saved to figures/wealth_curves_full_comparison.pdf\n")
-
-
-# Summary Statistics
-print_sep()
-cat("SUMMARY: KEY FINDINGS\n")
-print_sep()
-
-# Check if RL models are in the table
-rl_indices <- which(comparison_table$Strategy %in% c("RL (Pre-trained)", "RL (Full)"))
-best_sharpe_idx <- which.max(comparison_table$sharpe_ratio)
-best_sharpe_model <- comparison_table$Strategy[best_sharpe_idx]
-best_sharpe_value <- comparison_table$sharpe_ratio[best_sharpe_idx]
-
-cat(sprintf("✓ Best Sharpe ratio: %.3f (%s)\n", best_sharpe_value, best_sharpe_model))
-
-best_dd_idx <- which.min(comparison_table$max_drawdown)
-best_dd_model <- comparison_table$Strategy[best_dd_idx]
-best_dd_value <- comparison_table$max_drawdown[best_dd_idx]
-
-cat(sprintf("✓ Lowest max drawdown: %.2f%% (%s)\n", best_dd_value, best_dd_model))
-
-# Ranking of RL models
-for (rl_idx in rl_indices) {
-  rl_sharpe <- comparison_table$sharpe_ratio[rl_idx]
-  rl_name <- comparison_table$Strategy[rl_idx]
-  rl_rank <- sum(comparison_table$sharpe_ratio > rl_sharpe) + 1
-  cat(sprintf("✓ %s ranks %d/%d in Sharpe ratio\n", rl_name, rl_rank, nrow(comparison_table)))
-}
-
-print_sep()
-cat("\n✓ Evaluation complete!\n")
+plot_df <- rbindlist(lapply(c("pretrained", "full"), function(model) data.table(step = 0:T_eval, wealth = c(100000, all_logs$wealth[all_logs$model == model]), model = model)))
+ggsave(paste0("figures/wealth_curves_rl_evaluation_", run_name, ".pdf"), ggplot(plot_df, aes(step, wealth, colour = model)) + geom_line(linewidth = 1) + theme_bw() + labs(title = "Historical out-of-sample RL wealth", x = "Month", y = "Wealth"), width = 9, height = 5)
+weight_cols <- grep("^w_", names(all_logs), value = TRUE)
+weights_long <- melt(as.data.table(all_logs), id.vars = c("model", "step"), measure.vars = weight_cols, variable.name = "asset", value.name = "weight")
+ggsave(paste0("figures/weights_evolution_", run_name, ".pdf"), ggplot(weights_long, aes(step, weight, colour = asset)) + geom_line() + facet_wrap(~model) + theme_bw(), width = 9, height = 5)
+cat("Historical evaluation complete. Results saved for", run_name, "\n")

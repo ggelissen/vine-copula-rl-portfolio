@@ -8,7 +8,7 @@ library(xts)
 library(torch)
 library(parallel)
 
-RUN_TESTS <- TRUE
+RUN_TESTS <- FALSE
 
 source("helper/load_data.r")
 source("benchmark_models/Li_Ng.r")
@@ -17,11 +17,11 @@ source("benchmark_models/dynamic_vine_NN.r")
 source("benchmark_models/expected_utility_single.r")
 source("benchmark_models/expected_utility_multi.r")
 source("helper/timer.r")
-source("helper/plotting.r")
+#source("helper/plotting.r")
 
 
 # Helper: compute risk metrics from a wealth path
-compute_metrics <- function(wealth, T_horizon, w0 = 100000) {
+compute_metrics <- function(wealth, T_horizon, w0 = 100000, annual_risk_free = 0) {
   # Period returns
   returns_p <- diff(wealth) / wealth[1:T_horizon]
   
@@ -29,7 +29,8 @@ compute_metrics <- function(wealth, T_horizon, w0 = 100000) {
   total_return  <- (final_wealth / w0 - 1) * 100
   annual_return <- ((final_wealth / w0)^(1/(T_horizon/12)) - 1) * 100
   annual_vol    <- sd(returns_p) * sqrt(12) * 100
-  sharpe        <- annual_return / annual_vol
+  excess <- returns_p - annual_risk_free / 12
+  sharpe <- if (sd(excess) > 0) mean(excess) / sd(excess) * sqrt(12) else NA_real_
   max_dd        <- max(1 - wealth / cummax(wealth)) * 100
   
   return(c(final_wealth = final_wealth,
@@ -134,8 +135,7 @@ benchmark_DCC <- function(returns_xts, rebal_dates, T_horizon, ref_col = 7,
     total_return  = (wealth[T_horizon + 1] / w0 - 1) * 100,
     annual_return = ((wealth[T_horizon + 1] / w0)^(1/(T_horizon/12)) - 1) * 100,
     annual_vol    = sd(rets) * sqrt(12) * 100,
-    sharpe_ratio  = ((wealth[T_horizon + 1] / w0)^(1/(T_horizon/12)) - 1) * 100 /
-                    (sd(rets) * sqrt(12) * 100),
+    sharpe_ratio  = if (sd(rets) > 0) mean(rets) / sd(rets) * sqrt(12) else NA_real_,
     max_drawdown  = max(1 - wealth / cummax(wealth)) * 100
   )
   
@@ -371,8 +371,7 @@ benchmark_NN_vine <- function(returns_xts, U, marginals, asset_names,
     total_return  = (wealth[length(rebal_dates) + 1] / w0 - 1) * 100,
     annual_return = ((wealth[length(rebal_dates) + 1] / w0)^(1/(length(rebal_dates)/12)) - 1) * 100,
     annual_vol    = sd(rets) * sqrt(12) * 100,
-    sharpe_ratio  = ((wealth[length(rebal_dates) + 1] / w0)^(1/(length(rebal_dates)/12)) - 1) * 100 /
-                    (sd(rets) * sqrt(12) * 100),
+    sharpe_ratio  = if (sd(rets) > 0) mean(rets) / sd(rets) * sqrt(12) else NA_real_,
     max_drawdown  = max(1 - wealth / cummax(wealth)) * 100
   )
   
@@ -423,8 +422,7 @@ benchmark_NN_eu <- function(returns_xts, U, marginals, asset_names,
     total_return  = (wealth[length(rebal_dates) + 1] / w0 - 1) * 100,
     annual_return = ((wealth[length(rebal_dates) + 1] / w0)^(1/(length(rebal_dates)/12)) - 1) * 100,
     annual_vol    = sd(rets) * sqrt(12) * 100,
-    sharpe_ratio  = ((wealth[length(rebal_dates) + 1] / w0)^(1/(length(rebal_dates)/12)) - 1) * 100 /
-                    (sd(rets) * sqrt(12) * 100),
+    sharpe_ratio  = if (sd(rets) > 0) mean(rets) / sd(rets) * sqrt(12) else NA_real_,
     max_drawdown  = max(1 - wealth / cummax(wealth)) * 100
   )
 
@@ -438,7 +436,16 @@ benchmark_NN_eu <- function(returns_xts, U, marginals, asset_names,
 run_all_benchmarks <- function(returns_xts, U, marginals, asset_names,
                                rebal_dates, T_horizon = 12, ref_col = 7,
                                L = 500, w0 = 100000, gamma = 2, n_sim = 10000,
-                               save_plot = "figures/wealth_curves.pdf") {
+                               save_plot = "figures/wealth_curves.pdf",
+                               allow_legacy_protocol = FALSE) {
+  if (!isTRUE(allow_legacy_protocol)) {
+    stop(paste0(
+      "Legacy benchmark engine disabled: it mixes daily one-draw marginal simulations with monthly RL returns, ",
+      "uses unmatched portfolio constraints/costs, and contains unversioned model caches. ",
+      "Use eval/research_protocol.r with completed realised-return logs."
+    ))
+  }
+  warning("Running a legacy, non-publication benchmark protocol.")
   
   # Build simulator and vine fits once (shared across EU strategies)
   sim_eu <- build_simulator(marginals, asset_names, ref_col)

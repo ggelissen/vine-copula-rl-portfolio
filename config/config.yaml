@@ -1,0 +1,182 @@
+# ============================================================
+# Master Configuration File
+# ============================================================
+
+# -------------------- General --------------------
+general:
+  # Seed for reproducibility (applied in R and Python)
+  seed: 20260741
+
+  # Output directory for trained models and logs
+  output_dir: "data/rl_runs/default"
+
+  # Device for PyTorch: "cuda" or "cpu"
+  device: "cuda"
+
+  # If true, run only a few episodes for testing
+  smoke_test: false
+
+  # Verbose logging (prints actions, gradients, etc.)
+  verbose: false
+
+# -------------------- Vine Copula & Data --------------------
+vine:
+  # Retained only for legacy benchmark scripts. RL uses the fixed NN-driven
+  # dynamic t-vine below and does not re-estimate rolling-window vines.
+  L: 250
+
+  # NN-driven fully dynamic D-vine settings. All 21 unconditional/conditional
+  # edge networks are fit on training data once; snapshots are causal forecasts.
+  model: "nn_dynamic_t_vine"
+  nn_epochs: 200
+  nn_learning_rate: 0.001
+  nn_patience: 20
+  nn_model_dir: "data/nn_vine_models"
+
+  # Reference asset column index (1‑based)
+  ref_col: 7
+
+  # Number of simulations for CVaR estimation per step
+  # 512 gives about 26 observations in the 5% tail per state. Report a
+  # sensitivity check at 1,024/2,048; storing 2,000 for every replay state is
+  # prohibitively expensive and did not create independent historical data.
+  n_sim_cvar: 512
+
+  # Number of CPU cores for parallel vine simulation
+  sim_cores: 128
+
+  # Paths to pre‑computed returns (if files exist, they will be loaded)
+  pretrain_returns_file: "data/pretrain_returns.qs"
+  finetune_returns_file: "data/finetune_returns.qs"
+
+  # Marginals/pseudo-observations fitted only through the training cutoff.
+  training_marginals_file: "data/training_marginal_results.RData"
+
+  # Path to benchmark results (for evaluation comparison)
+  benchmark_results_file: "data/benchmark_results.RData"
+
+# -------------------- Reinforcement Learning Environment --------------------
+environment:
+  # CRRA risk aversion coefficient (gamma) for utility
+  gamma: 2.0
+
+  # CVaR penalty coefficient (lambda)
+  lambda: 0.01
+
+  # Turnover penalty coefficient (kappa)
+  kappa: 0.001
+
+  # Episode length (number of monthly rebalancing steps)
+  T: 24
+
+  # Initial wealth
+  w0: 100000
+
+  # LSTM lookback window (number of historical states)
+  seq_len: 30
+
+  # Trading days per monthly holding period. Marginals are fitted to daily data.
+  holding_days: 21
+
+  # Self-financing long-short mandate. Gross leverage is sum(abs(weights));
+  # net exposure is sum(weights). 1.5x gross with 1.0x net permits 125% long
+  # and 25% short in the most concentrated admissible portfolio.
+  gross_leverage: 1.5
+  net_exposure: 1.0
+
+  # Annualised implementation costs. A short book is not free: stock-loan
+  # fees are charged monthly, as is cash borrowing when net exposure exceeds 1.
+  short_borrow_rate: 0.03
+  cash_borrow_rate: 0.02
+
+  # Optimise CRRA utility of terminal episode wealth via dense telescoping
+  # utility increments, rather than one-period CRRA of each monthly return.
+  utility_mode: "terminal_wealth_crra"
+
+# -------------------- Pre-training Stage --------------------
+pretraining:
+  # Number of episodes
+  episodes: 1000
+
+  # Batch size for replay buffer sampling
+  batch_size: 128
+
+  # Initial noise scale for exploration (decays over episodes)
+  noise_scale: 0.3
+
+  # Exponential decay rate for noise
+  noise_decay: 0.997
+
+  # Number of gradient updates per environment step
+  updates_per_step: 3
+
+# -------------------- Fine-tuning Stage --------------------
+finetuning:
+  # 61 chronological trajectories x 8 balanced passes for the current locked
+  # split. Runtime validation fails if a changed dataset alters this count.
+  episodes: 488
+  batch_size: 64
+  noise_scale: 0.3
+  noise_decay: 0.997
+  updates_per_step: 3
+
+  # Path to a pre‑trained model to load (overrides the default)
+  # If not set, the script will look in the output directory.
+  load_model_path: ""
+
+# -------------------- LSTM-TD3 Agent --------------------
+agent:
+  # Actor learning rate
+  lr_actor: 1e-4
+
+  # Critic learning rate
+  lr_critic: 3e-4
+
+  # Must be 1.0 for the telescoping terminal-wealth utility objective.
+  discount: 1.0
+
+  # Target network soft‑update rate (tau)
+  tau: 0.005
+
+  # Number of hidden units in LSTM and fully‑connected layers
+  hidden: 64
+
+  # Number of LSTM layers
+  num_layers: 1
+
+  # Replay buffer capacity
+  replay_capacity: 100000
+
+  # TD3 stabilisation: twin critics, delayed policy updates and smoothed
+  # target actions. Deterministic-policy entropy is deliberately disabled.
+  entropy_coef: 0.0
+  policy_delay: 2
+  target_policy_noise: 0.2
+  target_noise_clip: 0.5
+  random_exploration_steps: 1000
+  deterministic_algorithms: true
+
+  # Gradient clipping norm
+  grad_clip_norm: 1.0
+
+# -------------------- Evaluation --------------------
+evaluation:
+  # Locked historical holdout. It is excluded from marginal/vine fitting and
+  # fine-tuning, and used once for final performance reporting.
+  periods: 24
+
+  # Number of evaluation episodes (different random seeds)
+  # Historical backtesting has one realised path; repeated seeds are not
+  # independent observations and must not be averaged as if they were.
+  n_eval_seeds: 1
+
+  # Base seed for evaluation (seeds are n_eval_seeds + i)
+  eval_seed: 20260741
+
+  # Environment parameters used for evaluation (can differ from training)
+  eval_gamma: 2.0
+  eval_lambda: 0.01
+  eval_kappa: 0.001
+
+  # Directory where the trained models are stored
+  model_dir: "data/rl_runs/default"

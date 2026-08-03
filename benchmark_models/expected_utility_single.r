@@ -38,10 +38,7 @@ VineReturnSimulator <- function(marginals, asset_names, ref_col) {
     cdf_grids       = cdf_grids,
     
     # Simulate one‑period‑ahead returns
-    simulate_returns = function(vine_fit, n_sim = 10000, cores = 1L) {
-      # rvinecop parallelizes independent simulation batches in its C++ backend.
-      # Keep this argument explicit so RL runs can use available CPU cores while
-      # other callers retain the serial default.
+    simulate_returns = function(vine_fit, n_sim = 10000, cores = 1L, prev_returns = NULL) {
       cores <- max(1L, as.integer(cores))
       sim_U <- rvinecop(n_sim, vine_fit, cores = cores)
       sim_log <- matrix(0, n_sim, length(asset_names))
@@ -51,9 +48,16 @@ VineReturnSimulator <- function(marginals, asset_names, ref_col) {
         grid <- cdf_grids[[name]]
         z_sim <- approx(grid$prob, grid$z, xout = sim_U[, i], rule = 2)$y
         
-        mu    <- marginals[[name]]$mu_uncond
+        # Conditional mean for the first row, unconditional for the rest
+        if (!is.null(prev_returns) && length(prev_returns) == length(asset_names)) {
+          cond_mean <- marginals[[name]]$mu_ar + marginals[[name]]$ar1 * prev_returns[i]
+          mu_vec <- rep(marginals[[name]]$mu_uncond, n_sim)
+          mu_vec[1] <- cond_mean
+        } else {
+          mu_vec <- rep(marginals[[name]]$mu_uncond, n_sim)
+        }
         sigma <- marginals[[name]]$sigma_uncond
-        sim_log[, i] <- mu + sigma * z_sim
+        sim_log[, i] <- mu_vec + sigma * z_sim
       }
       
       colnames(sim_log) <- asset_names
@@ -151,7 +155,7 @@ run_eu_backtest <- function(simulator, vine_fits, returns_xts, rebal_dates,
   total_return  <- (final_wealth / W0 - 1) * 100
   annual_return <- ((final_wealth / W0)^(1/(T_horizon/12)) - 1) * 100
   annual_vol    <- sd(returns_p) * sqrt(12) * 100
-  sharpe        <- annual_return / annual_vol
+  sharpe        <- if (sd(returns_p) > 0) mean(returns_p) / sd(returns_p) * sqrt(12) else NA_real_
   max_dd        <- max(1 - wealth / cummax(wealth)) * 100
   
   metrics <- c(final_wealth = final_wealth,
@@ -168,20 +172,26 @@ run_eu_backtest <- function(simulator, vine_fits, returns_xts, rebal_dates,
 
 
 build_simulator <- function(marginals, asset_names, ref_col = 7) {
-  # Extract unconditional moments for each asset
+  # Extract unconditional moments and AR(1) coefficients for each asset
   for (name in asset_names) {
     model <- marginals[[name]]
-    cfit <- model$fit@fit$coef
-    mu    <- cfit["mu"]
-    ar1   <- if ("ar1" %in% names(cfit)) cfit["ar1"] else 0
-    omega <- cfit["omega"]
-    alpha <- cfit["alpha1"]
-    beta  <- cfit["beta1"]
-    
-    marginals[[name]]$mu_uncond <- 
-      if (abs(ar1) < 1) mu / (1 - ar1) else mean(model$z)
-    marginals[[name]]$sigma_uncond <- 
-      if (alpha + beta < 1) sqrt(omega / (1 - alpha - beta)) else sd(model$z)
+    if (identical(model$marginal_type, "component_ewma")) {
+      mu <- model$mu_ar; ar1 <- model$ar1
+      marginals[[name]]$mu_uncond <- if (abs(ar1) < 1) mu / (1 - ar1) else mu
+      marginals[[name]]$sigma_uncond <- sqrt(mean(model$sigma^2))
+    } else {
+      cfit <- model$fit@fit$coef
+      mu <- cfit["mu"]
+      ar1 <- if ("ar1" %in% names(cfit)) cfit["ar1"] else 0
+      # Fitted RMS volatility is valid for asymmetric/nonlinear GARCH variants.
+      fitted_mean <- as.numeric(model$fit@fit$fitted.values)
+      fitted_sigma <- as.numeric(model$fit@fit$sigma)
+      marginals[[name]]$mu_uncond <- if (any(is.finite(fitted_mean))) mean(fitted_mean[is.finite(fitted_mean)]) else if (abs(ar1) < 1) mu / (1 - ar1) else mean(model$z)
+      marginals[[name]]$sigma_uncond <- if (any(is.finite(fitted_sigma))) sqrt(mean(fitted_sigma[is.finite(fitted_sigma)]^2)) else sd(model$z)
+    }
+    # Store AR(1) intercept and coefficient for conditional mean
+    marginals[[name]]$mu_ar <- mu
+    marginals[[name]]$ar1 <- ar1
   }
   
   VineReturnSimulator(marginals, asset_names, ref_col)

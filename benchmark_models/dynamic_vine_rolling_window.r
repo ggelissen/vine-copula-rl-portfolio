@@ -1,4 +1,6 @@
 # ============================================================
+
+stop("Legacy standalone rolling-vine script is disabled: it leaks full-sample marginals and mismatches monthly horizons. Use the common research protocol.")
 # dynamic_vine_rolling_window.r
 # Rolling‑window D‑vine + Li‑Ng multi‑period mean–variance
 # ============================================================

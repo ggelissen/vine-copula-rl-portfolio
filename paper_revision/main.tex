@@ -1,0 +1,44 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{booktabs,tabularx,threeparttable}
+\usepackage{graphicx,float}
+\usepackage{caption}
+\usepackage[numbers,square,sort&compress]{natbib}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\newcommand{\todoresult}[1]{\textcolor{red}{[RESULT REQUIRED: #1]}}
+\newcommand{\methodname}{Dynamic-Vine LSTM-TD3}
+\newcommand{\R}{\mathbb{R}}
+\setlist{nosep,leftmargin=*}
+
+\title{Fully Dynamic Neural Vine Dependence and Recurrent Reinforcement Learning for Leveraged Long--Short Portfolio Allocation}
+\author{Gabriel M. J. Gelissen \and Fengyi Yuan\\
+School of Science and Engineering, The Chinese University of Hong Kong, Shenzhen}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper develops a dependence-aware reinforcement-learning framework for monthly portfolio allocation. A training-only, data-ordered Student-$t$ D-vine is equipped with neural correlation forecasts on all unconditional and conditional edges. Synthetic paths are calibrated to training-only empirical monthly marginals and serial dependence; realised historical data are used for fine-tuning, while the final 24 holding periods remain locked for evaluation. A recurrent TD3 agent selects self-financing long--short portfolios under common net- and gross-exposure limits. The multi-period objective is terminal-wealth CRRA represented by dense telescoping utility increments, with ex-ante CVaR, turnover, stock-borrow, and financing costs. We provide a leakage-aware, falsifiable evaluation protocol and make no superiority claim until common-return benchmarks, actual ablations, multiple training seeds, and multiple-comparison-aware inference have been completed.
+\end{abstract}
+
+\noindent\textit{Keywords:} dynamic portfolio choice; vine copulas; reinforcement learning; CVaR; synthetic data; reproducible finance.
+
+\input{01_Introduction}
+\input{02_LiteratureReview}
+\input{03_Methodology}
+\input{04_Data}
+\input{05_Results}
+\input{06_Conclusion}
+\input{07_Appendix}
+
+\bibliographystyle{plainnat}
+\bibliography{Zotero}
+\end{document}

@@ -105,8 +105,7 @@ run_eu_multi_backtest <- function(simulator, returns_xts, U,
     total_return  = (wealth[T_horizon + 1] / W0 - 1) * 100,
     annual_return = ((wealth[T_horizon + 1] / W0)^(1/(T_horizon/12)) - 1) * 100,
     annual_vol    = sd(rets) * sqrt(12) * 100,
-    sharpe_ratio  = ((wealth[T_horizon + 1] / W0)^(1/(T_horizon/12)) - 1) * 100 /
-                    (sd(rets) * sqrt(12) * 100),
+    sharpe_ratio  = if (sd(rets) > 0) mean(rets) / sd(rets) * sqrt(12) else NA_real_,
     max_drawdown  = max(1 - wealth / cummax(wealth)) * 100
   )
 

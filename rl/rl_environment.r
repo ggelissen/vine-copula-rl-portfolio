@@ -8,10 +8,10 @@ library(rvinecopulib)
 
 source("helper/load_data.r")
 source("benchmark_models/expected_utility_single.r")   # VineReturnSimulator, build_simulator, crra_utility
-load("data/marginal_results.RData")   # marginals, asset_names
-load("data/vine_fit.RData")           # vine_fit (static D‑vine)
+source("benchmark_models/dynamic_vine_NN.r")            # fixed NN-driven dynamic vine
+# Marginals and vines are supplied explicitly to RLEnvironment$new().
 
-# Helper: extract first‑tree parameters and tail dependence
+# Helper: extract all vine parameters (Kendall's tau + tail dependence)
 extract_vine_state <- function(vine) {
   if (is.null(vine)) return(numeric(0))
   
@@ -26,7 +26,7 @@ extract_vine_state <- function(vine) {
       pc <- pc_list[[i]]
       fam <- pc$family
       params <- pc$parameters
-      rot <- pc$rotation %||% 0
+      rot <- if (is.null(pc$rotation)) 0 else pc$rotation
       
       # Kendall's tau
       tau <- tryCatch(
@@ -66,8 +66,9 @@ extract_vine_state <- function(vine) {
 }
 
 
-
-build_vine_sequence <- function(returns_xts, U, rebal_dates, L = 500) {
+# Legacy benchmark helper only. The RL/synthetic/evaluation pipeline uses
+# build_nn_vine_sequence() and never calls this rolling estimator.
+build_rolling_vine_sequence_legacy <- function(returns_xts, U, rebal_dates, L = 500) {
   vine_seq <- vector("list", length(rebal_dates))
   T_max <- nrow(returns_xts)
   
@@ -90,6 +91,43 @@ build_vine_sequence <- function(returns_xts, U, rebal_dates, L = 500) {
   vine_seq[!sapply(vine_seq, is.null)]
 }
 
+# The fitted marginals are daily, whereas this project rebalances monthly.
+# Preserve the copula draw while aggregating daily innovations to a monthly
+# holding-period log return.  Only the first row is an episode's realised
+# draw, so it receives the AR carry-over; all remaining rows are CVaR scenarios.
+simulate_monthly_gross <- function(simulator, marginals, vine, n_sim,
+                                   holding_days = 21L, cores = 1L,
+                                   previous_monthly_log_returns = NULL) {
+  raw <- simulator$simulate_returns(vine, n_sim = n_sim, cores = cores, prev_returns = NULL)$log
+  asset_names <- simulator$asset_names
+  # build_simulator() enriches a local copy of marginals, so those derived
+  # fields are not guaranteed to exist in the caller's loaded RData object.
+  # Derive them from the fitted AR-GARCH coefficients when absent.
+  marginal_moments <- function(model) {
+    if (identical(model$marginal_type, "component_ewma")) {
+      mu_uncond <- if (abs(model$ar1) < 1) model$mu_ar / (1 - model$ar1) else model$mu_ar
+      return(c(mu_uncond = mu_uncond, ar1 = model$ar1,
+               sigma_uncond = sqrt(mean(model$sigma^2))))
+    }
+    cfit <- model$fit@fit$coef
+    mu_ar <- as.numeric(cfit["mu"])
+    ar1 <- if ("ar1" %in% names(cfit)) as.numeric(cfit["ar1"]) else 0
+    omega <- as.numeric(cfit["omega"]); alpha <- as.numeric(cfit["alpha1"]); beta <- as.numeric(cfit["beta1"])
+    mu_uncond <- if (!is.null(model$mu_uncond) && length(model$mu_uncond) == 1L) as.numeric(model$mu_uncond) else if (abs(ar1) < 1) mu_ar / (1 - ar1) else mean(model$z, na.rm = TRUE)
+    sigma_uncond <- if (!is.null(model$sigma_uncond) && length(model$sigma_uncond) == 1L) as.numeric(model$sigma_uncond) else if (is.finite(alpha + beta) && alpha + beta < 1) sqrt(omega / (1 - alpha - beta)) else sd(model$z, na.rm = TRUE)
+    c(mu_uncond = mu_uncond, ar1 = ar1, sigma_uncond = sigma_uncond)
+  }
+  moments <- lapply(asset_names, function(name) marginal_moments(marginals[[name]]))
+  mu <- vapply(moments, `[[`, numeric(1), "mu_uncond")
+  monthly_log <- sweep(raw, 2, mu, "-") * sqrt(holding_days) + rep(holding_days * mu, each = nrow(raw))
+  if (!is.null(previous_monthly_log_returns) && length(previous_monthly_log_returns) == length(asset_names)) {
+    ar1 <- vapply(moments, `[[`, numeric(1), "ar1")
+    monthly_log[1L, ] <- monthly_log[1L, ] + ar1 * previous_monthly_log_returns
+  }
+  colnames(monthly_log) <- asset_names
+  exp(monthly_log)
+}
+
 
 # CRRA Utility Function
 crra_utility <- function(wealth, gamma) {
@@ -100,9 +138,35 @@ crra_utility <- function(wealth, gamma) {
   }
 }
 
+# Sanitize externally supplied portfolio weights without restoring the old
+# long-only simplex.  The actor produces valid self-financing long-short
+# weights; this is a defensive projection for numerical noise and API callers.
+project_long_short_weights <- function(weights, net_exposure, gross_leverage) {
+  weights <- as.numeric(weights)
+  weights[!is.finite(weights)] <- 0
+  d <- length(weights)
+  if (!d) stop("Portfolio must contain at least one asset.")
+  base <- rep(net_exposure / d, d)
+  centred <- weights - mean(weights)
+  candidate <- base + centred
+  gross <- sum(abs(candidate))
+  if (gross > gross_leverage + 1e-10 && sum(abs(centred)) > 0) {
+    # Bisection preserves net exposure while shrinking only active long/short
+    # tilts until the gross-leverage limit binds.
+    lower <- 0; upper <- 1
+    for (iter in seq_len(50L)) {
+      middle <- (lower + upper) / 2
+      if (sum(abs(base + middle * centred)) > gross_leverage) upper <- middle else lower <- middle
+    }
+    candidate <- base + lower * centred
+  }
+  candidate
+}
 
 
-# RL Environment class
+# ============================================================================
+# RLEnvironment class – fully optimised
+# ============================================================================
 RLEnvironment <- R6Class(
   "RLEnvironment",
   public = list(
@@ -118,9 +182,17 @@ RLEnvironment <- R6Class(
                           w0 = 100000, 
                           n_sim_cvar = 10000,
                           sim_cores = 1L,
-                          seq_len = 30) {      # LSTM lookback window
+                           seq_len = 30,
+                           holding_days = 21L,
+                           gross_leverage = 1.5,
+                           net_exposure = 1.0,
+                           short_borrow_rate = 0.03,
+                           cash_borrow_rate = 0.02,
+                           utility_mode = c("terminal_wealth_crra", "one_period_crra"),
+                           episode_sampling = c("random", "sequential")) {
       
       private$simulator <- build_simulator(marginals, asset_names, ref_col)
+      private$marginals <- marginals
       private$ref_col <- ref_col
       private$gamma <- gamma
       private$lambda <- lambda
@@ -130,6 +202,20 @@ RLEnvironment <- R6Class(
       private$n_sim_cvar <- n_sim_cvar
       private$sim_cores <- max(1L, as.integer(sim_cores))
       private$seq_len <- seq_len
+      private$holding_days <- as.integer(holding_days)
+      private$gross_leverage <- as.numeric(gross_leverage)
+      private$net_exposure <- as.numeric(net_exposure)
+      private$short_borrow_rate <- as.numeric(short_borrow_rate)
+      private$cash_borrow_rate <- as.numeric(cash_borrow_rate)
+      private$utility_mode <- match.arg(utility_mode)
+      private$episode_sampling <- match.arg(episode_sampling)
+      if (!is.finite(private$gross_leverage) || !is.finite(private$net_exposure) || private$gross_leverage < abs(private$net_exposure)) {
+        stop("gross_leverage must be finite and at least abs(net_exposure).")
+      }
+      if (any(!is.finite(c(private$short_borrow_rate, private$cash_borrow_rate))) ||
+          any(c(private$short_borrow_rate, private$cash_borrow_rate) < 0)) {
+        stop("Borrow rates must be finite, non-negative annual rates.")
+      }
       private$obs_history <- list()
       
       # Vine setup
@@ -147,9 +233,25 @@ RLEnvironment <- R6Class(
         private$dynamic <- FALSE
       }
       
-      # Compute dimensions
+      # Compute dimensions – action_dim is now full number of assets
       d <- length(asset_names)
       private$action_dim <- d
+
+      # Extract AR(1) coefficients from marginals
+      private$mu_ar <- numeric(d)
+      private$ar1 <- numeric(d)
+      for (i in seq_along(asset_names)) {
+        name <- asset_names[i]
+        model <- marginals[[name]]
+        if (identical(model$marginal_type, "component_ewma")) {
+          private$mu_ar[i] <- model$mu_ar
+          private$ar1[i] <- model$ar1
+        } else {
+          cfit <- model$fit@fit$coef
+          private$mu_ar[i] <- cfit["mu"]
+          private$ar1[i] <- if ("ar1" %in% names(cfit)) cfit["ar1"] else 0
+        }
+      }
       
       # Get vine features dimension
       vine_for_dim <- private$vine_current
@@ -163,11 +265,31 @@ RLEnvironment <- R6Class(
         n_edges <- 0
       }
       
-      # obs_dim = wealth(1) + returns(d) + volatilities(d) + vine_features(n_edges*3) + CVaR(1)
-      private$obs_dim <- 1 + d + d + n_edges * 3 + 1
+      # Include the dependence regime and the current holdings.  The old
+      # implementation computed vine_state but never exposed it to the policy,
+      # and made turnover depend on an unobserved previous_action.
+      private$vine_dim <- length(extract_vine_state(vine_for_dim))
+      # Monthly state only. Daily AR-GARCH means are intentionally excluded:
+      # applying daily AR coefficients to last month's return mixed horizons.
+      private$obs_dim <- 1 + d + d + 1 + d + 2 + private$vine_dim
       
       # Store asset names for reference
       private$asset_names <- asset_names
+      
+      # Pre‑computed returns storage (empty initially)
+      private$precomputed_returns <- NULL
+      private$precomputed_idx <- 1
+    },
+    
+    # Set pre‑computed returns.
+    # - If dynamic is TRUE and length(returns_list) == vine_seq_len, the list
+    #   is indexed by vine index; otherwise it is indexed by step (sequential).
+    set_precomputed_returns = function(returns_list) {
+      if (!is.list(returns_list) || !length(returns_list)) {
+        stop("precomputed returns must be a non-empty list of episodes")
+      }
+      private$precomputed_returns <- returns_list
+      private$precomputed_idx <- 0L
     },
     
     # Reset
@@ -176,33 +298,89 @@ RLEnvironment <- R6Class(
       private$t <- 0
       private$done <- FALSE
       private$obs_history <- list()
-      private$previous_action <- rep(0, private$action_dim)
+      # Start from a neutral self-financing allocation, not fictitious cash.
+      private$previous_action <- rep(private$net_exposure / private$action_dim,
+                                     private$action_dim)
+      private$last_turnover <- 0
+      private$precomputed_vine_states <- NULL
       
       # Initial returns and volatilities
       private$last_returns <- rep(0, length(private$asset_names))
       private$last_vols <- rep(0.01, length(private$asset_names))
       private$last_var <- 0.01^2
+      private$vol_history <- NULL   # will be re-initialised on first step
+      
+      # Reset pre‑computed index to 1 (for sequential mode)
+      # Select one complete pre-generated episode.  Resetting a flat index to
+      # one here made every episode replay the same first 24 return matrices.
+      if (!is.null(private$precomputed_returns)) {
+        if (private$episode_sampling == "sequential") {
+          private$precomputed_idx <- (private$precomputed_idx %% length(private$precomputed_returns)) + 1L
+        } else {
+          private$precomputed_idx <- sample.int(length(private$precomputed_returns), 1L)
+        }
+        private$precomputed_step <- 1L
+        episode <- private$precomputed_returns[[private$precomputed_idx]]
+        if (is.list(episode) && is.list(episode$vine_states) && length(episode$vine_states)) {
+          private$precomputed_vine_states <- episode$vine_states
+        }
+      }
       
       # Initialize vine
       if (private$dynamic && private$vine_seq_len > 0) {
         private$vine_seq_idx <- sample(private$vine_seq_len, 1)
+        if (!is.null(private$precomputed_returns)) {
+          episode <- private$precomputed_returns[[private$precomputed_idx]]
+          if (is.list(episode) && !is.null(episode$vine_start)) private$vine_seq_idx <- as.integer(episode$vine_start)
+        }
+        private$vine_seq_idx <- max(1L, min(private$vine_seq_idx, private$vine_seq_len))
         private$vine_current <- private$vine_sequence[[private$vine_seq_idx]]
       } else if (!is.null(private$vine_static)) {
         private$vine_current <- private$vine_static
       }
       
       private$vine_state <- extract_vine_state(private$vine_current)
+      if (!is.null(private$precomputed_vine_states)) {
+        private$vine_state <- as.numeric(private$precomputed_vine_states[[1L]])
+      }
       
       # Initial CVaR
       private$last_cvar <- 0
       
-      # Initial observation (prepend zeros for history)
-      obs <- self$get_obs()
-      for (i in 1:private$seq_len) {
-        private$obs_history[[i]] <- obs
+      # Construct the recurrent history from information strictly preceding
+      # the first action. With seq_len > T, repeated padding otherwise means
+      # the policy never sees one fully genuine sequence.
+      if (!is.null(private$precomputed_returns)) {
+        episode <- private$precomputed_returns[[private$precomputed_idx]]
+        if (!is.list(episode$burnin_returns) ||
+            length(episode$burnin_returns) != private$seq_len) {
+          stop(sprintf("Episode must contain exactly %d causal burn-in returns. Regenerate the data bundle.",
+                       private$seq_len))
+        }
+        burnin_states <- episode$burnin_vine_states
+        if (!is.null(burnin_states) && length(burnin_states) != private$seq_len) {
+          stop("burnin_vine_states must have the same length as burnin_returns.")
+        }
+        for (i in seq_len(private$seq_len)) {
+          burn <- episode$burnin_returns[[i]]
+          gross <- if (is.matrix(burn)) burn[1L, ] else as.numeric(burn)
+          if (length(gross) != private$action_dim || any(!is.finite(gross)) || any(gross <= 0)) {
+            stop("Invalid gross return in episode burn-in.")
+          }
+          if (!is.null(burnin_states)) private$vine_state <- as.numeric(burnin_states[[i]])
+          private$advance_market_state(gross)
+          private$obs_history[[i]] <- self$get_obs()
+        }
+        if (!is.null(private$precomputed_vine_states)) {
+          private$vine_state <- as.numeric(private$precomputed_vine_states[[1L]])
+          private$obs_history[[private$seq_len]] <- self$get_obs()
+        }
+      } else {
+        obs <- self$get_obs()
+        private$obs_history <- replicate(private$seq_len, obs, simplify = FALSE)
       }
-      
-      return(obs)
+
+      return(self$get_obs())
     },
     
     # Step
@@ -211,75 +389,113 @@ RLEnvironment <- R6Class(
       
       # Handle different input types for action
       if (is.list(action)) {
-        # Unlist and convert to numeric
         action_vec <- as.numeric(unlist(action))
       } else if (is.array(action) || is.matrix(action)) {
-        # Convert array/matrix to vector
         action_vec <- as.numeric(as.vector(action))
       } else {
         action_vec <- as.numeric(action)
       }
-
-      # Ensure we have the right length
+      
+      # Ensure correct length
       if (length(action_vec) > private$action_dim) {
         action_vec <- action_vec[1:private$action_dim]
       }
-      
-      # Ensure no NA values
+      # Ensure no NA
       if (any(is.na(action_vec))) {
         action_vec[is.na(action_vec)] <- 0
       }
       
-      # 1. Simulate realized return and CVaR paths together.  The first row is
-      # an independent realized return; the remainder are independent CVaR
-      # draws.  This eliminates one R/C++ call per environment step.
-      n_sim <- private$n_sim_cvar
-      sim_all <- private$simulator$simulate_returns(
-        private$vine_current, n_sim = n_sim + 1L, cores = private$sim_cores
-      )
-      R <- sim_all$gross[1, ]
+      # ---- 1. Get returns (realized + CVaR scenarios) ----
+      if (!is.null(private$precomputed_returns)) {
+        # Episodes are selected at reset, so each rollout consumes a coherent
+        # return path rather than replaying the first path in the bundle.
+        episode <- private$precomputed_returns[[private$precomputed_idx]]
+        if (is.list(episode) && !is.null(episode$returns)) {
+          if (private$precomputed_step > length(episode$returns)) stop("precomputed episode is shorter than T")
+          ret_mat <- episode$returns[[private$precomputed_step]]
+          private$precomputed_step <- private$precomputed_step + 1L
+          R <- ret_mat[1, ]
+          R_many <- ret_mat[-1, , drop = FALSE]
+        } else {
+        # Determine indexing mode
+        if (private$dynamic && length(private$precomputed_returns) == private$vine_seq_len) {
+          # Vine‑indexed: use current vine_seq_idx
+          ret_mat <- private$precomputed_returns[[private$vine_seq_idx]]
+        } else {
+          # Sequential: use precomputed_idx and increment
+          ret_mat <- private$precomputed_returns[[private$precomputed_step]]
+          private$precomputed_step <- private$precomputed_step + 1L
+        }
+        R <- ret_mat[1, ]                           # first row = realized
+        R_many <- ret_mat[-1, , drop = FALSE]       # rest = CVaR scenarios
+        }
+      } else {
+        # Simulate on the fly
+        n_sim <- private$n_sim_cvar
+        prev_ret <- if (private$t == 0) NULL else private$last_returns
+        sim_all <- simulate_monthly_gross(private$simulator, private$marginals, private$vine_current,
+          n_sim = n_sim + 1L, holding_days = private$holding_days, cores = private$sim_cores,
+          previous_monthly_log_returns = prev_ret)
+        R <- sim_all[1, ]
+        R_many <- sim_all[-1, , drop = FALSE]
+      }
       
-      # 2. Compute portfolio return
-      portf_ret <- sum(R * action_vec)
-      private$wealth <- private$wealth * portf_ret
-      private$last_returns <- log(R)
+      # ---- 2. Compute portfolio return ----
+      if (length(action_vec) != private$action_dim || any(!is.finite(action_vec))) {
+        stop("Action has the wrong dimension or contains non-finite values")
+      }
+      action_vec <- project_long_short_weights(action_vec, private$net_exposure, private$gross_leverage)
+      # Include the implicit cash account.  For net exposure one this equals
+      # sum(weights * gross_returns); it remains correct for other net targets.
+      portf_ret <- 1 + sum(action_vec * (R - 1))
+      private$last_returns <- log(pmax(R, 1e-12))
+
+      # Trading and financing costs are part of both realised wealth and the
+      # forward loss distribution used by CVaR.
+      turnover <- sum(abs(action_vec - private$previous_action))
+      transaction_cost <- private$kappa * turnover
+      short_notional <- sum(pmax(-action_vec, 0))
+      cash_borrow_notional <- pmax(sum(action_vec) - 1, 0)
+      financing_cost <- (private$short_borrow_rate * short_notional +
+                         private$cash_borrow_rate * cash_borrow_notional) / 12
+      cost_multiplier <- exp(-transaction_cost - financing_cost)
       
-      # 3. Compute CVaR from the remaining simulated paths.
-      R_many <- sim_all$gross[-1, , drop = FALSE]
-      
-      # Compute portfolio returns for all simulations
-      weights_full <- action_vec
-      portf_ret_many <- R_many %*% weights_full
-      
-      # CVaR at 95%
+      # ---- 3. Compute CVaR ----
+      portf_ret_many <- (1 + R_many %*% action_vec - sum(action_vec)) * cost_multiplier
       alpha <- 0.95
-      losses <- 1 - portf_ret_many           
+      losses <- 1 - portf_ret_many
       sorted_losses <- sort(losses, decreasing = TRUE)
-      cvar_idx <- floor((1 - alpha) * n_sim)  
-      cvar <- mean(sorted_losses[1:cvar_idx])  
+      n_sim <- nrow(R_many)
+      cvar_idx <- max(1L, ceiling((1 - alpha) * n_sim))
+      cvar <- mean(sorted_losses[1:cvar_idx])
       private$last_cvar <- cvar
       
-      # 4. Compute turnover
-      turnover <- sum(abs(action_vec - private$previous_action))
+      # ---- 4. Compute turnover ----
       private$previous_action <- action_vec
       private$last_turnover <- turnover
       
-      # 5. Compute reward
-      # Utility component
-      utility <- log(portf_ret)
-      reward <- utility - private$lambda * cvar - private$kappa * turnover
-      # utility <- crra_utility(private$wealth / private$w0, private$gamma)
-      # if (private$t == private$T - 1) {
-      #   # At the final step, compute utility of final wealth
-      #   reward <- utility
-      # }
-
-      # 6. Advance time
+      # ---- 5. Compute reward (dense log‑return) ----
+      net_portf_ret <- pmax(portf_ret * cost_multiplier, 1e-12)
+      wealth_before <- private$wealth
+      private$wealth <- private$wealth * net_portf_ret
+      # Terminal-wealth CRRA is a multi-period objective because wealth carries
+      # all prior portfolio decisions.  Its utility increments telescope to
+      # U(W_T/W_0) - U(1), while retaining dense learning signal.
+      terminal_utility <- crra_utility(private$wealth / private$w0, private$gamma)
+      previous_terminal_utility <- crra_utility(wealth_before / private$w0, private$gamma)
+      period_utility <- if (private$gamma == 1) log(net_portf_ret) else (net_portf_ret^(1 - private$gamma) - 1) / (1 - private$gamma)
+      utility_increment <- if (private$utility_mode == "terminal_wealth_crra") terminal_utility - previous_terminal_utility else period_utility
+      reward <- utility_increment - private$lambda * cvar
+      
+      # ---- 6. Advance time ----
       private$t <- private$t + 1
       if (private$t >= private$T) private$done <- TRUE
       
-      # 7. Update vine
-      if (private$dynamic && private$vine_seq_len > 0) {
+      # ---- 7. Update vine (if dynamic) ----
+      if (!is.null(private$precomputed_vine_states)) {
+        next_state_index <- min(private$precomputed_step, length(private$precomputed_vine_states))
+        private$vine_state <- as.numeric(private$precomputed_vine_states[[next_state_index]])
+      } else if (private$dynamic && private$vine_seq_len > 0) {
         private$vine_seq_idx <- private$vine_seq_idx + 1
         if (private$vine_seq_idx > private$vine_seq_len) {
           private$vine_seq_idx <- 1
@@ -288,20 +504,14 @@ RLEnvironment <- R6Class(
         private$vine_state <- extract_vine_state(private$vine_current)
       }
       
-      # 8. Update volatilities (rolling estimate)
-      # Simple approximation: EWMA
-      if (is.null(private$vol_history)) {
-          private$vol_history <- matrix(0.01^2, nrow = 20, ncol = length(private$asset_names))  # variance
-      }
-      new_var <- 0.97 * private$last_var + 0.03 * (private$last_returns^2)
-      private$vol_history <- rbind(private$vol_history[-1, ], new_var)
-      private$last_var <- new_var
-      private$last_vols <- sqrt(apply(private$vol_history, 2, mean)) * sqrt(12)
+      # ---- 8. Update volatilities (EWMA) ----
+      private$advance_market_state(R)
+      private$last_vols <- sqrt(apply(private$vol_history, 2, mean)) * sqrt(12)   # monthly → annual
       
-      # 9. Get observation
+      # ---- 9. Get observation ----
       obs <- self$get_obs()
       
-      # 10. Update history for LSTM
+      # ---- 10. Update history for LSTM ----
       private$obs_history <- c(private$obs_history[-1], list(obs))
       
       return(list(
@@ -311,31 +521,39 @@ RLEnvironment <- R6Class(
         info = list(
           wealth = private$wealth,
           portf_ret = portf_ret,
+          net_portf_ret = net_portf_ret,
           cvar = cvar,
           turnover = turnover,
-          utility = utility
+          transaction_cost = transaction_cost,
+          financing_cost = financing_cost,
+          short_notional = short_notional,
+          utility = terminal_utility,
+          utility_increment = utility_increment,
+          gross_exposure = sum(abs(action_vec)),
+          net_exposure = sum(action_vec),
+          weights = action_vec
         )
       ))
     },
     
-    # Get Observation (with LSTM window)
+    # Get Observation (single vector)
     get_obs = function() {
-      # Flatten the history into a single vector
-      # Each history element is: wealth + returns + vols + vine_state + cvar
-      # We return the most recent observation as the current state
       obs <- c(
         private$wealth / private$w0,
         private$last_returns * 100,
         private$last_vols * 100,
-        private$vine_state,
-        private$last_cvar
+        private$last_cvar * 100,
+        private$previous_action,
+        sum(abs(private$previous_action)),
+        sum(private$previous_action),
+        private$vine_state
       )
-      return(obs)
+      obs[!is.finite(obs)] <- 0
+      return(as.numeric(obs))
     },
     
     # Get observation history (for LSTM input)
     get_history = function() {
-      # Returns the full history as a matrix: (seq_len, obs_dim)
       if (length(private$obs_history) == 0) {
         return(matrix(0, nrow = private$seq_len, ncol = private$obs_dim))
       }
@@ -359,6 +577,7 @@ RLEnvironment <- R6Class(
   private = list(
     # Core components
     simulator = NULL,
+    marginals = NULL,
     asset_names = NULL,
     ref_col = NULL,
     
@@ -371,6 +590,13 @@ RLEnvironment <- R6Class(
     n_sim_cvar = NULL,
     sim_cores = NULL,
     seq_len = NULL,
+    holding_days = NULL,
+    gross_leverage = NULL,
+    net_exposure = NULL,
+    short_borrow_rate = NULL,
+    cash_borrow_rate = NULL,
+    utility_mode = NULL,
+    episode_sampling = NULL,
     
     # Vine
     vine_static = NULL,
@@ -380,6 +606,12 @@ RLEnvironment <- R6Class(
     vine_seq_idx = 1,
     dynamic = FALSE,
     vine_state = NULL,
+    
+    # Pre‑computed returns
+    precomputed_returns = NULL,
+    precomputed_idx = NULL,
+    precomputed_step = NULL,
+    precomputed_vine_states = NULL,
     
     # State
     wealth = NULL,
@@ -393,10 +625,28 @@ RLEnvironment <- R6Class(
     previous_action = NULL,
     obs_history = list(),
     vol_history = NULL,
+    mu_ar = NULL,
+    ar1 = NULL,
+
+    advance_market_state = function(gross_returns) {
+      private$last_returns <- log(pmax(as.numeric(gross_returns), 1e-12))
+      if (is.null(private$vol_history)) {
+        initial_variance <- pmax(private$last_returns^2, 1e-6)
+        private$vol_history <- matrix(rep(initial_variance, each = 20L),
+                                      nrow = 20L,
+                                      ncol = length(private$asset_names))
+      }
+      new_var <- 0.97 * private$last_var + 0.03 * private$last_returns^2
+      private$vol_history <- rbind(private$vol_history[-1, , drop = FALSE], new_var)
+      private$last_var <- new_var
+      private$last_vols <- sqrt(colMeans(private$vol_history)) * sqrt(12)
+      invisible(NULL)
+    },
     
     # Dimensions
     obs_dim = NULL,
-    action_dim = NULL
+    action_dim = NULL,
+    vine_dim = NULL
   )
 )
 
