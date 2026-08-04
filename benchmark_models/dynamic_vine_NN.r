@@ -5,9 +5,11 @@
 # remains time-varying through rho. Dynamic family switching is not claimed.
 # ==============================================================================
 
-library(rvinecopulib)
-library(torch)
-library(copula)
+suppressPackageStartupMessages({
+  library(rvinecopulib)
+  library(torch)
+  library(copula)
+})
 
 RUN_TESTS <- FALSE
 
@@ -398,7 +400,8 @@ train_all_edges <- function(U, vine_fit, asset_names, z, sigma,
 }
 
 build_nn_vine <- function(nn_models, full_vine, U_window,
-                          z_window = NULL, sigma_window = NULL) {
+                          z_window = NULL, sigma_window = NULL,
+                          dependence_scale = 1) {
   U_window <- as.matrix(U_window)
   order <- as.integer(full_vine$structure$order); d <- length(order)
   if (length(nn_models) != d - 1L) stop("NN model does not cover every vine tree.")
@@ -423,6 +426,15 @@ build_nn_vine <- function(nn_models, full_vine, U_window,
                                               nm$nu, nm$static_rho)
       rho_now <- predict_rho_nn(nm$model, last_feature)
       rho_now <- pmax(pmin(rho_now, 0.995), -0.995)
+      # A single scale may be estimated by simulated method of moments on the
+      # training prefix to correct systematic finite-sample attenuation of
+      # Pearson dependence after the marginal serial filters.  Fisher-z scaling
+      # preserves signs, ordering, and time variation without fitting 21 pair-
+      # specific corrections to only ~100 monthly observations.
+      dependence_scale <- as.numeric(dependence_scale)
+      if (!is.finite(dependence_scale) || dependence_scale <= 0)
+        stop("dependence_scale must be finite and positive.")
+      rho_now <- tanh(dependence_scale * atanh(rho_now))
       pc <- bicop_dist("t", 0, c(rho_now, nm$nu))
       all_pcs[[tree]][[i]] <- pc
       left[[i, j]] <- hbicop(cbind(a, b), cond_var = 2, pc)
@@ -482,7 +494,9 @@ build_nn_vine_sequence <- function(nn_fit, U, z, sigma, rebal_dates, all_dates) 
   lapply(end_indices, function(end_index) {
     history <- seq_len(end_index)
     build_nn_vine(nn_fit$nn_models, nn_fit$backbone,
-      U[history, , drop = FALSE], z[history, , drop = FALSE], sigma[history, , drop = FALSE])
+      U[history, , drop = FALSE], z[history, , drop = FALSE],
+      sigma[history, , drop = FALSE],
+      dependence_scale = if (is.null(nn_fit$dependence_scale)) 1 else nn_fit$dependence_scale)
   })
 }
 

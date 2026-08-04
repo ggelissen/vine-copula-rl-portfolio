@@ -4,8 +4,10 @@
 # Extract standardised residuals and transform to Unif() for copulas.
 # ====================================================================
 
-library(rugarch)
-library(xts)
+suppressPackageStartupMessages({
+  library(rugarch)
+  library(xts)
+})
 
 RUN_TESTS <- FALSE
 

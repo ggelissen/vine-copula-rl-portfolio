@@ -3,13 +3,18 @@
 # RL environment for vine‑copula portfolio selection
 # ============================================================================
 
-library(R6)
-library(rvinecopulib)
+suppressPackageStartupMessages({
+  library(R6)
+  library(rvinecopulib)
+})
 
 source("helper/load_data.r")
 source("benchmark_models/expected_utility_single.r")   # VineReturnSimulator, build_simulator, crra_utility
-source("benchmark_models/dynamic_vine_NN.r")            # fixed NN-driven dynamic vine
 # Marginals and vines are supplied explicitly to RLEnvironment$new().
+# Neural-vine fitting/prediction is intentionally not sourced here.  Training
+# consumes precomputed returns and vine states; loading R torch/Lantern in the
+# same process as reticulate's Python PyTorch causes incompatible LibTorch
+# symbols to collide on Linux.
 
 # Helper: extract all vine parameters (Kendall's tau + tail dependence)
 extract_vine_state <- function(vine) {
@@ -186,6 +191,8 @@ RLEnvironment <- R6Class(
                            holding_days = 21L,
                            gross_leverage = 1.5,
                            net_exposure = 1.0,
+                           max_long_weight = 0.60,
+                           max_short_weight = 0.20,
                            short_borrow_rate = 0.03,
                            cash_borrow_rate = 0.02,
                            utility_mode = c("terminal_wealth_crra", "one_period_crra"),
@@ -205,12 +212,19 @@ RLEnvironment <- R6Class(
       private$holding_days <- as.integer(holding_days)
       private$gross_leverage <- as.numeric(gross_leverage)
       private$net_exposure <- as.numeric(net_exposure)
+      private$max_long_weight <- as.numeric(max_long_weight)
+      private$max_short_weight <- as.numeric(max_short_weight)
       private$short_borrow_rate <- as.numeric(short_borrow_rate)
       private$cash_borrow_rate <- as.numeric(cash_borrow_rate)
       private$utility_mode <- match.arg(utility_mode)
       private$episode_sampling <- match.arg(episode_sampling)
       if (!is.finite(private$gross_leverage) || !is.finite(private$net_exposure) || private$gross_leverage < abs(private$net_exposure)) {
         stop("gross_leverage must be finite and at least abs(net_exposure).")
+      }
+      if (!is.finite(private$max_long_weight) ||
+          !is.finite(private$max_short_weight) ||
+          private$max_long_weight <= 0 || private$max_short_weight < 0) {
+        stop("Position limits must be finite and non-negative.")
       }
       if (any(!is.finite(c(private$short_borrow_rate, private$cash_borrow_rate))) ||
           any(c(private$short_borrow_rate, private$cash_borrow_rate) < 0)) {
@@ -325,7 +339,7 @@ RLEnvironment <- R6Class(
           private$precomputed_vine_states <- episode$vine_states
         }
       }
-      
+
       # Initialize vine
       if (private$dynamic && private$vine_seq_len > 0) {
         private$vine_seq_idx <- sample(private$vine_seq_len, 1)
@@ -445,6 +459,10 @@ RLEnvironment <- R6Class(
         stop("Action has the wrong dimension or contains non-finite values")
       }
       action_vec <- project_long_short_weights(action_vec, private$net_exposure, private$gross_leverage)
+      if (max(action_vec) > private$max_long_weight + 1e-6 ||
+          min(action_vec) < -private$max_short_weight - 1e-6) {
+        stop("Action violates the configured single-asset long/short limit.")
+      }
       # Include the implicit cash account.  For net exposure one this equals
       # sum(weights * gross_returns); it remains correct for other net targets.
       portf_ret <- 1 + sum(action_vec * (R - 1))
@@ -593,6 +611,8 @@ RLEnvironment <- R6Class(
     holding_days = NULL,
     gross_leverage = NULL,
     net_exposure = NULL,
+    max_long_weight = NULL,
+    max_short_weight = NULL,
     short_borrow_rate = NULL,
     cash_borrow_rate = NULL,
     utility_mode = NULL,
@@ -650,4 +670,5 @@ RLEnvironment <- R6Class(
   )
 )
 
-cat("RLEnvironment (full framework) loaded.\n")
+if (identical(Sys.getenv("VERBOSE_R_STARTUP", "0"), "1"))
+  cat("RLEnvironment (full framework) loaded.\n")

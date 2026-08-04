@@ -4,6 +4,7 @@
 # experiment and must not be pooled with this backtest.
 
 suppressPackageStartupMessages({ library(reticulate); library(xts); library(ggplot2); library(data.table) })
+source("benchmark_models/dynamic_vine_NN.r")
 source("rl/rl_environment.r")
 source("helper/time_split.r")
 source("helper/load_data.r")
@@ -44,16 +45,59 @@ train_periods <- period_split$train
 train_end <- tail(period_split$train$decision_idx, 1L)
 if (!identical(vine_model, "nn_dynamic_t_vine")) stop("Evaluation supports only the NN-driven dynamic t-vine; rolling vines are disabled.")
 source("helper/marginals.r")
-nn_states <- filter_training_marginals(returns, marginals)
 nn_fit <- load_nn_dynamic_vine_fit(nn_vine_model_dir)
-if (as.integer(nn_fit$training_observations) != as.integer(train_end) ||
+if (!exists("copula_innovation_u") || !exists("copula_monthly_log") ||
+    !exists("serial_copulas")) {
+  stop("Training marginal artifact predates the monthly serial-PIT vine. Regenerate synthetic data and retrain.")
+}
+if (as.integer(nn_fit$training_observations) != nrow(copula_innovation_u) ||
     as.integer(nn_fit$dynamic_edge_count) != length(asset_names) * (length(asset_names) - 1L) / 2L) {
   stop("Persisted NN vine does not match the locked training split/all-tree architecture. Regenerate it.")
 }
 if (nrow(train_periods) < seq_len) stop("Not enough pre-evaluation periods for the LSTM burn-in.")
 burnin_periods <- tail(train_periods, seq_len)
 context_dates <- c(burnin_periods$decision_date, eval_dates)
-vine_seq_context <- build_nn_vine_sequence(nn_fit, U, nn_states$z, nn_states$sigma, context_dates, index(returns))
+
+# Extend the training-only serial-PIT innovation sequence with realised returns
+# that are available before each OOS decision.  The empirical marginal maps and
+# serial-copula parameters remain frozen at the training cutoff; no OOS return
+# is used before its holding period has completed.
+all_monthly_periods <- build_monthly_periods(returns, min_history = 0L)
+all_monthly_log <- do.call(rbind, lapply(seq_len(nrow(all_monthly_periods)), function(i) {
+  log(as.numeric(realised_gross_for_period(
+    returns, all_monthly_periods$decision_date[i],
+    all_monthly_periods$holding_end_date[i])))
+}))
+colnames(all_monthly_log) <- asset_names
+training_sorted_for_pit <- lapply(seq_along(asset_names), function(j)
+  sort(copula_monthly_log[, j]))
+raw_monthly_u <- vapply(seq_along(asset_names), function(j) {
+  sorted_log <- training_sorted_for_pit[[j]]
+  probabilities <- (seq_len(length(sorted_log)) - 0.5) / length(sorted_log)
+  pmin(pmax(approx(sorted_log, probabilities, xout = all_monthly_log[, j],
+                   rule = 2, ties = "ordered")$y, 1e-6), 1 - 1e-6)
+}, numeric(nrow(all_monthly_log)))
+colnames(raw_monthly_u) <- asset_names
+serial_conditional_pit <- function(previous_u, current_u, model) {
+  rho <- model$rho; nu <- model$nu
+  previous_t <- qt(pmin(pmax(previous_u, 1e-8), 1 - 1e-8), df = nu)
+  current_t <- qt(pmin(pmax(current_u, 1e-8), 1 - 1e-8), df = nu)
+  conditional_scale <- sqrt((nu + previous_t^2) * (1 - rho^2) / (nu + 1))
+  pt((current_t - rho * previous_t) / conditional_scale, df = nu + 1)
+}
+all_innovation_u <- matrix(NA_real_, nrow(raw_monthly_u) - 1L,
+                           ncol(raw_monthly_u), dimnames = list(NULL, asset_names))
+for (j in seq_along(asset_names)) {
+  all_innovation_u[, j] <- serial_conditional_pit(
+    head(raw_monthly_u[, j], -1L), tail(raw_monthly_u[, j], -1L),
+    serial_copulas[[j]])
+}
+all_innovation_u <- pmin(pmax(all_innovation_u, 1e-6), 1 - 1e-6)
+all_innovation_dates <- all_monthly_periods$holding_end_date[-1L]
+all_nn_states <- derive_nn_states(all_innovation_u)
+vine_seq_context <- build_nn_vine_sequence(
+  nn_fit, all_innovation_u, all_nn_states$z, all_nn_states$sigma,
+  context_dates, all_innovation_dates)
 vine_seq_burnin <- vine_seq_context[seq.int(1L, seq_len)]
 vine_seq_eval <- vine_seq_context[seq.int(seq_len + 1L, seq_len + T_eval)]
 if (length(vine_seq_eval) != T_eval) stop("Could not build every NN-vine evaluation snapshot.")
@@ -70,27 +114,27 @@ training_gross <- do.call(rbind, lapply(seq_len(nrow(train_periods)), function(i
 colnames(training_gross) <- asset_names
 training_log <- log(training_gross)
 historical_log_sorted <- lapply(seq_along(asset_names), function(j) sort(training_log[, j]))
-monthly_ar1 <- vapply(seq_along(asset_names), function(j) {
-  estimate <- cor(head(training_log[, j], -1L), tail(training_log[, j], -1L),
-                  use = "complete.obs")
-  if (!is.finite(estimate)) estimate <- 0
-  pmax(pmin(estimate, 0.5), -0.5)
-}, numeric(1))
 simulate_evaluation_scenarios <- function(vine, n_draws, previous_log_returns) {
   u <- rvinecop(n_draws, vine, cores = 1L)
-  previous_latent <- vapply(seq_along(asset_names), function(j) {
-    probability <- (findInterval(previous_log_returns[j], historical_log_sorted[[j]]) + 0.5) /
-      (length(historical_log_sorted[[j]]) + 1)
-    qnorm(pmin(pmax(probability, 1e-6), 1 - 1e-6))
-  }, numeric(1))
-  latent <- sweep(qnorm(pmin(pmax(u, 1e-6), 1 - 1e-6)), 2L,
-                  sqrt(1 - monthly_ar1^2), "*")
-  latent <- sweep(latent, 2L, monthly_ar1 * previous_latent, "+")
-  u <- pnorm(latent)
+  previous_u <- matrix(vapply(seq_along(asset_names), function(j) {
+    sorted_log <- historical_log_sorted[[j]]
+    probabilities <- (seq_len(length(sorted_log)) - 0.5) / length(sorted_log)
+    approx(sorted_log, probabilities, xout = previous_log_returns[j],
+           rule = 2, ties = "ordered")$y
+  }, numeric(1)), nrow = 1L)
+  previous_u <- previous_u[rep(1L, n_draws), , drop = FALSE]
+  for (j in seq_along(asset_names)) {
+    rho <- serial_copulas[[j]]$rho; nu <- serial_copulas[[j]]$nu
+    previous_t <- qt(pmin(pmax(previous_u[, j], 1e-8), 1 - 1e-8), df = nu)
+    conditional_t <- rho * previous_t +
+      sqrt((nu + previous_t^2) * (1 - rho^2) / (nu + 1)) *
+      qt(pmin(pmax(u[, j], 1e-8), 1 - 1e-8), df = nu + 1)
+    u[, j] <- pt(conditional_t, df = nu)
+  }
   out <- matrix(NA_real_, nrow = n_draws, ncol = length(asset_names))
   for (j in seq_along(asset_names)) {
     sorted_log <- historical_log_sorted[[j]]
-    probabilities <- seq_len(length(sorted_log)) / (length(sorted_log) + 1)
+    probabilities <- (seq_len(length(sorted_log)) - 0.5) / length(sorted_log)
     out[, j] <- exp(approx(probabilities, sorted_log, xout = u[, j], rule = 2)$y)
   }
   out
@@ -122,6 +166,8 @@ env_eval <- RLEnvironment$new(marginals, asset_names, vine = NULL, vine_sequence
   ref_col = ref_col, gamma = eval_gamma, lambda = eval_lambda, kappa = eval_kappa,
   T = T_eval, w0 = 100000, n_sim_cvar = n_sim_cvar, seq_len = seq_len, sim_cores = 1L, holding_days = holding_days,
   gross_leverage = gross_leverage, net_exposure = net_exposure,
+  max_long_weight = as.numeric(Sys.getenv("ENV_MAX_LONG_WEIGHT", "0.60")),
+  max_short_weight = as.numeric(Sys.getenv("ENV_MAX_SHORT_WEIGHT", "0.20")),
   short_borrow_rate = short_borrow_rate, cash_borrow_rate = cash_borrow_rate,
   utility_mode = utility_mode)
 env_eval$set_precomputed_returns(list(evaluation_episode))
@@ -129,14 +175,31 @@ r_env_reset <- function() env_eval$reset(); r_env_step <- function(action) env_e
 r_env_get_action_dim <- function() as.integer(env_eval$get_action_dim()); r_env_get_obs_dim <- function() as.integer(env_eval$get_obs_dim()); r_env_get_seq_len <- function() as.integer(env_eval$get_seq_len()); r_env_get_history <- function() env_eval$get_history()
 
 py_run_string("
-import os, numpy as np, pandas as pd, torch, torch.nn as nn
+import os, sys, math, numpy as np, pandas as pd, torch, torch.nn as nn
+if os.getcwd() not in sys.path:
+    sys.path.insert(0, os.getcwd())
+from rl.action_projection import portfolio_books as shared_portfolio_books
 OUTPUT_DIR = os.environ['EVAL_MODEL_DIR']
 HIDDEN, NUM_LAYERS = int(os.environ.get('HIDDEN', '128')), int(os.environ.get('NUM_LAYERS', '2'))
 GROSS_LEVERAGE = float(os.environ.get('ENV_GROSS_LEVERAGE', '1.5'))
 NET_EXPOSURE = float(os.environ.get('ENV_NET_EXPOSURE', '1.0'))
+MAX_LONG_WEIGHT = float(os.environ.get('ENV_MAX_LONG_WEIGHT', '0.60'))
+MAX_SHORT_WEIGHT = float(os.environ.get('ENV_MAX_SHORT_WEIGHT', '0.20'))
 SHORT_BORROW_RATE = float(os.environ.get('ENV_SHORT_BORROW_RATE', '0.03'))
 CASH_BORROW_RATE = float(os.environ.get('ENV_CASH_BORROW_RATE', '0.02'))
 UTILITY_MODE = os.environ.get('ENV_UTILITY_MODE', 'terminal_wealth_crra')
+DIRECTION_LOGIT_BOUND = float(os.environ.get('DIRECTION_LOGIT_BOUND', '1.0'))
+PROJECTION_TEMPERATURE = float(os.environ.get('PROJECTION_TEMPERATURE', '1.5'))
+INITIAL_LEVERAGE_GATE = float(os.environ.get('INITIAL_LEVERAGE_GATE', '0.10'))
+ENTROPY_COEF = float(os.environ.get('ENTROPY_COEF', '0.005'))
+LEVERAGE_SOFT_TARGET = float(os.environ.get('LEVERAGE_SOFT_TARGET', '0.80'))
+LEVERAGE_PENALTY_COEF = float(os.environ.get('LEVERAGE_PENALTY_COEF', '0.25'))
+USE_AMP = os.environ.get('USE_AMP', 'false').lower() in ('1', 'true', 'yes')
+if NET_EXPOSURE <= 0 or GROSS_LEVERAGE < NET_EXPOSURE:
+    raise RuntimeError('Schema-5 rank-partition actions require positive net exposure and gross >= net.')
+FULL_SHORT_BUDGET = 0.5 * (GROSS_LEVERAGE - NET_EXPOSURE)
+SHORT_SUPPORT_SIZE = (int(math.ceil(FULL_SHORT_BUDGET / MAX_SHORT_WEIGHT - 1e-12))
+                      if FULL_SHORT_BUDGET > 0 else 0)
 
 class LSTMActor(nn.Module):
     def __init__(self, obs_dim, action_dim, hidden, num_layers):
@@ -144,19 +207,31 @@ class LSTMActor(nn.Module):
         self.input_norm = nn.LayerNorm(obs_dim)
         self.lstm = nn.LSTM(obs_dim, hidden, num_layers, batch_first=True)
         self.layernorm = nn.LayerNorm(hidden)
-        self.fc = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Linear(hidden, action_dim))
+        self.fc = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Linear(hidden, action_dim + 1))
     def forward(self, state):
         x, _ = self.lstm(self.input_norm(state))
         return self.fc(self.layernorm(x[:, -1, :]))
 
 def load_actor(path, obs_dim, action_dim):
-    checkpoint = torch.load(path, map_location='cpu')
+    checkpoint = torch.load(path, map_location='cpu', weights_only=True)
     architecture = checkpoint.get('architecture')
-    expected = {'obs_dim': obs_dim, 'action_dim': action_dim, 'hidden': HIDDEN, 'num_layers': NUM_LAYERS,
+    expected = {'obs_dim': obs_dim, 'action_dim': action_dim,
+                'actor_output_dim': action_dim + 1, 'hidden': HIDDEN, 'num_layers': NUM_LAYERS,
                 'agent': 'td3', 'state_normalization': 'layer_norm',
-                'action_mode': 'long_short_two_book', 'gross_leverage': GROSS_LEVERAGE,
+                'action_mode': 'interior_rank_partition_leverage_gate_v5', 'gross_leverage': GROSS_LEVERAGE,
                 'net_exposure': NET_EXPOSURE, 'short_borrow_rate': SHORT_BORROW_RATE,
-                'cash_borrow_rate': CASH_BORROW_RATE, 'utility_mode': UTILITY_MODE}
+                'cash_borrow_rate': CASH_BORROW_RATE, 'utility_mode': UTILITY_MODE,
+                'max_long_weight': MAX_LONG_WEIGHT,
+                'max_short_weight': MAX_SHORT_WEIGHT,
+                'direction_logit_bound': DIRECTION_LOGIT_BOUND,
+                'projection_temperature': PROJECTION_TEMPERATURE,
+                'initial_leverage_gate': INITIAL_LEVERAGE_GATE,
+                'allocation_entropy_coef': ENTROPY_COEF,
+                'leverage_soft_target': LEVERAGE_SOFT_TARGET,
+                'leverage_penalty_coef': LEVERAGE_PENALTY_COEF,
+                'short_support_size': SHORT_SUPPORT_SIZE,
+                'use_amp': USE_AMP,
+                'checkpoint_schema': 5}
     if architecture is None:
         raise RuntimeError(f'{path} predates architecture metadata; retrain after the state/reward correction.')
     mismatches = {k: (architecture.get(k), v) for k, v in expected.items() if architecture.get(k) != v}
@@ -167,10 +242,18 @@ def load_actor(path, obs_dim, action_dim):
     actor.load_state_dict(state); actor.eval()
     return actor
 
-def portfolio_weights(logits):
-    long_budget = 0.5 * (GROSS_LEVERAGE + NET_EXPOSURE)
-    short_budget = 0.5 * (GROSS_LEVERAGE - NET_EXPOSURE)
-    return long_budget * torch.softmax(logits, dim=-1) - short_budget * torch.softmax(-logits, dim=-1)
+def portfolio_weights(raw_action):
+    long_probs, short_probs, _, long_budget, short_budget = shared_portfolio_books(
+        raw_action,
+        direction_logit_bound=DIRECTION_LOGIT_BOUND,
+        projection_temperature=PROJECTION_TEMPERATURE,
+        net_exposure=NET_EXPOSURE,
+        full_short_budget=FULL_SHORT_BUDGET,
+        max_long_weight=MAX_LONG_WEIGHT,
+        max_short_weight=MAX_SHORT_WEIGHT,
+        short_support_size=SHORT_SUPPORT_SIZE,
+    )
+    return long_budget * long_probs - short_budget * short_probs
 
 class HistoricalEnv:
     def reset(self):
@@ -187,7 +270,8 @@ class HistoricalEnv:
                'transaction_cost': info['transaction_cost'],
                'financing_cost': info['financing_cost'],
                'utility': info['utility'], 'reward': float(result['reward'])}
-        row.update({f'w{i+1}': float(w) for i, w in enumerate(action)})
+        realised_weights = np.asarray(info['weights'], dtype=float)
+        row.update({f'w{i+1}': float(w) for i, w in enumerate(realised_weights)})
         self.logs.append(row); return bool(result['done'])
 
 obs_dim, action_dim = int(r.r_env_get_obs_dim()), int(r.r_env_get_action_dim())

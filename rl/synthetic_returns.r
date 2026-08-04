@@ -8,6 +8,7 @@ qsave_portable <- function(object, file) {
   if (requireNamespace("qs", quietly = TRUE)) qs::qsave(object, file, preset = "fast")
   else saveRDS(object, file = file, compress = FALSE)
 }
+source("benchmark_models/dynamic_vine_NN.r")
 source("rl/rl_environment.r")
 source("helper/time_split.r")
 
@@ -54,41 +55,199 @@ validate_period_split(period_split, evaluation_periods)
 train_periods <- period_split$train; eval_periods <- period_split$evaluation
 train_dates <- train_periods$decision_date; eval_dates <- eval_periods$decision_date
 train_end <- tail(train_periods$decision_idx, 1L)
+asset_names <- colnames(returns)
+
+# Holding-period returns are the modelling frequency of the generator and RL
+# environment.  A copula fitted to daily ranks and then relabelled with monthly
+# quantiles does not represent a monthly copula.  Use every pre-holdout monthly
+# outcome for dependence estimation, including the early months that precede
+# the L-day RL state warm-up; none of the final 24 holding periods enter here.
+copula_period_split <- split_monthly_periods(
+  build_monthly_periods(returns, min_history = 0L), evaluation_periods)
+validate_period_split(copula_period_split, evaluation_periods)
+copula_train_periods <- copula_period_split$train
+copula_monthly_log <- do.call(rbind, lapply(seq_len(nrow(copula_train_periods)), function(i) {
+  log(as.numeric(realised_gross_for_period(
+    returns, copula_train_periods$decision_date[i],
+    copula_train_periods$holding_end_date[i])))
+}))
+colnames(copula_monthly_log) <- asset_names
+rank_pseudo_observations <- function(x) {
+  x <- as.matrix(x); n <- nrow(x)
+  out <- apply(x, 2L, function(column)
+    (rank(column, ties.method = "average") - 0.5) / n)
+  dimnames(out) <- dimnames(x)
+  out
+}
+copula_monthly_u <- rank_pseudo_observations(copula_monthly_log)
+
+# These are the realised monthly outcomes available for fine-tuning and for
+# estimating the serial marginal copulas.  They exclude the final 24 holding
+# periods by construction.
+all_train_gross <- do.call(rbind, lapply(seq_len(nrow(train_periods)), function(i) {
+  as.numeric(realised_gross_for_period(
+    returns, train_periods$decision_date[i], train_periods$holding_end_date[i]))
+}))
+colnames(all_train_gross) <- asset_names
+historical_log_returns <- log(all_train_gross)
+historical_log_sorted <- lapply(seq_len(ncol(all_train_gross)), function(j)
+  sort(historical_log_returns[, j]))
+names(historical_log_sorted) <- asset_names
+
+# Estimate marginal serial copulas before the cross-sectional vine.  The vine
+# must be fitted to one-step conditional PIT innovations; fitting it to raw
+# monthly ranks and subsequently applying serial filters attenuates the target
+# contemporaneous dependence and double-counts the marginal dynamics.
+serial_u <- rank_pseudo_observations(historical_log_returns)
+serial_copulas <- lapply(seq_along(asset_names), function(j) {
+  pair <- cbind(head(serial_u[, j], -1L), tail(serial_u[, j], -1L))
+  fit <- tryCatch(
+    bicop(pair, family_set = "t", selcrit = "bic"),
+    error = function(e) NULL)
+  if (is.null(fit) || length(fit$parameters) < 2L ||
+      any(!is.finite(fit$parameters[1:2]))) {
+    rho <- cor(qnorm(pair[, 1L]), qnorm(pair[, 2L]))
+    if (!is.finite(rho)) rho <- 0
+    return(list(rho = pmax(pmin(rho, 0.95), -0.95), nu = 10,
+                fallback = TRUE))
+  }
+  list(rho = pmax(pmin(as.numeric(fit$parameters[1L]), 0.95), -0.95),
+       nu = pmax(as.numeric(fit$parameters[2L]), 2.05), fallback = FALSE)
+})
+names(serial_copulas) <- asset_names
+
+serial_conditional_pit <- function(previous_u, current_u, model) {
+  rho <- model$rho; nu <- model$nu
+  previous_t <- qt(pmin(pmax(previous_u, 1e-8), 1 - 1e-8), df = nu)
+  current_t <- qt(pmin(pmax(current_u, 1e-8), 1 - 1e-8), df = nu)
+  conditional_scale <- sqrt((nu + previous_t^2) * (1 - rho^2) / (nu + 1))
+  pt((current_t - rho * previous_t) / conditional_scale, df = nu + 1)
+}
+
+copula_innovation_u <- matrix(
+  NA_real_, nrow = nrow(copula_monthly_u) - 1L,
+  ncol = ncol(copula_monthly_u),
+  dimnames = list(NULL, asset_names))
+for (j in seq_along(asset_names)) {
+  copula_innovation_u[, j] <- serial_conditional_pit(
+    head(copula_monthly_u[, j], -1L), tail(copula_monthly_u[, j], -1L),
+    serial_copulas[[j]])
+}
+copula_innovation_u <- pmin(pmax(copula_innovation_u, 1e-6), 1 - 1e-6)
+copula_innovation_dates <- copula_train_periods$holding_end_date[-1L]
 
 # Refit all marginal models on the training prefix.  The full-sample RData is
 # never used for the RL state/generator after this point.
 source("helper/marginals.r")
 marginals <- fit_marginals_training(returns[seq_len(train_end), ])
 U <- training_pseudo_observations(returns, marginals)
-asset_names <- colnames(returns)
 training_cutoff <- tail(train_dates, 1L)
-save(marginals, U, asset_names, training_cutoff, train_end, file = training_marginals_file)
+save(marginals, U, copula_monthly_u, copula_innovation_u,
+     copula_monthly_log, serial_copulas, asset_names,
+     training_cutoff, train_end, file = training_marginals_file)
 if (!identical(vine_model, "nn_dynamic_t_vine")) stop("Synthetic generation supports only the NN-driven dynamic t-vine; rolling vines are disabled.")
-nn_states <- filter_training_marginals(returns, marginals)
-nn_fit <- fit_nn_dynamic_vine(U[seq_len(train_end), , drop = FALSE],
-  nn_states$z[seq_len(train_end), , drop = FALSE], nn_states$sigma[seq_len(train_end), , drop = FALSE],
+monthly_nn_states <- derive_nn_states(copula_innovation_u)
+nn_fit <- fit_nn_dynamic_vine(copula_innovation_u,
+  monthly_nn_states$z, monthly_nn_states$sigma,
   epochs = nn_vine_epochs, lr = nn_vine_lr, patience = nn_vine_patience)
-save_nn_dynamic_vine_fit(nn_fit, nn_vine_model_dir)
-vine_seq_train <- build_nn_vine_sequence(nn_fit, U, nn_states$z, nn_states$sigma, train_dates, index(returns))
-if (length(vine_seq_train) != length(train_dates)) stop("Failed to create every training NN-vine snapshot.")
 sim <- build_simulator(marginals, asset_names, ref_col = ref_col)
 
-# These are the actual monthly holding-period outcomes available for fine
-# tuning.  They are also the calibration target for synthetic pre-training.
-all_train_gross <- do.call(rbind, lapply(seq_len(nrow(train_periods)), function(i) {
-  as.numeric(realised_gross_for_period(returns, train_periods$decision_date[i], train_periods$holding_end_date[i]))
-}))
-colnames(all_train_gross) <- asset_names
-historical_log_sorted <- lapply(seq_len(ncol(all_train_gross)), function(j) sort(log(all_train_gross[, j])))
-names(historical_log_sorted) <- asset_names
-historical_log_returns <- log(all_train_gross)
-monthly_ar1 <- vapply(seq_along(asset_names), function(j) {
-  estimate <- cor(head(historical_log_returns[, j], -1L),
-                  tail(historical_log_returns[, j], -1L), use = "complete.obs")
-  if (!is.finite(estimate)) estimate <- 0
-  pmax(pmin(estimate, 0.5), -0.5)
-}, numeric(1))
-names(monthly_ar1) <- asset_names
+serial_transition <- function(innovation_u, previous_u = NULL) {
+  innovation_u <- pmin(pmax(as.matrix(innovation_u), 1e-8), 1 - 1e-8)
+  if (is.null(previous_u)) return(innovation_u)
+  previous_u <- as.matrix(previous_u)
+  if (nrow(previous_u) == 1L && nrow(innovation_u) > 1L)
+    previous_u <- previous_u[rep(1L, nrow(innovation_u)), , drop = FALSE]
+  if (!identical(dim(previous_u), dim(innovation_u)))
+    stop("Serial-copula state and innovations must have identical dimensions.")
+  out <- innovation_u
+  for (j in seq_along(asset_names)) {
+    rho <- serial_copulas[[j]]$rho; nu <- serial_copulas[[j]]$nu
+    previous_t <- qt(pmin(pmax(previous_u[, j], 1e-8), 1 - 1e-8), df = nu)
+    conditional_t <- rho * previous_t +
+      sqrt((nu + previous_t^2) * (1 - rho^2) / (nu + 1)) *
+      qt(innovation_u[, j], df = nu + 1)
+    out[, j] <- pt(conditional_t, df = nu)
+  }
+  dimnames(out) <- dimnames(innovation_u)
+  out
+}
+
+uniforms_to_monthly_gross <- function(u) {
+  u <- as.matrix(u)
+  out <- matrix(NA_real_, nrow = nrow(u), ncol = length(asset_names),
+                dimnames = list(NULL, asset_names))
+  for (j in seq_along(asset_names)) {
+    sorted_log <- historical_log_sorted[[asset_names[j]]]
+    # Midpoint plotting positions make this a centred, continuous empirical
+    # quantile map.  i/(n+1) assigns excessive probability below the first
+    # interpolation knot and inflated the CVaR of assets with an isolated
+    # minimum (notably DIVIDEND).
+    probabilities <- (seq_len(length(sorted_log)) - 0.5) / length(sorted_log)
+    out[, j] <- exp(approx(probabilities, sorted_log, xout = u[, j], rule = 2)$y)
+  }
+  out
+}
+
+logs_to_empirical_u <- function(previous_log_returns) {
+  matrix(vapply(seq_along(asset_names), function(j) {
+    sorted_log <- historical_log_sorted[[asset_names[j]]]
+    probabilities <- (seq_len(length(sorted_log)) - 0.5) / length(sorted_log)
+    approx(sorted_log, probabilities, xout = previous_log_returns[j],
+           rule = 2, ties = "ordered")$y
+  }, numeric(1)), nrow = 1L, dimnames = list(NULL, asset_names))
+}
+
+# One-parameter simulated method of moments (SMM) calibration.  A fitted
+# finite-sample t D-vine followed by seven different serial filters can
+# systematically attenuate unconditional Pearson dependence.  Pair-specific
+# corrections would badly overfit 21 moments; a single Fisher-z multiplier is
+# parsimonious, preserves every edge's sign and dynamic ordering, and is fitted
+# exclusively on the training prefix.
+scale_static_t_vine <- function(vine, dependence_scale) {
+  pair_copulas <- lapply(vine$pair_copulas, function(tree) {
+    lapply(tree, function(pc) {
+      if (!pc$family %in% c("student", "t"))
+        stop("Dependence calibration requires t-copula edges.")
+      rho <- tanh(dependence_scale * atanh(as.numeric(pc$parameters[1L])))
+      bicop_dist("t", rotation = 0L,
+                 parameters = c(pmax(pmin(rho, 0.995), -0.995),
+                                as.numeric(pc$parameters[2L])))
+    })
+  })
+  vinecop_dist(pair_copulas = pair_copulas, structure = vine$structure)
+}
+
+calibration_target <- cor(historical_log_returns)
+calibration_pairs <- upper.tri(calibration_target)
+calibration_draws <- max(2000L, min(5000L, pretrain_episodes * 5L))
+calibration_periods <- episode_length
+dependence_objective <- function(dependence_scale) {
+  set.seed(seed + 104729L)
+  vine <- scale_static_t_vine(nn_fit$backbone, dependence_scale)
+  previous_u <- NULL; simulated <- vector("list", calibration_periods)
+  for (tt in seq_len(calibration_periods)) {
+    innovation_u <- rvinecop(calibration_draws, vine, cores = sim_cores)
+    current_u <- serial_transition(innovation_u, previous_u)
+    previous_u <- current_u
+    simulated[[tt]] <- log(uniforms_to_monthly_gross(current_u))
+  }
+  simulated_correlation <- cor(do.call(rbind, simulated))
+  mean((simulated_correlation[calibration_pairs] -
+          calibration_target[calibration_pairs])^2)
+}
+dependence_optim <- optimize(dependence_objective, interval = c(0.75, 1.75),
+                             tol = 0.01)
+nn_fit$dependence_scale <- as.numeric(dependence_optim$minimum)
+nn_fit$dependence_smm_loss <- as.numeric(dependence_optim$objective)
+cat(sprintf("Training-only SMM dependence scale: %.4f (moment loss %.6g)\n",
+            nn_fit$dependence_scale, nn_fit$dependence_smm_loss))
+save_nn_dynamic_vine_fit(nn_fit, nn_vine_model_dir)
+vine_seq_train <- build_nn_vine_sequence(
+  nn_fit, copula_innovation_u, monthly_nn_states$z, monthly_nn_states$sigma,
+  train_dates, copula_innovation_dates)
+if (length(vine_seq_train) != length(train_dates))
+  stop("Failed to create every training NN-vine snapshot.")
 
 # The NN-driven t-vine snapshots above generate both pre-training and
 # fine-tuning scenarios. The monthly empirical transform below calibrates their
@@ -102,49 +261,22 @@ pretrain_vine <- vine_seq_train[[1L]]
 simulate_calibrated_monthly_gross <- function(vine, n_draws,
                                                previous_log_returns = NULL) {
   u <- rvinecop(n_draws, vine, cores = sim_cores)
-  if (!is.null(previous_log_returns)) {
-    previous_latent <- vapply(seq_along(asset_names), function(j) {
-      sorted_log <- historical_log_sorted[[asset_names[j]]]
-      probability <- (findInterval(previous_log_returns[j], sorted_log) + 0.5) /
-        (length(sorted_log) + 1)
-      qnorm(pmin(pmax(probability, 1e-6), 1 - 1e-6))
-    }, numeric(1))
-    latent <- sweep(qnorm(pmin(pmax(u, 1e-6), 1 - 1e-6)), 2L,
-                    sqrt(1 - monthly_ar1^2), "*")
-    latent <- sweep(latent, 2L, monthly_ar1 * previous_latent, "+")
-    u <- pnorm(latent)
-  }
-  out <- matrix(NA_real_, nrow = n_draws, ncol = length(asset_names), dimnames = list(NULL, asset_names))
-  for (j in seq_along(asset_names)) {
-    sorted_log <- historical_log_sorted[[asset_names[j]]]
-    probabilities <- seq_len(length(sorted_log)) / (length(sorted_log) + 1)
-    out[, j] <- exp(approx(probabilities, sorted_log, xout = u[, j], rule = 2)$y)
-  }
-  out
+  if (!is.null(previous_log_returns))
+    u <- serial_transition(u, logs_to_empirical_u(previous_log_returns))
+  uniforms_to_monthly_gross(u)
 }
 
-# A stationary Gaussian AR copula supplies the monthly serial dependence that
-# an LSTM is expected to learn. Its innovations retain the contemporaneous
-# NN-vine dependence; the empirical transform restores each monthly marginal.
+# Fitted marginal Student-t Markov copulas supply the monthly serial and tail
+# persistence that an LSTM is expected to learn. Their conditional innovations
+# retain the contemporaneous NN-vine dependence; the empirical transform
+# restores each monthly marginal.
 simulate_calibrated_monthly_path <- function(vines, n_draws) {
-  innovations <- lapply(vines, function(vine) {
-    qnorm(pmin(pmax(rvinecop(n_draws, vine, cores = sim_cores), 1e-6), 1 - 1e-6))
-  })
-  latent_previous <- NULL
-  lapply(seq_along(innovations), function(t) {
-    latent <- if (is.null(latent_previous)) innovations[[t]] else
-      sweep(latent_previous, 2L, monthly_ar1, "*") +
-      sweep(innovations[[t]], 2L, sqrt(1 - monthly_ar1^2), "*")
-    latent_previous <<- latent
-    u <- pnorm(latent)
-    out <- matrix(NA_real_, nrow = n_draws, ncol = length(asset_names),
-                  dimnames = list(NULL, asset_names))
-    for (j in seq_along(asset_names)) {
-      sorted_log <- historical_log_sorted[[asset_names[j]]]
-      probabilities <- seq_len(length(sorted_log)) / (length(sorted_log) + 1)
-      out[, j] <- exp(approx(probabilities, sorted_log, xout = u[, j], rule = 2)$y)
-    }
-    out
+  previous_u <- NULL
+  lapply(vines, function(vine) {
+    innovation_u <- rvinecop(n_draws, vine, cores = sim_cores)
+    u <- serial_transition(innovation_u, previous_u)
+    previous_u <<- u
+    uniforms_to_monthly_gross(u)
   })
 }
 
@@ -348,12 +480,15 @@ metadata <- list(seed = seed, n_sim_cvar = n_sim_cvar, L = L, ref_col = ref_col,
   historical_finetune_episodes = length(finetune_returns), train_vine_count = length(vine_seq_train),
   reserved_evaluation_steps = evaluation_periods, pretrain_realised_source = "synthetic_vine",
   finetune_realised_source = "historical", marginal_fit_source = "training_prefix_only",
-  pretrain_vine_frequency = "monthly_marginal_transform",
+  pretrain_vine_frequency = "monthly_holding_period_ranks",
+  cross_sectional_fit_input = "monthly_one_step_serial_conditional_pit",
   pretrain_vine_structure = "nn_dynamic_all_tree_dvine",
   pretrain_vine_model = "nn_dynamic_t_vine", finetune_vine_model = "nn_dynamic_t_vine",
-  pretrain_vine_families = "t", monthly_ar1 = monthly_ar1,
+  pretrain_vine_families = "t", serial_copulas = serial_copulas,
   vine_order = nn_fit$order, vine_truncation_level = nn_fit$truncation_level,
   dynamic_vine_edges = nn_fit$dynamic_edge_count,
+  dependence_scale = nn_fit$dependence_scale,
+  dependence_smm_loss = nn_fit$dependence_smm_loss,
   nn_vine_model_dir = nn_vine_model_dir,
   diagnostics_passed = all(fidelity$pass_marginals) &
     all(correlation_comparison$statistically_compatible) &

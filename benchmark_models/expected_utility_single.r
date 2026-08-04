@@ -3,7 +3,7 @@
 # Dynamic portfolio selection with CRRA utility and rolling‑window D‑vine copula
 # ==============================================================================
 
-library(rvinecopulib)
+suppressPackageStartupMessages(library(rvinecopulib))
 
 source("helper/timer.r")
 

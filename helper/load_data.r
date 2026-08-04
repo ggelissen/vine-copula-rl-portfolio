@@ -3,9 +3,11 @@
 # Data loading and preprocessing for asset pricing data
 # ============================================================
 
-library(xts)
-library(zoo)
-library(moments)
+suppressPackageStartupMessages({
+  library(xts)
+  library(zoo)
+  library(moments)
+})
 
 # Load raw log returns
 load_returns <- function(filepath = "data/portfolio_B_7assets_2013.csv") {
