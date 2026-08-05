@@ -1,0 +1,7 @@
+strategy_id,label,method,seed,role,completed,gate_pass,ensemble_group,include_main,include_inference,report_seed_distribution,weight_log_path,weight_log_sha256,checkpoint_path,checkpoint_sha256,config_sha256,code_sha256,train_seconds,evaluation_seconds,notes
+equal_weight,Equal weight,Equal weight,,benchmark,true,true,,true,true,false,GENERATE_EQUAL_WEIGHT,,not_applicable,not_applicable,,,0,0,Deterministic rule generated inside the common evaluator
+vine_td3_seed_20260741,NN-vine LSTM-TD3 seed 20260741,NN-vine LSTM-TD3,20260741,proposed,true,true,vine_td3_full_gate_pass,false,false,true,weights/weights_rl_full_seed_20260741.csv,,models/seed_20260741/td3_lstm_vine_full.pt,,,,,,Include only after the pre-holdout gate passes
+sample_mv,Constrained sample mean-variance,Sample mean-variance,,benchmark,true,true,,true,true,false,weights/sample_mv.csv,,not_applicable,not_applicable,,,,,Must be generated causally and obey the common caps
+dcc_garch,DCC-GARCH,DCC-GARCH,,benchmark,true,true,,true,true,false,weights/dcc_garch.csv,,not_applicable,not_applicable,,,,,Must be generated causally and obey the common caps
+static_vine,Static vine,Static vine,,benchmark,true,true,,true,true,false,weights/static_vine.csv,,not_applicable,not_applicable,,,,,Training-cutoff fit only
+rolling_vine,Rolling vine,Rolling vine,,benchmark,true,true,,true,true,false,weights/rolling_vine.csv,,not_applicable,not_applicable,,,,,Use only information available at each decision

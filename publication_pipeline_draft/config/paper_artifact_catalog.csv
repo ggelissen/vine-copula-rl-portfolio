@@ -1,0 +1,21 @@
+artifact_id,type,placement,title,required,source,status_before_evaluation,claim_supported
+T01,table,main,Data split and locked calendar,true,realized_asset_gross.csv,framework_ready,Leakage-free sample construction
+T02,table,main,Synthetic-data fidelity summary,true,synthetic diagnostics,existing_inputs_need_adapter,Generator fidelity by marginal dependence tail and temporal dimension
+T03,table,appendix,Training and gate summary across seeds,true,seed_sweep_status plus gate CSVs,existing_inputs_need_adapter,Optimisation stability and reproducibility
+T04,table,main,Common-path out-of-sample performance,true,scored_monthly_panel.csv,implemented,Economic performance net of common costs
+T05,table,main,Paired utility inference and multiplicity control,true,scored_monthly_panel.csv,implemented,Effect sizes and uncertainty on matched months
+T06,table,appendix,Seed robustness,true,scored_monthly_panel.csv,implemented,Algorithmic rather than market uncertainty
+T07,table,appendix,Implementation and trading diagnostics,true,scored_monthly_panel.csv,implemented,Turnover leverage shorts and costs
+T08,table,appendix,Computation and reproducibility,true,strategy manifest and hashes,implemented,Computational burden and provenance
+T09,table,main,Ablation results,true,completed ablation weight logs,blocked_until_retraining,Contribution of model components
+T10,table,appendix,Hyperparameter sensitivity,false,completed sensitivity weight logs,blocked_until_retraining,Robustness to preregistered settings
+F01,figure,main,Cumulative net wealth,true,scored_monthly_panel.csv,implemented,Pathwise economic comparison
+F02,figure,main,Drawdown paths,true,scored_monthly_panel.csv,implemented,Downside path comparison
+F03,figure,main,Risk-return map,true,performance table,implemented,Return risk and turnover tradeoff
+F04,figure,main,Dynamic allocation heatmap,true,ensemble weights,implemented,Time variation in the proposed policy
+F05,figure,appendix,Exposure short-notional and turnover,true,scored_monthly_panel.csv,implemented,Mandate use and implementability
+F06,figure,appendix,Across-seed performance distributions,true,individual seed scores,implemented,RL optimisation variability
+F07,figure,main,Historical versus synthetic dependence diagnostics,true,synthetic diagnostics,existing_inputs_need_adapter,Dependence and tail fidelity
+F08,figure,appendix,Training learning curves and critic diagnostics,true,training logs,existing_inputs_need_adapter,Training stability
+F09,figure,appendix,Ablation effect plot,true,completed ablation scores,blocked_until_retraining,Component contribution uncertainty
+F10,figure,appendix,Sensitivity heatmap,false,completed sensitivity scores,blocked_until_retraining,Local robustness
