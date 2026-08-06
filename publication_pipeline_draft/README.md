@@ -1,9 +1,9 @@
 # Frozen publication-evaluation draft
 
-This directory is intentionally outside `rl/`, `eval/`, `config/`, and the
-root-level R launchers. The running seed sweep neither sources nor hashes it.
-Do not move these files into the live pipeline until the seed sweep has
-finished and its artifacts have been copied to immutable storage.
+The completed full-model training sweep is frozen. Follow
+`PRE_HOLDOUT_EVALUATION_RUNBOOK.md` to development-test the causal benchmarks,
+freeze this main evaluation implementation, and execute exactly one locked
+main batch. Expensive ablations are separate secondary experiments.
 
 The draft separates policy generation from performance measurement:
 
@@ -73,6 +73,13 @@ Paper tables:
 - `tables/table_03_paired_inference.csv` and `.tex`
 - `tables/table_04_economic_implementation.csv` and `.tex`
 - `tables/table_05_computation.csv` and `.tex`
+- `tables/table_06_monthly_net_returns.csv`
+- `tables/table_07_locked_calendar.csv`
+- `tables/table_08_shortened_period_robustness.csv`
+- `tables/table_09_return_distribution.csv`
+- `tables/table_10_primary_effects.csv` and `.tex`
+- `tables/table_11_constraint_audit.csv` and `.tex`
+- `tables/primary_superiority_decision.json` (the frozen primary CRRA test)
 
 Core figures (both PNG and PDF):
 
@@ -80,7 +87,9 @@ Core figures (both PNG and PDF):
 - risk-return map;
 - primary-RL allocation heatmap;
 - exposure, short-notional, and turnover path;
-- seed-robustness distributions when at least two individual seeds exist.
+- seed-robustness distributions whenever individual seed scores exist;
+- primary-versus-alternative CRRA utility effect intervals;
+- monthly primary-minus-benchmark return heatmaps.
 
 `config/paper_artifact_catalog.csv` lists the broader main-text and appendix
 artifact plan, including synthetic-data, training, ablation, and sensitivity
@@ -103,13 +112,25 @@ Freeze the accepted training release on the machine that contains the exact
 20 seed directories and the exact training data/source snapshot:
 
 ```bash
+REPO_ROOT="$(pwd -P)"
+DIAGNOSTIC_DIR="$REPO_ROOT/data/publication_training_artifacts_20seeds"
+DIAGNOSTIC_ARCHIVE="$REPO_ROOT/training_artifacts_20seeds.tar.gz"
+
+test -d "$DIAGNOSTIC_DIR" || { echo "Missing $DIAGNOSTIC_DIR" >&2; exit 1; }
+tar -C "$(dirname "$DIAGNOSTIC_DIR")" \
+  -czf "$DIAGNOSTIC_ARCHIVE" "$(basename "$DIAGNOSTIC_DIR")"
+test -s "$DIAGNOSTIC_ARCHIVE" || { echo "Archive was not created" >&2; exit 1; }
+
 python publication_pipeline_draft/freeze_training_release.py \
-  --repo-root . \
-  --rl-runs data/rl_runs \
-  --diagnostics-archive training_artifacts_20seeds.tar.gz \
+  --repo-root "$REPO_ROOT" \
+  --rl-runs "$REPO_ROOT/data/rl_runs" \
+  --diagnostics-archive "$DIAGNOSTIC_ARCHIVE" \
   --expected-seeds 20 \
-  --output frozen_releases/training_schema5_v1 \
-  --bundle frozen_releases/training_schema5_v1.tar.gz
+  --output "$REPO_ROOT/frozen_releases/training_schema5_v1" \
+  --bundle "$REPO_ROOT/frozen_releases/training_schema5_v1.tar.gz"
+
+(cd "$REPO_ROOT/frozen_releases" && \
+  sha256sum -c training_schema5_v1.tar.gz.sha256)
 ```
 
 The freezer is holdout-blind and fail-closed. It re-hashes all recorded

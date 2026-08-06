@@ -16,9 +16,14 @@ returns <- load_returns()
 split <- split_monthly_periods(build_monthly_periods(returns, 250L), 24L)
 validate_period_split(split, 24L)
 stopifnot(nrow(split$evaluation) == 24L)
-gross <- do.call(rbind, lapply(seq_len(nrow(split$evaluation)), function(i) {
-  realised_gross_for_period(returns, split$evaluation$decision_date[i],
-                            split$evaluation$holding_end_date[i])
+# All fast tests use the final 24 periods of the training prefix.  Merely
+# testing code must not consume or summarize the locked OOS outcomes.
+development_periods <- tail(split$train, 24L)
+development_returns <- returns[paste0("/", max(split$train$holding_end_date))]
+gross <- do.call(rbind, lapply(seq_len(nrow(development_periods)), function(i) {
+  realised_gross_for_period(development_returns,
+                            development_periods$decision_date[i],
+                            development_periods$holding_end_date[i])
 }))
 stopifnot(all(is.finite(gross)), all(gross > 0))
 
@@ -47,13 +52,15 @@ pieces <- unlist(lapply(seq_along(edge_data), function(tree) {
 assert_close(Reduce("+", pieces), log(dvinecop(U_test, vine_test)), 1e-7)
 
 neutral <- matrix(1 / ncol(returns), nrow = 24, ncol = ncol(returns))
-weight_log <- data.frame(decision_date = split$evaluation$decision_date)
+weight_log <- data.frame(decision_date = development_periods$decision_date)
 names(neutral) <- NULL
 for (j in seq_len(ncol(returns))) {
   weight_log[[paste0("w_", colnames(returns)[j])]] <- neutral[, j]
 }
-weights <- validate_weight_log(weight_log, split$evaluation, colnames(returns), 1, 1.5)
-scored <- score_weight_log(weights, gross, split$evaluation, colnames(returns))
+weights <- validate_weight_log(weight_log, development_periods,
+                               colnames(returns), 1, 1.5)
+scored <- score_weight_log(weights, gross, development_periods,
+                           colnames(returns))
 stopifnot(nrow(scored) == 24L, all(is.finite(scored$net_return)))
 
 series_a <- data.frame(date = scored$holding_end_date, net_return = scored$net_return)
@@ -63,4 +70,3 @@ stopifnot(nrow(paired) == 1L, paired$mean_difference > 0,
           is.finite(paired$p_value_holm))
 
 cat("All fast research-protocol tests passed.\n")
-

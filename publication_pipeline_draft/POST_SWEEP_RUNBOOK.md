@@ -15,13 +15,25 @@ first.
    source files without opening the holdout:
 
    ```bash
+   REPO_ROOT="$(pwd -P)"
+   DIAGNOSTIC_DIR="$REPO_ROOT/data/publication_training_artifacts_20seeds"
+   DIAGNOSTIC_ARCHIVE="$REPO_ROOT/training_artifacts_20seeds.tar.gz"
+
+   test -d "$DIAGNOSTIC_DIR" || { echo "Missing $DIAGNOSTIC_DIR" >&2; exit 1; }
+   tar -C "$(dirname "$DIAGNOSTIC_DIR")" \
+     -czf "$DIAGNOSTIC_ARCHIVE" "$(basename "$DIAGNOSTIC_DIR")"
+   test -s "$DIAGNOSTIC_ARCHIVE" || { echo "Archive was not created" >&2; exit 1; }
+
    python publication_pipeline_draft/freeze_training_release.py \
-     --repo-root . \
-     --rl-runs data/rl_runs \
-     --diagnostics-archive training_artifacts_20seeds.tar.gz \
+     --repo-root "$REPO_ROOT" \
+     --rl-runs "$REPO_ROOT/data/rl_runs" \
+     --diagnostics-archive "$DIAGNOSTIC_ARCHIVE" \
      --expected-seeds 20 \
-     --output frozen_releases/training_schema5_v1 \
-     --bundle frozen_releases/training_schema5_v1.tar.gz
+     --output "$REPO_ROOT/frozen_releases/training_schema5_v1" \
+     --bundle "$REPO_ROOT/frozen_releases/training_schema5_v1.tar.gz"
+
+   (cd "$REPO_ROOT/frozen_releases" && \
+     sha256sum -c training_schema5_v1.tar.gz.sha256)
    ```
 
    The command must run in the checkout used on the training machine. A local
@@ -32,8 +44,8 @@ first.
 5. Implement every main-table benchmark in `BENCHMARK_SPECIFICATION.md` as a
    causal weight generator. Run its causality, constraint, reproducibility,
    and solver-failure tests on development dates only.
-6. Complete all intended ablation/sensitivity training or leave those tables
-   explicitly absent. Never infer missing rows from the full model.
+6. Leave incomplete ablation/sensitivity tables explicitly absent from the
+   confirmatory main release. Never infer missing rows from the full model.
 7. Freeze and hash:
    - one source snapshot/tag;
    - one master configuration;
@@ -51,9 +63,9 @@ first.
      config/config.yaml publication_eval/inputs
    ```
 
-2. Generate all 20 full-policy weight logs and every benchmark/ablation weight
-   log in one scripted batch. Continue past technical failures, recording exit
-   codes; do not tune or change code based on partial outcomes.
+2. Generate all 20 full-policy weight logs and every main benchmark weight log
+   in one scripted batch. Secondary ablations enter only a separately declared
+   release when their frozen artifacts already exist.
 3. Verify all logs exist, contain exactly the locked keys, and hash them. Fill
    a copy of `config/strategy_manifest.example.csv`. Only gate-passing seeds
    enter the predeclared ensemble; the expected contract requires 20.

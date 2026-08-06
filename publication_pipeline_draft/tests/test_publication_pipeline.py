@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 from publication_pipeline import (  # noqa: E402
     Contract,
     ProtocolError,
+    empirical_metrics,
     read_realized_panel,
     run_pipeline,
     score_strategy,
@@ -64,6 +65,9 @@ class PublicationPipelineTests(unittest.TestCase):
             "crra_gamma": 2.0,
             "primary_benchmark_id": "equal_weight",
             "primary_strategy_id": "ensemble",
+            "primary_superiority_test": "one_sided_paired_moving_block_bootstrap_crra",
+            "primary_superiority_alpha": 0.05,
+            "secondary_multiplicity_control": "holm_within_primary_vs_alternative_family",
             "bootstrap_replications": 999,
             "bootstrap_block_length": 2,
             "inference_seed": 123,
@@ -155,6 +159,25 @@ class PublicationPipelineTests(unittest.TestCase):
         with self.assertRaises(ProtocolError):
             validate_weight_matrix(np.array([[0.95, 0.05]]), "bad", contract)
 
+    def test_drawdown_and_certainty_equivalent_metrics(self) -> None:
+        contract = Contract.read(self.contract_path)
+        group = pd.DataFrame(
+            {
+                "decision_date": pd.date_range("2024-01-31", periods=3, freq="ME"),
+                "net_return": [0.10, -0.10, 0.05],
+                "gross_return": [0.10, -0.10, 0.05],
+                "turnover": [0.0, 0.0, 0.0],
+                "gross_exposure": [1.0, 1.0, 1.0],
+                "short_notional": [0.0, 0.0, 0.0],
+                "transaction_cost": [0.0, 0.0, 0.0],
+                "financing_cost": [0.0, 0.0, 0.0],
+            }
+        )
+        metrics = empirical_metrics(group, contract)
+        self.assertAlmostEqual(metrics["max_drawdown"], 0.10, places=12)
+        self.assertTrue(np.isfinite(metrics["annualized_certainty_equivalent_return"]))
+        self.assertAlmostEqual(metrics["implementation_drag_total_return"], 0.0, places=12)
+
     def test_end_to_end_outputs_ensemble_and_primary_scope(self) -> None:
         output = self.base / "results"
         run_pipeline(self.contract_path, self.realized_path, self.manifest_path, output)
@@ -167,6 +190,16 @@ class PublicationPipelineTests(unittest.TestCase):
         ensemble = scored[scored["strategy_id"] == "ensemble"]
         self.assertAlmostEqual(float(ensemble.iloc[0]["w_A"]), 0.60)
         self.assertTrue((output / "figures" / "figure_03_risk_return.pdf").is_file())
+        self.assertTrue((output / "figures" / "figure_07_primary_utility_effects.pdf").is_file())
+        self.assertTrue((output / "tables" / "table_06_monthly_net_returns.csv").is_file())
+        self.assertTrue((output / "tables" / "table_09_return_distribution.csv").is_file())
+        self.assertTrue((output / "tables" / "table_10_primary_effects.csv").is_file())
+        constraints = pd.read_csv(output / "tables" / "table_11_constraint_audit.csv")
+        self.assertTrue(constraints["constraint_pass"].all())
+        decision = json.loads(
+            (output / "tables" / "primary_superiority_decision.json").read_text()
+        )
+        self.assertEqual(decision["primary_benchmark_id"], "equal_weight")
 
     def test_locked_output_cannot_be_overwritten(self) -> None:
         output = self.base / "results"
