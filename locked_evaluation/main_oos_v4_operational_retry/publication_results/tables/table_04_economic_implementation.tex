@@ -1,0 +1,13 @@
+\begin{tabular}{lllllllllllll}
+\toprule
+strategy\_id & label & mean\_gross\_exposure & maximum\_gross\_exposure & mean\_short\_notional & mean\_monthly\_turnover & annualized\_turnover & gross\_total\_return\_before\_costs & implementation\_drag\_total\_return & total\_transaction\_log\_cost & total\_financing\_log\_cost & mean\_transaction\_cost\_bps & mean\_financing\_cost\_bps \\
+\midrule
+equal\_weight & Equal weight & 1.0000 & 1.0000 & 0.0000 & 0.0000 & 0.0000 & 0.4916 & 0.0000 & 0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+shrinkage\_mean\_variance & Constrained shrinkage mean-variance & 1.0000 & 1.0001 & 0.0000 & 0.0520 & 0.6235 & 0.4886 & 0.0017 & 0.0011 & 0.0000 & 0.5195 & 0.0004 \\
+dcc\_garch & DCC-GARCH & 1.0021 & 1.0116 & 0.0011 & 0.1534 & 1.8409 & 0.5934 & 0.0055 & 0.0034 & 0.0001 & 1.5341 & 0.0265 \\
+static\_vine & Static vine optimizer & 1.4424 & 1.5000 & 0.2212 & 1.0509 & 12.6103 & 0.7041 & 0.0591 & 0.0231 & 0.0122 & 10.5086 & 5.5300 \\
+rolling\_vine & Rolling vine optimizer & 1.4786 & 1.5000 & 0.2393 & 1.2369 & 14.8427 & 0.4661 & 0.0580 & 0.0272 & 0.0132 & 12.3689 & 5.9830 \\
+dynamic\_nn\_vine & Dynamic NN-vine optimizer without RL & 1.4476 & 1.5000 & 0.2238 & 1.0870 & 13.0441 & 0.6740 & 0.0596 & 0.0239 & 0.0123 & 10.8701 & 5.5954 \\
+vine\_td3\_ensemble & NN-vine LSTM-TD3 ensemble & 1.0221 & 1.1215 & 0.0111 & 0.3170 & 3.8037 & 0.6088 & 0.0122 & 0.0070 & 0.0006 & 3.1698 & 0.2767 \\
+\bottomrule
+\end{tabular}
