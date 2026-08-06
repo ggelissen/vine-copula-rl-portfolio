@@ -40,6 +40,10 @@ env_max_short_weight <- as.numeric(Sys.getenv("ENV_MAX_SHORT_WEIGHT", "0.20"))
 env_short_borrow_rate <- as.numeric(Sys.getenv("ENV_SHORT_BORROW_RATE", "0.03"))
 env_cash_borrow_rate <- as.numeric(Sys.getenv("ENV_CASH_BORROW_RATE", "0.02"))
 env_utility_mode <- Sys.getenv("ENV_UTILITY_MODE", "terminal_wealth_crra")
+vine_observation_mode <- Sys.getenv("VINE_OBSERVATION_MODE", "full")
+if (!vine_observation_mode %in% c("full", "zero")) {
+  stop("VINE_OBSERVATION_MODE must be 'full' or 'zero'.")
+}
 vine_model <- Sys.getenv("VINE_MODEL", "nn_dynamic_t_vine")
 nn_vine_epochs <- as.integer(Sys.getenv("NN_VINE_EPOCHS", "200"))
 nn_vine_lr <- as.numeric(Sys.getenv("NN_VINE_LR", "0.001"))
@@ -165,6 +169,8 @@ if (finetune_max_selection_passes != 1L) {
 }
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+writeLines(vine_observation_mode,
+           file.path(output_dir, "vine_observation_mode.txt"), useBytes = TRUE)
 set.seed(train_seed)
 source("helper/reproducibility.r")
 write_run_manifest(output_dir, train_seed,
@@ -302,6 +308,7 @@ make_training_environment <- function(episode_returns) {
     short_borrow_rate = env_short_borrow_rate,
     cash_borrow_rate = env_cash_borrow_rate,
     utility_mode = env_utility_mode,
+    vine_observation_mode = vine_observation_mode,
     episode_sampling = "sequential")
   environment$set_precomputed_returns(episode_returns)
   environment
@@ -486,6 +493,11 @@ MAX_SHORT_WEIGHT = float(os.environ.get('ENV_MAX_SHORT_WEIGHT', '0.20'))
 SHORT_BORROW_RATE = float(os.environ.get('ENV_SHORT_BORROW_RATE', '0.03'))
 CASH_BORROW_RATE = float(os.environ.get('ENV_CASH_BORROW_RATE', '0.02'))
 UTILITY_MODE = os.environ.get('ENV_UTILITY_MODE')
+VINE_OBSERVATION_MODE = os.environ.get('VINE_OBSERVATION_MODE', 'full')
+if VINE_OBSERVATION_MODE not in ('full', 'zero'):
+    raise RuntimeError('VINE_OBSERVATION_MODE must be full or zero.')
+NO_VINE_SIGNAL_MASK = ('explicit_vine_and_scenario_cvar_v1'
+                       if VINE_OBSERVATION_MODE == 'zero' else 'not_applicable')
 if GROSS_LEVERAGE < abs(NET_EXPOSURE):
     raise RuntimeError('Gross leverage must be at least abs(net exposure).')
 if NET_EXPOSURE <= 0:
@@ -936,6 +948,8 @@ class TD3Agent:
                              'action_mode': 'interior_rank_partition_leverage_gate_v5', 'gross_leverage': GROSS_LEVERAGE,
                              'net_exposure': NET_EXPOSURE, 'short_borrow_rate': SHORT_BORROW_RATE,
                              'cash_borrow_rate': CASH_BORROW_RATE, 'utility_mode': UTILITY_MODE,
+                             'vine_observation_mode': VINE_OBSERVATION_MODE,
+                             'no_vine_signal_mask': NO_VINE_SIGNAL_MASK,
                              'max_long_weight': MAX_LONG_WEIGHT,
                              'max_short_weight': MAX_SHORT_WEIGHT,
                              'direction_logit_bound': DIRECTION_LOGIT_BOUND,
@@ -960,6 +974,7 @@ class TD3Agent:
                     'action_mode': 'interior_rank_partition_leverage_gate_v5', 'gross_leverage': GROSS_LEVERAGE,
                     'net_exposure': NET_EXPOSURE, 'short_borrow_rate': SHORT_BORROW_RATE,
                     'cash_borrow_rate': CASH_BORROW_RATE, 'utility_mode': UTILITY_MODE,
+                    'vine_observation_mode': VINE_OBSERVATION_MODE,
                     'max_long_weight': MAX_LONG_WEIGHT,
                     'max_short_weight': MAX_SHORT_WEIGHT,
                     'direction_logit_bound': DIRECTION_LOGIT_BOUND,
@@ -971,7 +986,14 @@ class TD3Agent:
                     'short_support_size': SHORT_SUPPORT_SIZE,
                     'use_amp': USE_AMP,
                     'checkpoint_schema': 5}
-        mismatches = {k: (architecture.get(k), v) for k, v in expected.items() if architecture.get(k) != v}
+        if VINE_OBSERVATION_MODE == 'zero':
+            expected['no_vine_signal_mask'] = NO_VINE_SIGNAL_MASK
+        # Schema-5 full-vine checkpoints predate this metadata field.  Treat
+        # absence as 'full' only; a no-vine checkpoint must state 'zero'.
+        actual_architecture = dict(architecture)
+        actual_architecture.setdefault('vine_observation_mode', 'full')
+        mismatches = {k: (actual_architecture.get(k), v) for k, v in expected.items()
+                      if actual_architecture.get(k) != v}
         if mismatches:
             raise RuntimeError(f'Checkpoint is incompatible with the long-short multi-period setup: {mismatches}. Retrain it.')
         def strip_prefix(state_dict):

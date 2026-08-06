@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "protocol_id": "future_external_walk_forward_v1",
+  "protocol_status": "preregistered",
+  "preregistered_utc": "2026-08-06T00:00:00Z",
+  "consumed_holdouts": [
+    {
+      "holdout_id": "locked_oos_v1",
+      "start": "2024-07-31",
+      "end": "2026-07-06",
+      "result_sha256": "770d2944f915d0ad21ae9af32e31d68d652fdb54e98939caeab45c327b4e5ea1"
+    }
+  ],
+  "assets": [
+    "SP500",
+    "NASDAQ",
+    "DOW",
+    "SSE50",
+    "DIVIDEND",
+    "CHINEXT",
+    "GOLD"
+  ],
+  "economics": {
+    "net_exposure": 1.0,
+    "gross_leverage": 1.5,
+    "max_long_weight": 0.6,
+    "max_short_weight": 0.2,
+    "turnover_cost": 0.001,
+    "annual_short_borrow_rate": 0.03,
+    "annual_cash_borrow_rate": 0.02,
+    "day_count_basis": 365,
+    "weight_tolerance": 1e-06,
+    "metric_tolerance": 1e-10,
+    "turnover_definition": "sum_abs_target_minus_pretrade_drifted_weights",
+    "pretrade_weight_drift": "post_return_self_financing",
+    "initial_position": "equal_weight",
+    "financing_proration": "actual_calendar_days_over_day_count_basis",
+    "annualization_convention": "actual_elapsed_years_v1",
+    "net_return_accounting": "log_gross_minus_transaction_and_financing_costs"
+  },
+  "selection": {
+    "primary_strategy_id": "vine_td3_ensemble",
+    "primary_benchmark_id": "equal_weight",
+    "primary_outcome": "mean_monthly_crra_utility_difference",
+    "alpha": 0.05,
+    "multiplicity_control": "holm_within_preregistered_family",
+    "selection_data_scope": "train_and_validation_only",
+    "test_data_role": "evaluation_only",
+    "test_feedback_policy": "state_updates_only_no_hyperparameter_or_model_selection",
+    "hyperparameter_lock_artifact_id": "hyperparameter_lock",
+    "selection_manifest_artifact_id": "selection_manifest",
+    "selection_locked_before_all_tests": true
+  },
+  "windows": [
+    {
+      "window_id": "future_wf_01",
+      "train_start": "2013-12-16",
+      "train_end": "2024-07-31",
+      "validation_start": "2024-08-01",
+      "validation_end": "2026-07-06",
+      "test_start": "2026-07-31",
+      "test_end": "2026-10-31",
+      "periods": [
+        {
+          "decision_date": "2026-07-31",
+          "holding_end_date": "2026-08-31"
+        },
+        {
+          "decision_date": "2026-08-31",
+          "holding_end_date": "2026-09-30"
+        },
+        {
+          "decision_date": "2026-09-30",
+          "holding_end_date": "2026-10-31"
+        }
+      ],
+      "train_data_artifact_id": "wf01_train_data",
+      "validation_data_artifact_id": "wf01_validation_data",
+      "test_data_artifact_id": "wf01_test_data",
+      "model_artifact_id": "wf01_model"
+    },
+    {
+      "window_id": "future_wf_02",
+      "train_start": "2013-12-16",
+      "train_end": "2024-07-31",
+      "validation_start": "2024-08-01",
+      "validation_end": "2026-07-06",
+      "test_start": "2026-10-31",
+      "test_end": "2027-01-31",
+      "periods": [
+        {
+          "decision_date": "2026-10-31",
+          "holding_end_date": "2026-11-30"
+        },
+        {
+          "decision_date": "2026-11-30",
+          "holding_end_date": "2026-12-31"
+        },
+        {
+          "decision_date": "2026-12-31",
+          "holding_end_date": "2027-01-31"
+        }
+      ],
+      "train_data_artifact_id": "wf02_train_data",
+      "validation_data_artifact_id": "wf02_validation_data",
+      "test_data_artifact_id": "wf02_test_data",
+      "model_artifact_id": "wf02_model"
+    }
+  ],
+  "artifacts": {
+    "code": [
+      {
+        "artifact_id": "confirmatory_runner",
+        "path": "future_eval_release/confirmatory_runner.py",
+        "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    ],
+    "config": [
+      {
+        "artifact_id": "hyperparameter_lock",
+        "path": "future_eval_release/hyperparameters.json",
+        "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      {
+        "artifact_id": "selection_manifest",
+        "path": "future_eval_release/selection_manifest.json",
+        "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+      }
+    ],
+    "data": [
+      {
+        "artifact_id": "wf01_train_data",
+        "path": "future_eval_release/data/wf01_train.csv",
+        "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "role": "train",
+        "window_id": "future_wf_01",
+        "date_start": "2013-12-16",
+        "date_end": "2024-07-31",
+        "format": "csv"
+      },
+      {
+        "artifact_id": "wf01_validation_data",
+        "path": "future_eval_release/data/wf01_validation.csv",
+        "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+        "role": "validation",
+        "window_id": "future_wf_01",
+        "date_start": "2024-08-01",
+        "date_end": "2026-07-06",
+        "format": "csv"
+      },
+      {
+        "artifact_id": "wf01_test_data",
+        "path": "future_eval_release/data/wf01_test.csv",
+        "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+        "role": "test",
+        "window_id": "future_wf_01",
+        "date_start": "2026-07-31",
+        "date_end": "2026-10-31",
+        "format": "csv"
+      },
+      {
+        "artifact_id": "wf02_train_data",
+        "path": "future_eval_release/data/wf02_train.csv",
+        "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "role": "train",
+        "window_id": "future_wf_02",
+        "date_start": "2013-12-16",
+        "date_end": "2024-07-31",
+        "format": "csv"
+      },
+      {
+        "artifact_id": "wf02_validation_data",
+        "path": "future_eval_release/data/wf02_validation.csv",
+        "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+        "role": "validation",
+        "window_id": "future_wf_02",
+        "date_start": "2024-08-01",
+        "date_end": "2026-07-06",
+        "format": "csv"
+      },
+      {
+        "artifact_id": "wf02_test_data",
+        "path": "future_eval_release/data/wf02_test.csv",
+        "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "role": "test",
+        "window_id": "future_wf_02",
+        "date_start": "2026-10-31",
+        "date_end": "2027-01-31",
+        "format": "csv"
+      }
+    ],
+    "model": [
+      {
+        "artifact_id": "wf01_model",
+        "path": "future_eval_release/models/wf01_model_release.tar.gz",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "window_id": "future_wf_01",
+        "trained_through": "2026-07-06",
+        "selected_through": "2026-07-06"
+      },
+      {
+        "artifact_id": "wf02_model",
+        "path": "future_eval_release/models/wf02_model_release.tar.gz",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "window_id": "future_wf_02",
+        "trained_through": "2026-07-06",
+        "selected_through": "2026-07-06"
+      }
+    ],
+    "environment": [
+      {
+        "artifact_id": "python_lock",
+        "path": "future_eval_release/environment/conda-lock.yml",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "kind": "package_lock"
+      },
+      {
+        "artifact_id": "r_lock",
+        "path": "future_eval_release/environment/renv.lock",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "kind": "package_lock"
+      },
+      {
+        "artifact_id": "runtime_attestation",
+        "path": "future_eval_release/environment/runtime_attestation.json",
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "kind": "runtime_attestation"
+      }
+    ]
+  },
+  "environment_lock": {
+    "python_version": "3.13.13",
+    "r_version": "4.5.1",
+    "platform": "linux-64",
+    "container_image_digest": "sha256:abababababababababababababababababababababababababababababababab",
+    "runtime_attestation_artifact_id": "runtime_attestation",
+    "package_lock_artifact_ids": [
+      "python_lock",
+      "r_lock"
+    ],
+    "require_exact_versions": true,
+    "allow_unpinned_packages": false,
+    "network_access_during_test": "disabled",
+    "enforce_orchestrator_python_version": true
+  },
+  "solver": {
+    "methods": [
+      "shrinkage_mean_variance",
+      "dcc_garch",
+      "static_vine",
+      "rolling_vine",
+      "dynamic_nn_vine"
+    ],
+    "accepted_convergence_codes": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "explicitly_rejected_codes": [
+      -5,
+      -4,
+      -3,
+      -2,
+      -1,
+      0,
+      5,
+      6
+    ],
+    "require_every_method_period": true,
+    "allow_fallback_weights": false
+  },
+  "execution": {
+    "access_ledger_path": "future_eval_release/FUTURE_TEST_ACCESS_STARTED.json",
+    "test_access_limit": 1,
+    "preserve_failed_runs": true,
+    "working_directory": ".",
+    "commands": [
+      {
+        "command_id": "future_wf_01_locked_test",
+        "window_id": "future_wf_01",
+        "phase": "test",
+        "argv": [
+          "python3",
+          "{artifact:confirmatory_runner}",
+          "--test-data",
+          "{artifact:wf01_test_data}",
+          "--model-release",
+          "{artifact:wf01_model}",
+          "--hyperparameters",
+          "{artifact:hyperparameter_lock}",
+          "--selection-manifest",
+          "{artifact:selection_manifest}",
+          "--output",
+          "{output:windows/future_wf_01}"
+        ],
+        "input_artifact_ids": [
+          "confirmatory_runner",
+          "wf01_test_data",
+          "wf01_model",
+          "hyperparameter_lock",
+          "selection_manifest"
+        ],
+        "expected_output_relpaths": [
+          "windows/future_wf_01/scored_panel.csv",
+          "windows/future_wf_01/solver_audit.csv"
+        ],
+        "evaluation_panel_relpath": "windows/future_wf_01/scored_panel.csv",
+        "solver_audit_relpath": "windows/future_wf_01/solver_audit.csv"
+      },
+      {
+        "command_id": "future_wf_02_locked_test",
+        "window_id": "future_wf_02",
+        "phase": "test",
+        "argv": [
+          "python3",
+          "{artifact:confirmatory_runner}",
+          "--test-data",
+          "{artifact:wf02_test_data}",
+          "--model-release",
+          "{artifact:wf02_model}",
+          "--hyperparameters",
+          "{artifact:hyperparameter_lock}",
+          "--selection-manifest",
+          "{artifact:selection_manifest}",
+          "--output",
+          "{output:windows/future_wf_02}"
+        ],
+        "input_artifact_ids": [
+          "confirmatory_runner",
+          "wf02_test_data",
+          "wf02_model",
+          "hyperparameter_lock",
+          "selection_manifest"
+        ],
+        "expected_output_relpaths": [
+          "windows/future_wf_02/scored_panel.csv",
+          "windows/future_wf_02/solver_audit.csv"
+        ],
+        "evaluation_panel_relpath": "windows/future_wf_02/scored_panel.csv",
+        "solver_audit_relpath": "windows/future_wf_02/solver_audit.csv"
+      }
+    ]
+  },
+  "claims": {
+    "minimum_test_periods_per_window": 3,
+    "pooling_rule": "paired_non_overlapping_window_returns",
+    "tail_metrics_descriptive_below_events": 20
+  }
+}

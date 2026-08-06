@@ -55,7 +55,8 @@ read_benchmark_contract <- function(path) {
     "scenario_seed", "rolling_vine_lookback_months", "dcc_horizon_days",
     "mv_covariance_shrinkage_method", "mv_mean_shrinkage_method",
     "mv_risk_aversion",
-    "optimizer_maxeval", "optimizer_xtol_rel"
+    "optimizer_maxeval", "optimizer_max_restarts", "optimizer_xtol_rel",
+    "optimizer_allowed_convergence_codes"
   )
   missing <- setdiff(required, names(contract))
   if (length(missing)) {
@@ -68,7 +69,8 @@ read_benchmark_contract <- function(path) {
   character_fields <- c("schema_version", "evaluation_id",
                         "mv_covariance_shrinkage_method",
                         "mv_mean_shrinkage_method")
-  numeric_fields <- setdiff(required, character_fields)
+  numeric_fields <- setdiff(
+    required, c(character_fields, "optimizer_allowed_convergence_codes"))
   if (any(!vapply(contract[numeric_fields], function(x)
     length(x) == 1L && is.finite(as.numeric(x)), logical(1)))) {
     benchmark_protocol_error("All numeric benchmark settings must be finite scalars.")
@@ -76,14 +78,30 @@ read_benchmark_contract <- function(path) {
   if (contract$gross_leverage < abs(contract$net_exposure) ||
       contract$max_long_weight <= 0 || contract$max_short_weight < 0 ||
       contract$scenario_count < 100L || contract$cvar_probability <= 0 ||
-      contract$cvar_probability >= 0.5) {
+      contract$cvar_probability >= 0.5 || contract$optimizer_maxeval < 1L ||
+      contract$optimizer_max_restarts < 0L ||
+      contract$optimizer_max_restarts != floor(contract$optimizer_max_restarts)) {
     benchmark_protocol_error("Benchmark contract contains infeasible settings.")
   }
   if (!identical(contract$mv_covariance_shrinkage_method, "oas_identity") ||
       !identical(contract$mv_mean_shrinkage_method, "james_stein_zero")) {
     benchmark_protocol_error("Unsupported shrinkage estimator declaration.")
   }
+  validate_optimizer_convergence_codes(contract$optimizer_allowed_convergence_codes)
   contract
+}
+
+validate_optimizer_convergence_codes <- function(codes) {
+  numeric_codes <- suppressWarnings(as.numeric(codes))
+  valid <- is.atomic(codes) && length(codes) == 4L &&
+    length(numeric_codes) == 4L && all(is.finite(numeric_codes)) &&
+    all(numeric_codes == floor(numeric_codes)) && !anyDuplicated(numeric_codes) &&
+    setequal(as.integer(numeric_codes), 1:4)
+  if (!isTRUE(valid)) {
+    benchmark_protocol_error(
+      "optimizer_allowed_convergence_codes must be exactly the unique integer set {1,2,3,4}.")
+  }
+  as.integer(numeric_codes)
 }
 
 weight_columns <- function(asset_names) paste0("w_", asset_names)
@@ -168,6 +186,65 @@ generate_equal_weight <- function(periods, asset_names, contract) {
   canonical_weight_log(periods, weights, asset_names, contract)
 }
 
+benchmark_period_year_fraction <- function(period, contract) {
+  convention <- contract$financing_proration %||% "fixed_period_v1"
+  if (identical(convention, "actual_calendar_days_v1")) {
+    days <- as.numeric(as.Date(period$holding_end_date) -
+                         as.Date(period$decision_date))
+    basis <- as.numeric(contract$day_count_basis %||% 365)
+    if (length(days) != 1L || !is.finite(days) || days <= 0 ||
+        length(basis) != 1L || !is.finite(basis) || basis <= 0) {
+      benchmark_protocol_error("Actual-calendar benchmark financing interval is invalid.")
+    }
+    return(days / basis)
+  }
+  if (!identical(convention, "fixed_period_v1")) {
+    benchmark_protocol_error("Unsupported benchmark financing_proration: ", convention)
+  }
+  1 / 12
+}
+
+benchmark_pretrade_weight <- function(previous_target, previous_asset_gross,
+                                      contract, context = "benchmark") {
+  convention <- contract$turnover_convention %||% "target_to_target_v1"
+  if (identical(convention, "target_to_target_v1")) {
+    return(as.numeric(previous_target))
+  }
+  if (!identical(convention, "drifted_pretrade_v1")) {
+    benchmark_protocol_error("Unsupported benchmark turnover_convention: ", convention)
+  }
+  gross <- as.numeric(previous_asset_gross)
+  target <- as.numeric(previous_target)
+  if (length(gross) != length(target) || any(!is.finite(gross)) || any(gross <= 0)) {
+    benchmark_protocol_error(context, " has invalid previous-period asset gross returns.")
+  }
+  portfolio_gross <- 1 + sum(target * (gross - 1))
+  if (!is.finite(portfolio_gross) || portfolio_gross <= 0) {
+    benchmark_protocol_error(context, " has invalid previous-period portfolio gross return.")
+  }
+  target * gross / portfolio_gross
+}
+
+historical_pretrade_weight <- function(daily_log_returns, periods, index,
+                                       previous_target, contract) {
+  if (index <= 1L || identical(
+      contract$turnover_convention %||% "target_to_target_v1",
+      "target_to_target_v1")) {
+    return(as.numeric(previous_target))
+  }
+  previous_period <- periods[index - 1L, , drop = FALSE]
+  if (as.Date(previous_period$holding_end_date) > as.Date(periods$decision_date[index])) {
+    benchmark_protocol_error("Previous holding outcome is unavailable at the next decision.")
+  }
+  gross <- realised_gross_for_period(
+    daily_log_returns,
+    previous_period$decision_date,
+    previous_period$holding_end_date)
+  benchmark_pretrade_weight(
+    previous_target, gross, contract,
+    sprintf("pretrade state at %s", periods$decision_date[index]))
+}
+
 # Convert daily log returns into completed monthly log-return outcomes.  The
 # holding_end_date is used as the information timestamp: an outcome is visible
 # at decision t only when holding_end_date <= t.
@@ -245,52 +322,107 @@ solve_constrained_weights <- function(objective, previous_weight, asset_names,
   upper <- rep(as.numeric(contract$max_long_weight), length(asset_names))
   x0 <- as.numeric(previous_weight)
   assert_weight_vector(x0, asset_names, contract, paste(context, "initial point"))
-  result <- tryCatch(
-    solver(
-      x0 = x0, fn = objective, lower = lower, upper = upper,
-      # Pin the current nloptr convention explicitly: hin <= 0.  Relying on
-      # deprecatedBehavior's version-dependent default would reverse the gross
-      # constraint after a package upgrade.
-      hin = function(w) sum(abs(w)) - as.numeric(contract$gross_leverage),
-      heq = function(w) sum(w) - as.numeric(contract$net_exposure),
-      control = list(
-        maxeval = as.integer(contract$optimizer_maxeval),
-        xtol_rel = as.numeric(contract$optimizer_xtol_rel),
-        check_derivatives = FALSE, print_level = 0L),
-      deprecatedBehavior = FALSE
-    ),
-    error = function(error) error
-  )
-  if (inherits(result, "error")) {
-    benchmark_protocol_error(context, " failed: ", conditionMessage(result))
+  allowed_convergence <- validate_optimizer_convergence_codes(
+    contract$optimizer_allowed_convergence_codes)
+  max_attempts <- 1L + as.integer(contract$optimizer_max_restarts)
+  attempt_codes <- rep(NA_integer_, max_attempts)
+  attempt_messages <- rep("", max_attempts)
+  attempt_iterations <- rep(NA_integer_, max_attempts)
+  current_x0 <- x0
+  accepted <- FALSE
+
+  constraint_residual_for <- function(weights) {
+    if (length(weights) != length(asset_names) || any(!is.finite(weights))) {
+      return(Inf)
+    }
+    max(
+      abs(sum(weights) - as.numeric(contract$net_exposure)),
+      max(0, sum(abs(weights)) - as.numeric(contract$gross_leverage)),
+      max(0, max(weights) - as.numeric(contract$max_long_weight)),
+      max(0, -as.numeric(contract$max_short_weight) - min(weights)))
   }
-  convergence <- as.integer(result$convergence %||% NA_integer_)
-  weights <- as.numeric(result$par %||% numeric())
-  if (!is.finite(convergence) || convergence <= 0L ||
-      length(weights) != length(asset_names) || any(!is.finite(weights))) {
-    benchmark_protocol_error(context, " did not converge; code=", convergence,
-                             ", message=", result$message %||% "missing")
+
+  for (attempt in seq_len(max_attempts)) {
+    result <- tryCatch(
+      solver(
+        x0 = current_x0, fn = objective, lower = lower, upper = upper,
+        # Pin the current nloptr convention explicitly: hin <= 0.  Relying on
+        # deprecatedBehavior's version-dependent default would reverse the gross
+        # constraint after a package upgrade.
+        hin = function(w) sum(abs(w)) - as.numeric(contract$gross_leverage),
+        heq = function(w) sum(w) - as.numeric(contract$net_exposure),
+        control = list(
+          maxeval = as.integer(contract$optimizer_maxeval),
+          xtol_rel = as.numeric(contract$optimizer_xtol_rel),
+          check_derivatives = FALSE, print_level = 0L),
+        deprecatedBehavior = FALSE
+      ),
+      error = function(error) error
+    )
+    if (inherits(result, "error")) {
+      benchmark_protocol_error(context, " failed on attempt ", attempt,
+                               ": ", conditionMessage(result))
+    }
+    convergence <- as.integer(result$convergence %||% NA_integer_)
+    weights <- as.numeric(result$par %||% numeric())
+    residual <- constraint_residual_for(weights)
+    attempt_codes[attempt] <- convergence
+    attempt_messages[attempt] <- as.character(result$message %||% "missing")
+    attempt_iterations[attempt] <- as.integer(result$iter %||% NA_integer_)
+
+    accepted <- is.finite(convergence) &&
+      convergence %in% allowed_convergence && is.finite(residual) &&
+      residual <= as.numeric(contract$weight_tolerance)
+    if (accepted) break
+
+    # Code 5 is not accepted.  A finite feasible incumbent can, however, be
+    # used as the unchanged starting point for a deterministic continuation.
+    # The number of continuations is frozen in the contract and every attempt
+    # is exposed in the audit output.  No clipping, projection, or alternative
+    # solver is used.
+    retryable <- identical(convergence, 5L) && is.finite(residual) &&
+      residual <= as.numeric(contract$weight_tolerance)
+    if (!retryable || attempt >= max_attempts) {
+      used <- seq_len(attempt)
+      trail <- paste0("attempt", used, "=code", attempt_codes[used], "[",
+                      attempt_messages[used], "]", collapse = "; ")
+      benchmark_protocol_error(
+        context, " did not meet the frozen convergence rule; code=", convergence,
+        ", allowed=", paste(allowed_convergence, collapse = ","),
+        ", attempts=", trail)
+    }
+    current_x0 <- weights
   }
+  attempts_used <- attempt
   # No clipping or projection is permitted after the solve.
   assert_weight_vector(weights, asset_names, contract, context)
+  constraint_residual <- constraint_residual_for(weights)
+  used <- seq_len(attempts_used)
   list(weights = weights, convergence = convergence,
        message = as.character(result$message %||% ""),
        iterations = as.integer(result$iter %||% NA_integer_),
-       objective = as.numeric(result$value %||% objective(weights)))
+       solver_attempts = as.integer(attempts_used),
+       solver_attempt_codes = paste(attempt_codes[used], collapse = ","),
+       solver_attempt_messages = paste(attempt_messages[used], collapse = " | "),
+       solver_total_iterations = if (all(is.na(attempt_iterations[used])))
+         NA_integer_ else sum(attempt_iterations[used], na.rm = TRUE),
+       objective = as.numeric(result$value %||% objective(weights)),
+       constraint_residual = as.numeric(constraint_residual))
 }
 
-mean_variance_objective <- function(mu, covariance, previous_weight, contract) {
+mean_variance_objective <- function(mu, covariance, previous_weight, contract,
+                                    year_fraction = 1 / 12) {
   risk_aversion <- as.numeric(contract$mv_risk_aversion)
   turnover_penalty <- as.numeric(contract$turnover_cost) +
     as.numeric(contract$optimizer_turnover_penalty %||% 0)
-  monthly_short_rate <- as.numeric(contract$annual_short_borrow_rate) / 12
-  monthly_cash_rate <- as.numeric(contract$annual_cash_borrow_rate) / 12
+  period_short_rate <- as.numeric(contract$annual_short_borrow_rate) * year_fraction
+  period_cash_rate <- as.numeric(contract$annual_cash_borrow_rate) * year_fraction
   function(weights) {
     risk <- 0.5 * risk_aversion * drop(crossprod(weights, covariance %*% weights))
     expected_return <- sum(mu * weights)
     turnover <- sum(sqrt((weights - previous_weight)^2 + 1e-12))
-    financing <- monthly_short_rate * sum(pmax(-weights, 0)) +
-      monthly_cash_rate * max(sum(weights) - 1, 0)
+    financing <- period_short_rate * sum(pmax(-weights, 0)) +
+      period_cash_rate * max(sum(weights) - 1, 0)
     as.numeric(risk - expected_return + turnover_penalty * turnover + financing)
   }
 }
@@ -305,8 +437,12 @@ generate_shrinkage_mean_variance <- function(daily_log_returns, periods,
   for (i in seq_len(nrow(periods))) {
     history <- history_through_decision(monthly, periods$decision_date[i])
     moments <- shrinkage_moments(history, contract)
+    pretrade <- historical_pretrade_weight(
+      daily_log_returns, periods, i, previous, contract)
+    year_fraction <- benchmark_period_year_fraction(periods[i, ], contract)
     result <- solve_constrained_weights(
-      mean_variance_objective(moments$mu, moments$covariance, previous, contract),
+      mean_variance_objective(
+        moments$mu, moments$covariance, pretrade, contract, year_fraction),
       previous, asset_names, contract,
       context = sprintf("shrinkage mean-variance at %s", periods$decision_date[i]),
       solver = solver)
@@ -317,7 +453,16 @@ generate_shrinkage_mean_variance <- function(daily_log_returns, periods,
       latest_input_date = max(monthly$periods$holding_end_date[
         monthly$periods$holding_end_date <= periods$decision_date[i]]),
       convergence = result$convergence, iterations = result$iterations,
-      objective = result$objective, stringsAsFactors = FALSE)
+      solver_attempts = result$solver_attempts,
+      solver_attempt_codes = result$solver_attempt_codes,
+      solver_attempt_messages = result$solver_attempt_messages,
+      solver_total_iterations = result$solver_total_iterations,
+      objective = result$objective, solver_message = result$message,
+      objective_year_fraction = year_fraction,
+      objective_turnover_convention = contract$turnover_convention %||%
+        "target_to_target_v1",
+      constraint_residual = result$constraint_residual,
+      stringsAsFactors = FALSE)
   }
   list(weights = canonical_weight_log(periods, weights, asset_names, contract),
        audit = do.call(rbind, audit))
@@ -405,8 +550,12 @@ generate_dcc_garch <- function(daily_log_returns, periods, contract,
     }
     # The expected-return convention is intentionally identical to the
     # shrinkage mean-variance benchmark; DCC changes only the risk forecast.
+    pretrade <- historical_pretrade_weight(
+      daily_log_returns, periods, i, previous, contract)
+    year_fraction <- benchmark_period_year_fraction(periods[i, ], contract)
     result <- solve_constrained_weights(
-      mean_variance_objective(moments$mu, covariance, previous, contract),
+      mean_variance_objective(
+        moments$mu, covariance, pretrade, contract, year_fraction),
       previous, asset_names, contract,
       context = sprintf("DCC-GARCH at %s", decision), solver = solver)
     weights[i, ] <- result$weights
@@ -415,7 +564,16 @@ generate_dcc_garch <- function(daily_log_returns, periods, contract,
       method = "dcc_garch", decision_date = decision,
       latest_input_date = max(daily_dates[daily_index]),
       convergence = result$convergence, iterations = result$iterations,
-      objective = result$objective, stringsAsFactors = FALSE)
+      solver_attempts = result$solver_attempts,
+      solver_attempt_codes = result$solver_attempt_codes,
+      solver_attempt_messages = result$solver_attempt_messages,
+      solver_total_iterations = result$solver_total_iterations,
+      objective = result$objective, solver_message = result$message,
+      objective_year_fraction = year_fraction,
+      objective_turnover_convention = contract$turnover_convention %||%
+        "target_to_target_v1",
+      constraint_residual = result$constraint_residual,
+      stringsAsFactors = FALSE)
   }
   list(weights = canonical_weight_log(periods, weights, asset_names, contract),
        audit = do.call(rbind, audit))
@@ -427,21 +585,22 @@ crra_value <- function(gross, gamma) {
     (gross^(1 - gamma) - 1) / (1 - gamma)
 }
 
-scenario_objective <- function(scenario_gross, previous_weight, contract) {
+scenario_objective <- function(scenario_gross, previous_weight, contract,
+                               year_fraction = 1 / 12) {
   scenario_gross <- as.matrix(scenario_gross)
   gamma <- as.numeric(contract$crra_gamma)
   probability <- as.numeric(contract$cvar_probability)
   cvar_penalty <- as.numeric(contract$cvar_penalty)
   turnover_penalty <- as.numeric(contract$optimizer_turnover_penalty %||% 0)
-  monthly_short_rate <- as.numeric(contract$annual_short_borrow_rate) / 12
-  monthly_cash_rate <- as.numeric(contract$annual_cash_borrow_rate) / 12
+  period_short_rate <- as.numeric(contract$annual_short_borrow_rate) * year_fraction
+  period_cash_rate <- as.numeric(contract$annual_cash_borrow_rate) * year_fraction
   function(weights) {
     portfolio_gross <- 1 + scenario_gross %*% weights - sum(weights)
     turnover <- sum(abs(weights - previous_weight))
     short_notional <- sum(pmax(-weights, 0))
     cash_notional <- max(sum(weights) - 1, 0)
     cost <- as.numeric(contract$turnover_cost) * turnover +
-      monthly_short_rate * short_notional + monthly_cash_rate * cash_notional
+      period_short_rate * short_notional + period_cash_rate * cash_notional
     net_gross <- as.numeric(portfolio_gross) * exp(-cost)
     if (any(!is.finite(net_gross)) || any(net_gross <= 1e-8)) return(1e12)
     loss <- 1 - net_gross
@@ -472,8 +631,21 @@ generate_scenario_optimizer <- function(periods, asset_names, contract,
         latest_input_date > decision) {
       benchmark_protocol_error(method, " used future information at ", decision)
     }
+    pretrade <- previous
+    if (i > 1L && identical(
+        contract$turnover_convention %||% "target_to_target_v1",
+        "drifted_pretrade_v1")) {
+      if (as.Date(periods$holding_end_date[i - 1L]) > decision) {
+        benchmark_protocol_error(
+          method, " previous holding outcome is unavailable at ", decision)
+      }
+      pretrade <- benchmark_pretrade_weight(
+        previous, provided$previous_asset_gross, contract,
+        sprintf("%s pretrade state at %s", method, decision))
+    }
+    year_fraction <- benchmark_period_year_fraction(periods[i, ], contract)
     result <- solve_constrained_weights(
-      scenario_objective(scenarios, previous, contract), previous,
+      scenario_objective(scenarios, pretrade, contract, year_fraction), previous,
       asset_names, contract, context = sprintf("%s at %s", method, decision),
       solver = solver)
     weights[i, ] <- result$weights
@@ -482,7 +654,16 @@ generate_scenario_optimizer <- function(periods, asset_names, contract,
       method = method, decision_date = decision,
       latest_input_date = latest_input_date,
       convergence = result$convergence, iterations = result$iterations,
+      solver_attempts = result$solver_attempts,
+      solver_attempt_codes = result$solver_attempt_codes,
+      solver_attempt_messages = result$solver_attempt_messages,
+      solver_total_iterations = result$solver_total_iterations,
       objective = result$objective,
+      objective_year_fraction = year_fraction,
+      objective_turnover_convention = contract$turnover_convention %||%
+        "target_to_target_v1",
+      solver_message = result$message,
+      constraint_residual = result$constraint_residual,
       scenario_seed = as.integer(provided$scenario_seed),
       stringsAsFactors = FALSE)
   }
@@ -544,6 +725,7 @@ load_vine_context <- function(daily_log_returns, training_marginals_file,
   innovations <- pmin(pmax(innovations, 1e-6), 1 - 1e-6)
   list(
     artifact = artifact, nn_fit = nn_fit, monthly = monthly,
+    daily_log_returns = daily_log_returns,
     raw_u = raw_u, innovations = innovations,
     innovation_dates = as.Date(monthly$periods$holding_end_date[-1L]),
     historical_sorted = lapply(seq_along(artifact$asset_names), function(j)
@@ -691,7 +873,11 @@ vine_provider_factory <- function(kind = c("static", "rolling", "dynamic_nn"),
     list(
       scenarios = scenarios,
       latest_input_date = max(context$monthly$periods$holding_end_date[raw_available]),
-      scenario_seed = scenario_seed)
+      scenario_seed = scenario_seed,
+      previous_asset_gross = if (index > 1L) realised_gross_for_period(
+        context$daily_log_returns,
+        periods$decision_date[index - 1L],
+        periods$holding_end_date[index - 1L]) else NULL)
   }
 }
 

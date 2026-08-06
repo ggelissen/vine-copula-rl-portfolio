@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "protocol_id": "post_holdout_explanatory_ablation_evaluation_v1",
+  "evidence_class": "post_holdout_explanatory",
+  "same_sample_interpretation": "descriptive_same_sample_not_confirmatory",
+  "confirmatory_claims_permitted": false,
+  "successful_v4": {
+    "archive_sha256": "770d2944f915d0ad21ae9af32e31d68d652fdb54e98939caeab45c327b4e5ea1",
+    "evaluation_id": "locked_oos_v1",
+    "required_artifacts": {
+      "batch_manifest": "locked_batch_manifest.json",
+      "realized_panel": "inputs/realized_asset_gross.csv",
+      "strategy_manifest": "strategy_manifest.csv",
+      "evaluation_run_manifest": "publication_results/run_manifest.json",
+      "input_hashes": "publication_results/raw/input_hashes.csv",
+      "scored_monthly_panel": "publication_results/raw/scored_monthly_panel.csv"
+    }
+  },
+  "evaluation": {
+    "economics_fields": [
+      "periods_per_year",
+      "initial_wealth",
+      "net_exposure",
+      "gross_leverage",
+      "max_long_weight",
+      "max_short_weight",
+      "turnover_cost",
+      "annual_short_borrow_rate",
+      "annual_cash_borrow_rate",
+      "annual_risk_free_rate",
+      "crra_gamma"
+    ],
+    "expected_economics": {
+      "periods_per_year": 12,
+      "initial_wealth": 100000.0,
+      "net_exposure": 1.0,
+      "gross_leverage": 1.5,
+      "max_long_weight": 0.6,
+      "max_short_weight": 0.2,
+      "turnover_cost": 0.001,
+      "annual_short_borrow_rate": 0.03,
+      "annual_cash_borrow_rate": 0.02,
+      "annual_risk_free_rate": 0.0,
+      "crra_gamma": 2.0
+    },
+    "benchmark_strategy_ids": [
+      "equal_weight",
+      "shrinkage_mean_variance",
+      "dcc_garch",
+      "static_vine",
+      "rolling_vine",
+      "dynamic_nn_vine"
+    ],
+    "archive_score_tolerance": 1e-12,
+    "inference_replay_weight_tolerance": 1e-10,
+    "weight_tolerance": 1e-6
+  },
+  "matched_design": {
+    "required_equal_code_paths": [
+      "config/config.yaml",
+      "run_with_config.r",
+      "rl/train_rl.r",
+      "rl/action_projection.py",
+      "helper/reproducibility.r"
+    ],
+    "require_equal_actor_parameter_count": true,
+    "require_equal_observation_and_action_dimensions": true,
+    "require_equal_pretraining_update_count": true,
+    "full_update_count_rule": "at_least_pretraining_update_count"
+  },
+  "experiments": {
+    "full_reference": {
+      "evidence_class": "post_holdout_explanatory",
+      "source": "successful_v4_archive",
+      "checkpoint_model": "full",
+      "observation_mode": "full",
+      "allow_legacy_missing_mode": true,
+      "expected_seeds": [
+        20260741, 20260742, 20260743, 20260744, 20260745,
+        20260746, 20260747, 20260748, 20260749, 20260750,
+        20260751, 20260752, 20260753, 20260754, 20260755,
+        20260756, 20260757, 20260758, 20260759, 20260760
+      ],
+      "ensemble_strategy_id": "vine_td3_ensemble"
+    },
+    "no_vine": {
+      "evidence_class": "post_holdout_explanatory",
+      "source": "no_vine_training_release",
+      "checkpoint_model": "full",
+      "observation_mode": "zero",
+      "ablation_scope": "policy_visible_vine_state_only_reward_cvar_retained",
+      "expected_seeds": [
+        20260841, 20260842, 20260843, 20260844, 20260845,
+        20260846, 20260847, 20260848, 20260849, 20260850
+      ],
+      "ensemble_strategy_id": "no_vine_td3_ensemble"
+    },
+    "pretrained_only": {
+      "evidence_class": "post_holdout_explanatory",
+      "source": "full_training_release",
+      "checkpoint_model": "pretrained",
+      "observation_mode": "full",
+      "allow_legacy_missing_mode": true,
+      "expected_seeds": [
+        20260741, 20260742, 20260743, 20260744, 20260745,
+        20260746, 20260747, 20260748, 20260749, 20260750,
+        20260751, 20260752, 20260753, 20260754, 20260755,
+        20260756, 20260757, 20260758, 20260759, 20260760
+      ],
+      "ensemble_strategy_id": "vine_td3_pretrained_ensemble"
+    }
+  },
+  "outputs": {
+    "release_status": "frozen_post_holdout_explanatory_ablation",
+    "same_sample_tests": "descriptive_only_no_confirmatory_tests"
+  }
+}

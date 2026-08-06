@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "contract_revision": "post_holdout_solver_reliability_v2",
+  "applies_to_consumed_v4_result": false,
   "evaluation_id": "locked_oos_v1",
   "net_exposure": 1.0,
   "gross_leverage": 1.5,
@@ -22,6 +24,8 @@
   "mv_risk_aversion": 2.0,
   "optimizer_turnover_penalty": 0.0,
   "optimizer_maxeval": 2000,
+  "optimizer_max_restarts": 2,
   "optimizer_xtol_rel": 1e-9,
-  "hyperparameter_source": "analytic causal shrinkage; risk aversion equals the common CRRA gamma; remaining settings fixed before locked OOS access"
+  "optimizer_allowed_convergence_codes": [1, 2, 3, 4],
+  "hyperparameter_source": "Analytic causal shrinkage and common CRRA risk aversion were fixed pre-holdout. The deterministic continuation count was added post-holdout after a training-prefix solver reliability test and is restricted to future or explicitly post-holdout explanatory work; it does not alter or rescore the consumed v4 result."
 }
