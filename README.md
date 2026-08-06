@@ -2,7 +2,7 @@
 
 Research implementation of a constrained dynamic portfolio-allocation pipeline combining AR-GARCH marginals, a neural time-varying D-vine, synthetic pretraining, historical fine-tuning, and recurrent Twin Delayed DDPG (TD3).
 
-> **Research status:** the codebase contains a corrected and smoke-tested experimental protocol, but it does not yet establish economic superiority. Full synthetic generation, multi-seed training, and locked out-of-sample evaluation remain required before making performance claims.
+> **Research status:** synthetic-data validation and the preregistered 20-seed training sweep are complete. Ablation and benchmark evaluation are in progress; the locked final out-of-sample evaluation has not yet been opened. Economic superiority is not established.
 
 ## Research question
 
