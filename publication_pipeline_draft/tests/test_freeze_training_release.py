@@ -252,6 +252,55 @@ class FreezeTrainingReleaseTests(unittest.TestCase):
             )
         self.assertFalse(output.exists())
 
+    def test_per_seed_source_snapshot_freezes_exact_training_code(self) -> None:
+        frozen_bytes = (self.repo / "rl" / "train_rl.r").read_bytes()
+        for seed in self.seeds:
+            snapshot = (
+                self.runs / f"seed_{seed}" / "source_snapshot" / "rl" /
+                "train_rl.r"
+            )
+            snapshot.parent.mkdir(parents=True, exist_ok=True)
+            snapshot.write_bytes(frozen_bytes)
+        (self.repo / "rl" / "train_rl.r").write_text(
+            "# later operational code\n", encoding="utf-8"
+        )
+        output = self.base / "snapshot_backed_release"
+        manifest = freeze_training_release(
+            repo_root=self.repo,
+            rl_runs=self.runs,
+            diagnostics_archive=self.archive,
+            output=output,
+            expected_seeds=2,
+        )
+        copied = output / "source_snapshot" / "rl" / "train_rl.r"
+        self.assertEqual(copied.read_bytes(), frozen_bytes)
+        inventory = pd.read_csv(output / "training_snapshot_inventory.csv")
+        code = inventory[inventory["normalized_path"] == "rl/train_rl.r"].iloc[0]
+        self.assertEqual(code["source_origin"], "per_seed_training_snapshot_consensus")
+        self.assertEqual(int(code["training_snapshot_copy_count"]), 2)
+        self.assertEqual(manifest["release_status"], "frozen_pre_oos")
+
+    def test_post_holdout_training_release_is_never_labelled_pre_oos(self) -> None:
+        output = self.base / "post_holdout_release"
+        manifest = freeze_training_release(
+            repo_root=self.repo,
+            rl_runs=self.runs,
+            diagnostics_archive=self.archive,
+            output=output,
+            expected_seeds=2,
+            evidence_class="post_holdout_explanatory",
+        )
+        self.assertEqual(
+            manifest["release_status"],
+            "frozen_post_holdout_explanatory_training",
+        )
+        self.assertEqual(manifest["evidence_class"], "post_holdout_explanatory")
+        self.assertFalse(manifest["confirmatory_claims_permitted"])
+        read_only = (output / "READ_ONLY_RELEASE.txt").read_text(encoding="utf-8")
+        self.assertIn("post-holdout explanatory", read_only)
+        self.assertIn("confirmatory claims are forbidden", read_only)
+        self.assertNotIn("frozen pre-OOS training release", read_only)
+
 
 if __name__ == "__main__":
     unittest.main()

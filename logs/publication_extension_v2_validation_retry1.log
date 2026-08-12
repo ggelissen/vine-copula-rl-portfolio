@@ -1,0 +1,18 @@
+.......................................F................................ [ 62%]
+............................................                             [100%]
+=================================== FAILURES ===================================
+_______________ test_evaluator_replays_independent_causal_modes ________________
+
+    def test_evaluator_replays_independent_causal_modes() -> None:
+        source = (ROOT / "rl/evaluate_rl.r").read_text(encoding="utf-8")
+        assert 'vine_feature_mode <- Sys.getenv("VINE_FEATURE_MODE"' in source
+        assert 'cvar_observation_mode <- Sys.getenv("CVAR_OBSERVATION_MODE"' in source
+        assert 'cvar_reward_mode <- Sys.getenv("CVAR_REWARD_MODE"' in source
+        assert "environment_arguments$vine_feature_mode" in source
+>       assert '"rl/policy_inference_server_v2.py"' in source
+E       assert '"rl/policy_inference_server_v2.py"' in '# Historical out-of-sample evaluation for the episodic vine-RL policy.\n# The benchmark strategies and RL policy must...) + theme_bw(), width = 9, height = 5)\ncat("Historical evaluation complete. Results saved for", run_name, "\\n")\n}\n'
+
+publication_pipeline_draft/tests/test_external_training_wiring.py:46: AssertionError
+=========================== short test summary info ============================
+FAILED publication_pipeline_draft/tests/test_external_training_wiring.py::test_evaluator_replays_independent_causal_modes
+1 failed, 115 passed in 18.71s

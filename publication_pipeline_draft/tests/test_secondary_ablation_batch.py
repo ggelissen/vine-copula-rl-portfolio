@@ -215,24 +215,64 @@ class SecondaryAblationBatchTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-        equal_code_paths = [
-            "config/config.yaml", "run_with_config.r", "rl/train_rl.r",
-            "rl/action_projection.py", "helper/reproducibility.r",
-        ]
+        code_sources = {
+            "config/config.yaml": (
+                "vine:\n  sim_cores: " + ("2" if mode == "zero" else "1") +
+                "\nablation:\n  zero_vine_state: " +
+                ("true" if mode == "zero" else "false") + "\nagent:\n  hidden: 64\n"
+            ),
+            "rl/action_projection.py": "IDENTICAL_ACTION_PROJECTION = True\n",
+            "run_with_config.r": (
+                'set_default_env("VINE_OBSERVATION_MODE", "zero")\n'
+                if mode == "zero" else "# legacy full launcher\n"
+            ),
+            "rl/train_rl.r": (
+                'vine_observation_mode <- Sys.getenv("VINE_OBSERVATION_MODE", "full")\n'
+                "make_env(vine_observation_mode = vine_observation_mode)\n"
+                if mode == "zero" else "# legacy full trainer\n"
+            ),
+            "rl/rl_environment.r": (
+                "vine_observation <- if (no_vine_observation) numeric(63) else vine_state\n"
+                "cvar_observation <- if (no_vine_observation) 0 else last_cvar\n"
+                if mode == "zero" else "# legacy full environment\n"
+            ),
+            "helper/reproducibility.r": (
+                'no_vine_signal_mask <- "explicit_vine_and_scenario_cvar_v1"\n'
+                'Sys.getenv("VINE_OBSERVATION_MODE")\n'
+                if mode == "zero" else "# legacy full manifest\n"
+            ),
+            "rl/training_sanity_check.r": (
+                "cvar_observation <- if (no_vine_observation) 0 else last_cvar\n"
+                'no_vine_signal_mask <- "explicit_vine_and_scenario_cvar_v1"\n'
+                if mode == "zero" else "# legacy full sanity\n"
+            ),
+        }
+        for relative, content in code_sources.items():
+            target = release / "source_snapshot" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
         pd.DataFrame(
             [
                 {
                     "artifact_kind": "code", "normalized_path": path,
                     "expected_md5": f"hash-{index}",
                 }
-                for index, path in enumerate(equal_code_paths)
+                for index, path in enumerate(code_sources)
             ]
         ).to_csv(release / "training_snapshot_inventory.csv", index=False)
+        post_holdout = mode == "zero"
         (release / "training_release_manifest.json").write_text(
             json.dumps(
                 {
                     "schema_version": 1,
-                    "release_status": "frozen_pre_oos",
+                    "release_status": (
+                        "frozen_post_holdout_explanatory_training"
+                        if post_holdout else "frozen_pre_oos"
+                    ),
+                    "evidence_class": (
+                        "post_holdout_explanatory" if post_holdout else "pre_oos"
+                    ),
+                    "confirmatory_claims_permitted": not post_holdout,
                     "holdout_accessed_by_freezer": False,
                     "seed_artifact_count": len(seeds),
                 }
@@ -404,9 +444,29 @@ class SecondaryAblationBatchTests(unittest.TestCase):
             },
             "matched_design": {
                 "required_equal_code_paths": [
-                    "config/config.yaml", "run_with_config.r", "rl/train_rl.r",
-                    "rl/action_projection.py", "helper/reproducibility.r",
+                    "rl/action_projection.py",
                 ],
+                "allowed_config_difference_paths": [
+                    "vine.sim_cores", "ablation.zero_vine_state",
+                ],
+                "required_no_vine_source_markers": {
+                    "run_with_config.r": ['set_default_env("VINE_OBSERVATION_MODE"'],
+                    "rl/train_rl.r": [
+                        'vine_observation_mode <- Sys.getenv("VINE_OBSERVATION_MODE", "full")',
+                        "vine_observation_mode = vine_observation_mode",
+                    ],
+                    "rl/rl_environment.r": [
+                        "vine_observation <- if (no_vine_observation)",
+                        "cvar_observation <- if (no_vine_observation) 0",
+                    ],
+                    "helper/reproducibility.r": [
+                        "no_vine_signal_mask", '"VINE_OBSERVATION_MODE"',
+                    ],
+                    "rl/training_sanity_check.r": [
+                        "cvar_observation <- if (no_vine_observation) 0",
+                        "explicit_vine_and_scenario_cvar_v1",
+                    ],
+                },
                 "require_equal_actor_parameter_count": True,
                 "require_equal_observation_and_action_dimensions": True,
                 "require_equal_pretraining_update_count": True,
@@ -418,6 +478,7 @@ class SecondaryAblationBatchTests(unittest.TestCase):
                     "source": "successful_v4_archive",
                     "checkpoint_model": "full",
                     "observation_mode": "full",
+                    "allow_legacy_missing_mode": True,
                     "expected_seeds": self.full_seeds,
                     "ensemble_strategy_id": "full_ensemble",
                 },
@@ -435,6 +496,7 @@ class SecondaryAblationBatchTests(unittest.TestCase):
                     "source": "full_training_release",
                     "checkpoint_model": "pretrained",
                     "observation_mode": "full",
+                    "allow_legacy_missing_mode": True,
                     "expected_seeds": self.full_seeds,
                     "ensemble_strategy_id": "pretrained_ensemble",
                 },
@@ -557,6 +619,48 @@ class SecondaryAblationBatchTests(unittest.TestCase):
         write_contents(self.no_vine_release)
         runner = SyntheticRunner(self.realized)
         with self.assertRaisesRegex(SecondaryAblationError, "expected 'zero'"):
+            self._execute(runner)
+        self.assertEqual(runner.calls, [])
+
+    def test_legacy_full_release_without_mode_markers_is_allowed_and_replayed(self) -> None:
+        for seed in self.full_seeds:
+            directory = self.full_release / "seeds" / f"seed_{seed}"
+            (directory / "vine_observation_mode.txt").unlink()
+            report_path = directory / "sanity_no_holdout" / "sanity_report.json"
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            report.pop("vine_observation_mode")
+            report_path.write_text(json.dumps(report), encoding="utf-8")
+        write_contents(self.full_release)
+
+        runner = SyntheticRunner(self.realized)
+        output, _, manifest = self._execute(runner)
+        self.assertTrue(manifest["full_inference_replay_verified"])
+        matched = pd.read_csv(
+            output
+            / "post_holdout_explanatory_reports"
+            / "post_holdout_explanatory_matched_design_verification.csv"
+        )
+        row = matched.loc[
+            matched["check"] == "protocol:full_vine_observation_mode_evidence"
+        ].iloc[0]
+        self.assertEqual(row["status"], "pass")
+        self.assertIn("legacy_missing_allowed_by_frozen_contract", row["full_value"])
+
+    def test_legacy_full_permission_never_accepts_a_conflicting_mode(self) -> None:
+        report_path = (
+            self.full_release
+            / "seeds"
+            / f"seed_{self.full_seeds[0]}"
+            / "sanity_no_holdout"
+            / "sanity_report.json"
+        )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["vine_observation_mode"] = "zero"
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        write_contents(self.full_release)
+
+        runner = SyntheticRunner(self.realized)
+        with self.assertRaisesRegex(SecondaryAblationError, "sanity mode differs"):
             self._execute(runner)
         self.assertEqual(runner.calls, [])
 

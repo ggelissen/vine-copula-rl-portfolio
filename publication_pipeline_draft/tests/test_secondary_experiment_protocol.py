@@ -48,12 +48,14 @@ def test_live_secondary_contract_is_explicitly_post_holdout() -> None:
     }
 
 
-def test_four_gpu_launcher_requires_an_explicit_cuda_training_runtime() -> None:
+def test_multi_gpu_launcher_requires_an_explicit_cuda_training_runtime() -> None:
     launcher = (ROOT / "hpc/run_no_vine_4gpu.sh").read_text(encoding="utf-8")
     assert "${TRAIN_PYTHON:?" in launcher
     assert "RETICULATE_PYTHON=\"$TRAIN_PYTHON\"" in launcher
     assert "env -u CONDA_PREFIX" in launcher
-    assert "torch.cuda.device_count() < 4" in launcher
+    assert 'WORKERS="${NO_VINE_WORKERS:-2}"' in launcher
+    assert "torch.cuda.device_count() < required_gpus" in launcher
+    assert 'status_inputs+=("$SWEEP_ROOT/worker_status_${worker}.csv")' in launcher
     assert "import gymnasium" in launcher
     requirements = (ROOT / "requirements-secondary-training.txt").read_text(
         encoding="utf-8"
@@ -89,6 +91,24 @@ def test_clean_no_vine_retraining_contract_preflight() -> None:
     assert "preflight_no_vine_training_contract.py" in launcher
     assert "--require-embedded" in launcher
     assert "no_vine_rl_runs_secondary_v3" in launcher
+    resume = (ROOT / "hpc/resume_no_vine_v3_sanity_2gpu.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "--require-embedded" in resume
+    assert "SWEEP_REUSE_COMPLETED_TRAINING=true" in resume
+    assert "Training was not rerun" in resume
+    assert "import pandas" in resume
+    assert "worker_status_sanity_retry1_" in resume
+    manifest_writer = (ROOT / "helper/reproducibility.r").read_text(
+        encoding="utf-8"
+    )
+    assert "schema_version = 5L" in manifest_writer
+    assert "interventions = list(" in manifest_writer
+    assert "no_vine_signal_mask = no_vine_signal_mask" in manifest_writer
+    requirements = (ROOT / "requirements-secondary-training.txt").read_text(
+        encoding="utf-8"
+    )
+    assert "pandas==3.0.5" in requirements
 
 
 def test_mode_marker_recovery_is_attested_and_sanity_only() -> None:
@@ -113,6 +133,7 @@ def test_mode_marker_recovery_is_attested_and_sanity_only() -> None:
     assert "failed checks:" in repair
     assert "valid_embedded_no_vine_checkpoint_evidence" in verifier
     assert "valid_checkpoint_files_with_legacy_missing_mode_metadata" in verifier
+    assert '"evidence_is_post_hoc_recovery": overall_status ==' in verifier
     assert 'SWEEP_REUSE_COMPLETED_TRAINING=true' in resume
     assert "Training was not rerun" in resume
     attestation = (ROOT / "rl/checkpoint_attestation.py").read_text(

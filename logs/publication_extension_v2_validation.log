@@ -1,0 +1,62 @@
+.........................F....F......................................... [ 62%]
+...........................F................                             [100%]
+=================================== FAILURES ===================================
+_________ test_no_vine_ablation_masks_all_policy_visible_vine_signals __________
+
+    @requires_no_vine_ablation
+    def test_no_vine_ablation_masks_all_policy_visible_vine_signals() -> None:
+        environment = (ROOT / "rl/rl_environment.r").read_text()
+        sanity = (ROOT / "rl/training_sanity_check.r").read_text()
+        trainer = (ROOT / "rl/train_rl.r").read_text()
+        evaluator = (ROOT / "rl/evaluate_rl.r").read_text()
+        policy_server = (ROOT / "rl/policy_inference_server.py").read_text()
+    
+        masking_rule = "cvar_observation <- if (no_vine_observation) 0"
+>       assert masking_rule in environment
+E       assert 'cvar_observation <- if (no_vine_observation) 0' in '# ============================================================================\n# rl_environment.R\n# RL environment ...\n)\n\nif (identical(Sys.getenv("VERBOSE_R_STARTUP", "0"), "1"))\n  cat("RLEnvironment (full framework) loaded.\\n")\n'
+
+publication_pipeline_draft/tests/test_evaluation_extensions.py:116: AssertionError
+___________ test_historical_evaluator_isolates_r_and_python_libtorch ___________
+
+    def test_historical_evaluator_isolates_r_and_python_libtorch() -> None:
+        evaluator = (ROOT / "rl/evaluate_rl.r").read_text()
+        server = (ROOT / "rl/policy_inference_server.py").read_text()
+>       assert "policy_inference_server.py" in evaluator
+E       assert 'policy_inference_server.py' in '# Historical out-of-sample evaluation for the episodic vine-RL policy.\n# The benchmark strategies and RL policy must...) + theme_bw(), width = 9, height = 5)\ncat("Historical evaluation complete. Results saved for", run_name, "\\n")\n}\n'
+
+publication_pipeline_draft/tests/test_evaluation_extensions.py:253: AssertionError
+_______________ test_clean_no_vine_retraining_contract_preflight _______________
+
+    def test_clean_no_vine_retraining_contract_preflight() -> None:
+        contract = load_json(CONTRACT)
+        experiment = next(
+            item
+            for item in contract["experiments"]
+            if item["experiment_id"] == "no_vine_td3"
+        )
+        expected_root = ROOT / experiment["sweep_root"]
+>       result = preflight_no_vine(ROOT, expected_root)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+publication_pipeline_draft/tests/test_secondary_experiment_protocol.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+publication_pipeline_draft/preflight_no_vine_training_contract.py:94: in preflight
+    require(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+pattern = 'no_vine_observation\\s*<-\\s*identical\\s*\\(\\s*private\\$vine_observation_mode\\s*,\\s*[\\"\']zero[\\"\']\\s*\\)'
+text = '# ============================================================================\n# rl_environment.R\n# RL environment ...\n)\n\nif (identical(Sys.getenv("VERBOSE_R_STARTUP", "0"), "1"))\n  cat("RLEnvironment (full framework) loaded.\\n")\n'
+label = 'environment activates zero mode', fixed = False
+
+    def require(pattern: str, text: str, label: str, *, fixed: bool = False) -> None:
+        matched = pattern in text if fixed else re.search(pattern, text, re.MULTILINE) is not None
+        if not matched:
+>           raise PreflightError(f"Missing no-vine training contract: {label}")
+E           publication_pipeline_draft.preflight_no_vine_training_contract.PreflightError: Missing no-vine training contract: environment activates zero mode
+
+publication_pipeline_draft/preflight_no_vine_training_contract.py:35: PreflightError
+=========================== short test summary info ============================
+FAILED publication_pipeline_draft/tests/test_evaluation_extensions.py::test_no_vine_ablation_masks_all_policy_visible_vine_signals
+FAILED publication_pipeline_draft/tests/test_evaluation_extensions.py::test_historical_evaluator_isolates_r_and_python_libtorch
+FAILED publication_pipeline_draft/tests/test_secondary_experiment_protocol.py::test_clean_no_vine_retraining_contract_preflight
+3 failed, 113 passed in 64.44s (0:01:04)
