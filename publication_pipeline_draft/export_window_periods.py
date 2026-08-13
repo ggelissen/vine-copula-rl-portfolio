@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import tempfile
@@ -13,6 +14,10 @@ from pathlib import Path
 
 class ExportError(RuntimeError):
     pass
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def read(path: Path) -> list[dict[str, str]]:
@@ -58,6 +63,11 @@ def export(schedule_path: Path, monthly_path: Path, output: Path) -> dict[str, o
                     "window_count": len(inventory), "calendar_reestimated": False}
         (temporary / "period_export_manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        checksum = [f"{sha256(path)}  {path.name}" for path in
+                    sorted(temporary.iterdir()) if path.is_file() and
+                    path.name != "CONTENTS.sha256"]
+        (temporary / "CONTENTS.sha256").write_text(
+            "\n".join(checksum) + "\n", encoding="ascii")
         os.replace(temporary, output)
         return manifest
     except Exception:

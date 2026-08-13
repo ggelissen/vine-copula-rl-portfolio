@@ -24,9 +24,17 @@ def sha256(path: Path) -> str:
 
 
 def verify_contract(root: Path) -> tuple[dict, dict]:
-    manifest_path = root / "window_training_manifest.json"
+    broad_manifest = root / "window_training_manifest.json"
+    focused_manifest = root / "focused_window_training_manifest.json"
+    manifest_candidates = [path for path in (broad_manifest, focused_manifest)
+                           if path.is_file()]
+    if len(manifest_candidates) != 1:
+        raise PreparationError(
+            "Window contract must contain exactly one broad or focused manifest.")
+    manifest_path = manifest_candidates[0]
     environment_path = root / "generator_environment.json"
-    jobs_path = root / "window_rl_jobs.csv"
+    jobs_path = (root / "window_rl_jobs.csv" if manifest_path == broad_manifest
+                 else root / "focused_window_jobs.csv")
     contents = root / "CONTENTS.sha256"
     if not all(path.is_file() for path in
                (manifest_path, environment_path, jobs_path, contents)):
@@ -38,8 +46,9 @@ def verify_contract(root: Path) -> tuple[dict, dict]:
             if not target.is_file() or sha256(target) != expected:
                 raise PreparationError(f"Contract checksum mismatch: {target}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("release_status") != \
-            "frozen_development_window_training_contract":
+    if manifest.get("release_status") not in {
+            "frozen_development_window_training_contract",
+            "frozen_focused_window_training_contract"}:
         raise PreparationError("Contract status does not authorize generation.")
     if manifest.get("confirmatory_claim_permitted") is not False:
         raise PreparationError("Development generator cannot authorize confirmation.")
@@ -65,6 +74,14 @@ def main() -> int:
         manifest, generator_environment = verify_contract(args.contract.resolve())
         if manifest.get("program_sha256") != release.get("program_sha256"):
             raise PreparationError("Window contract and extension release differ.")
+        if manifest.get("release_status") == \
+                "frozen_focused_window_training_contract":
+            if (release.get("release_role") !=
+                    "focused_walk_forward_mechanism_v1" or
+                    release.get("focused_protocol_sha256") !=
+                    manifest.get("focused_protocol_sha256")):
+                raise PreparationError(
+                    "Focused generator contract and prospective release differ.")
         if not args.rscript.is_file() or args.sim_cores < 1:
             raise PreparationError("Rscript/simulation core setting is invalid.")
         if args.log_root.exists():

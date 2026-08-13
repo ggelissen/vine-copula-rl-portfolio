@@ -92,7 +92,7 @@ portfolio transition path. It is not a replacement primary cost convention.
 python publication_pipeline_draft/analyze_ensemble_mechanism.py `
   --batch analysis_outputs/oos_v4_verified_770d2944/main_oos_v4_operational_retry `
   --contract publication_pipeline_draft/config/ensemble_mechanism_contract.example.json `
-  --output analysis_outputs/oos_v4_verified_770d2944/post_holdout_ensemble_mechanism_v1
+  --output analysis_outputs/oos_v4_verified_770d2944/post_holdout_ensemble_mechanism_v2
 ```
 
 The example contract is appropriate for the verified 20-seed v4 batch. Copy

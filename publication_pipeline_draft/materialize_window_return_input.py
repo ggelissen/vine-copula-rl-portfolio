@@ -79,8 +79,9 @@ def materialize(
     window = matches[0]
     require(window.get("test_data_role") == "retrospective_development_only",
             "Only retrospective development windows may use this materializer.")
-    require("confirmatory" not in window.get("claim_limit", "").lower(),
-            "Retrospective window has an invalid confirmatory claim label.")
+    require(str(window.get("confirmatory_claim_permitted", "")).lower() ==
+            "false",
+            "Retrospective window does not explicitly prohibit confirmation.")
     expected_periods = int(window["test_months"])
     require(expected_periods == 24,
             "The current RL protocol requires exactly 24 reserved periods.")
