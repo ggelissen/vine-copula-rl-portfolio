@@ -1,0 +1,110 @@
+\section{Data and Empirical Design}
+\label{sec:data}
+
+\subsection{Asset Universe and Return Construction}
+\label{subsec:4_asset_selection}
+
+The empirical panel contains seven adjusted market-level series spanning US equities, Chinese equities, and gold. The fixed column order is S\&P 500, NASDAQ, Dow Jones, SSE 50, Dividend Index, ChiNext, and Gold. The universe was selected before the locked evaluation and is held constant in model fitting, checkpoint metadata, benchmark generation, and scoring. Table \ref{tab:assets} summarises the economic role of each series.
+
+\begin{table}[H]
+\centering
+\caption{Seven-Asset Portfolio Universe}
+\label{tab:assets}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Code} & \textbf{Market exposure} & \textbf{Portfolio role} \\
+\midrule
+SP500 & Large-cap US equities & Broad US equity factor \\
+NASDAQ & Technology-heavy US equities & Growth and technology factor \\
+DOW & US blue-chip equities & Mature large-cap factor \\
+SSE50 & Large-cap mainland Chinese equities & China large-cap factor \\
+DIVIDEND & Chinese dividend equities & China value/income factor \\
+CHINEXT & Chinese growth equities & China growth factor \\
+GOLD & Gold adjusted-level series & Defensive real-asset factor \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The immutable input contains 2,946 synchronized adjusted-level observations from 16 December 2013 to 6 July 2026. Dates are required to be valid, unique, and strictly increasing; all seven levels must be finite and strictly positive. Daily log returns are constructed as
+
+\begin{equation}
+r_{i,t}=\log P_{i,t}-\log P_{i,t-1},
+\label{eq:data_log_returns}
+\end{equation}
+
+which yields 2,945 complete common-date return rows. The loader neither reorders dates nor interpolates, winsorises, forward-fills, or silently drops an asset. Monthly portfolio returns are compounded from the daily log returns over $(d_t,d_{t+1}]$, where $d_t$ is the final common trading date available for the decision month. This common calendar is essential because US and Chinese market holidays differ.
+
+\subsection{Descriptive Statistics}
+\label{subsec:4_descriptive_statistics}
+
+Table \ref{tab:descriptive} reports full-panel daily log-return summaries. These figures describe the realised sample; they are not inputs estimated with access to future data. Marginal and copula parameters used by the agent are fitted only on the training prefix described below.
+
+\begin{table}[H]
+\centering
+\caption{Daily Log-Return Descriptive Statistics, December 2013--July 2026}
+\label{tab:descriptive}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l r r r r r r}
+\toprule
+\textbf{Asset} & \textbf{Mean (\%)} & \textbf{SD (\%)} & \textbf{Skewness} & \textbf{Excess kurtosis} & \textbf{Minimum (\%)} & \textbf{Maximum (\%)} \\
+\midrule
+S\&P 500 & 0.0489 & 1.1112 & -0.631 & 16.145 & -12.765 & 9.089 \\
+NASDAQ & 0.0635 & 1.3433 & -0.406 & 8.848 & -13.141 & 11.478 \\
+Dow Jones & 0.0410 & 1.0892 & -0.819 & 22.081 & -13.842 & 10.764 \\
+SSE 50 & 0.0218 & 1.3923 & -0.217 & 8.806 & -10.517 & 11.150 \\
+Dividend Index & 0.0187 & 1.3342 & -0.944 & 13.118 & -10.540 & 9.538 \\
+ChiNext & 0.0391 & 2.1472 & -0.062 & 8.901 & -17.770 & 18.232 \\
+Gold & 0.0448 & 0.9826 & -0.774 & 14.151 & -10.533 & 7.212 \\
+\bottomrule
+\end{tabular}%
+}
+\caption*{\footnotesize Notes: Statistics use all 2,945 synchronized daily log returns and are descriptive. Excess kurtosis is relative to the Gaussian value of zero.}
+\end{table}
+
+All seven series are heavy-tailed and six are materially negatively skewed. ChiNext has the greatest daily volatility and the widest observed range; Gold has the lowest volatility. These properties motivate asset-specific conditional volatility filters and a tail-dependent copula rather than a homoskedastic multivariate Gaussian model.
+
+\subsection{Cross-Asset Dependence}
+\label{subsec:4_correlation}
+
+Table \ref{tab:correlation} gives the full-panel Pearson correlation matrix. Correlations within the three US indices are high, especially S\&P 500--Dow Jones (0.948) and S\&P 500--NASDAQ (0.945). Chinese equity dependence is also substantial but lower, with SSE 50--Dividend at 0.757 and SSE 50--ChiNext at 0.566. Cross-region equity correlations lie near 0.10--0.16, while Gold is close to uncorrelated with every equity series. These unconditional values conceal conditional and tail dependence, which the dynamic D-vine is designed to represent.
+
+\begin{table}[H]
+\centering
+\caption{Unconditional Pearson Correlation Matrix}
+\label{tab:correlation}
+\begin{tabular}{l c c c c c c c}
+\toprule
+ & \textbf{SP500} & \textbf{NASDAQ} & \textbf{DOW} & \textbf{SSE50} & \textbf{DIV} & \textbf{CNXT} & \textbf{GOLD} \\
+\midrule
+\textbf{SP500} & 1.000 & 0.945 & 0.948 & 0.155 & 0.109 & 0.142 & 0.016 \\
+\textbf{NASDAQ} & 0.945 & 1.000 & 0.826 & 0.156 & 0.097 & 0.149 & 0.012 \\
+\textbf{DOW} & 0.948 & 0.826 & 1.000 & 0.146 & 0.110 & 0.122 & 0.019 \\
+\textbf{SSE50} & 0.155 & 0.156 & 0.146 & 1.000 & 0.757 & 0.566 & 0.052 \\
+\textbf{DIV} & 0.109 & 0.097 & 0.110 & 0.757 & 1.000 & 0.499 & 0.046 \\
+\textbf{CNXT} & 0.142 & 0.149 & 0.122 & 0.566 & 0.499 & 1.000 & 0.038 \\
+\textbf{GOLD} & 0.016 & 0.012 & 0.019 & 0.052 & 0.046 & 0.038 & 1.000 \\
+\bottomrule
+\end{tabular}
+\caption*{\footnotesize Notes: Pearson correlations of synchronized daily log returns over the full descriptive sample.}
+\end{table}
+
+\subsection{Marginal and Synthetic-Data Diagnostics}
+\label{subsec:4_stat_autocorrelation_tests}
+
+The original draft relied on generic full-sample ADF and Ljung--Box tables. The implemented protocol instead gates the objects that enter the copula. For every asset, candidate marginal models are estimated on the training prefix and the standardised residuals and squared residuals are tested at lags 5, 10, and 20. The model proceeds only if the selected marginal has zero-mean, approximately unit-variance residuals and passes the preregistered 1\% residual-autocorrelation gates. This is stricter and more directly relevant than using a unit-root test on returns as evidence for a particular GARCH form.
+
+Synthetic validation is also multi-dimensional. Marginal summaries compare mean, dispersion, quantiles, skewness, kurtosis, VaR, and CVaR. Cross-sectional diagnostics compare all 21 Pearson correlations and lower-tail co-exceedance counts with finite-sample compatibility intervals. Temporal diagnostics compare lagged returns and squared returns. In the frozen generator run, marginal fidelity passed for all seven assets, the strict correlation rule passed for 20 of 21 pairs, and lower-tail co-exceedance was statistically compatible for all 21 pairs. The single strict-correlation miss is retained and reported rather than tuned away; passing diagnostics supports fidelity to the measured training sample, not proof that synthetic paths are indistinguishable from future markets.
+
+\subsection{Data Partitioning and Locked Evaluation}
+\label{subsec:4_data_partitioning}
+
+Monthly periods are built first and only then split. The final 24 decisions, from 31 July 2024 through 30 June 2026 with holding ends through 6 July 2026, form the locked evaluation block. All marginal, vine, synthetic-data, RL, and benchmark-selection operations are restricted to information dated no later than the corresponding training or decision cutoff. The training-prefix holding periods end no later than 31 July 2024, so the first evaluation return is never present in training.
+
+Synthetic pre-training uses 1,000 newly simulated 24-step episodes and no realised historical outcomes. Historical fine-tuning uses all 61 permissible overlapping 24-month trajectories from the prefix. A diagnostic fit uses 37 early trajectories and a chronologically later 24-month validation path after purging the 23 trajectories whose targets overlap validation; because the number of passes is fixed at one, validation is logged but does not select duration. The final agent is reloaded from the same pretrained checkpoint and fitted once on all 61 trajectories.
+
+The locked calendar contains 24 planned holding periods. The preregistered primary scope requires at least 15 joint trading observations and excludes two rows: 30 January--27 February 2026 has 14 common observations, and 30 June--6 July 2026 has three. Primary economic and inferential results therefore use 22 complete periods. The 24-row calculation is reported only as shortened-period sensitivity evidence and does not replace the declared primary sample.
+
+\subsection{Remarks on Data Quality and Limitations}
+\label{subsec:4_remarks}
+
+Several limitations remain. First, the panel contains broad adjusted-level series rather than directly tradable total-return ETFs, so fees, tracking error, dividends, tax treatment, and currency conversion are not fully represented. Second, synchronized common dates avoid interpolation but can leave relatively short cross-market holding periods; the 15-observation completeness rule is conservative and should be frozen separately for future panels. Third, the sample contains only one realised market path and 22 complete primary test periods. Monthly 5\% CVaR is therefore based on one observed tail month and is descriptive, not a reliable tail-risk superiority test. Finally, the present seven-asset universe is modest. External validity requires a separately frozen investable multi-asset panel and non-overlapping walk-forward windows, with source licences, total-return definitions, and immutable data hashes included in the replication package.

@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "analysis_id": "terminal_robustness_and_reproducibility_v1",
+  "status": "pre_execution_frozen_weight_robustness_contract",
+  "scientific_model_contract_changed": false,
+  "policy_retraining_permitted": false,
+  "model_selection_permitted": false,
+  "confirmatory_claim_created": false,
+  "claim_limit": "Robustness rescoring of already frozen policies. Preserve each source evidence class; do not use these results for post-holdout model selection.",
+  "daily_adjusted_levels": "data/portfolio_B_7assets_2013.csv",
+  "asset_order": [
+    "SP500", "NASDAQ", "DOW", "SSE50", "DIVIDEND", "CHINEXT", "GOLD"
+  ],
+  "sources": [
+    {
+      "source_id": "frozen_primary_oos",
+      "path": "locked_evaluation/main_oos_v4_operational_retry/publication_results/raw/scored_monthly_panel.csv",
+      "evidence_class": "frozen_primary_evaluation",
+      "claim_scope": "single_locked_primary_holdout",
+      "required": true
+    },
+    {
+      "source_id": "causal_components",
+      "path": "analysis_outputs/causal_common_accounting_v2_v3_v4_plot_runtime_v1/raw/scored_monthly_panel.csv",
+      "evidence_class": "post_holdout_explanatory",
+      "claim_scope": "causal_component_and_algorithm_explanation_only",
+      "required": true
+    },
+    {
+      "source_id": "focused_walk_forward",
+      "path": "publication_eval/focused_walk_forward_period_panel_v1_final.csv",
+      "evidence_class": "retrospective_walk_forward",
+      "claim_scope": "two_nonoverlapping_retrospective_windows",
+      "required": true
+    },
+    {
+      "source_id": "synthetic_dose",
+      "path": "analysis_outputs/synthetic_dose_response_v1_results/tables/synthetic_dose_scored_period_panel.csv",
+      "evidence_class": "post_holdout_explanatory",
+      "claim_scope": "synthetic_unique_path_dose_explanation_only",
+      "required": true
+    },
+    {
+      "source_id": "synthetic_presentations",
+      "path": "analysis_outputs/synthetic_presentation_response_v2_results/tables/synthetic_presentation_scored_period_panel.csv",
+      "evidence_class": "post_holdout_explanatory",
+      "claim_scope": "unique_path_versus_presentation_budget_explanation_only",
+      "required": true
+    },
+    {
+      "source_id": "masked_pretraining_controls",
+      "path": "analysis_outputs/masked_pretraining_controls_v1_results/tables/masked_pretraining_scored_period_panel.csv",
+      "evidence_class": "post_holdout_explanatory",
+      "claim_scope": "matched_historical_and_bootstrap_pretraining_controls",
+      "required": true
+    }
+  ],
+  "economics": {
+    "crra_gamma": 2.0,
+    "periods_per_year": 12,
+    "day_count_basis": 365,
+    "primary_transaction_cost_bps": 10,
+    "primary_annual_short_borrow_percent": 3,
+    "primary_annual_cash_borrow_percent": 2,
+    "transaction_cost_bps_grid": [0, 10, 25, 50],
+    "annual_short_borrow_percent_grid": [0, 3, 6, 10],
+    "annual_cash_borrow_percent_grid": [0, 2, 5, 10],
+    "break_even_transaction_cost_max_bps": 500
+  },
+  "daily_risk": {
+    "annualization_days": 252,
+    "minimum_daily_observations": 100,
+    "tail_probabilities": [0.95, 0.99],
+    "monthly_reconciliation_tolerance": 1e-8,
+    "weight_tolerance": 1e-6,
+    "gross_exposure_cap": 1.5,
+    "position_long_cap": 0.6,
+    "position_short_cap": -0.2
+  },
+  "inference": {
+    "bootstrap_replications": 50000,
+    "moving_block_lengths": [1, 2, 3, 4, 6],
+    "stationary_expected_block_lengths": [2, 3, 6, 12],
+    "bootstrap_seed": 20261801,
+    "multiplicity_control": "holm_within_evidence_family_and_resampling_specification",
+    "white_reality_check": true,
+    "leave_one_period_out": true
+  },
+  "contrasts": [
+    {
+      "contrast_id": "primary_vs_equal_weight",
+      "family": "frozen_primary_benchmarks",
+      "candidate_source": "frozen_primary_oos",
+      "candidate": "vine_td3_ensemble",
+      "comparator_source": "frozen_primary_oos",
+      "comparator": "equal_weight"
+    },
+    {
+      "contrast_id": "primary_vs_static_vine",
+      "family": "frozen_primary_benchmarks",
+      "candidate_source": "frozen_primary_oos",
+      "candidate": "vine_td3_ensemble",
+      "comparator_source": "frozen_primary_oos",
+      "comparator": "static_vine"
+    },
+    {
+      "contrast_id": "primary_vs_dynamic_nn_vine",
+      "family": "frozen_primary_benchmarks",
+      "candidate_source": "frozen_primary_oos",
+      "candidate": "vine_td3_ensemble",
+      "comparator_source": "frozen_primary_oos",
+      "comparator": "dynamic_nn_vine"
+    },
+    {
+      "contrast_id": "raw_vine_state_contribution",
+      "family": "post_holdout_causal_components",
+      "candidate_source": "causal_components",
+      "candidate": "full_vine_state_and_cvar_observation_ensemble",
+      "comparator_source": "causal_components",
+      "comparator": "zero_vine_features_keep_cvar_observation_ensemble"
+    },
+    {
+      "contrast_id": "joint_visible_dependence_contribution",
+      "family": "post_holdout_causal_components",
+      "candidate_source": "causal_components",
+      "candidate": "full_vine_state_and_cvar_observation_ensemble",
+      "comparator_source": "causal_components",
+      "comparator": "zero_vine_features_and_cvar_observation_ensemble"
+    },
+    {
+      "contrast_id": "focused_raw_vine_state_contribution",
+      "family": "retrospective_focused_mechanisms",
+      "candidate_source": "focused_walk_forward",
+      "candidate": "full_vine_state_and_cvar_observation_ensemble5",
+      "comparator_source": "focused_walk_forward",
+      "comparator": "zero_vine_features_keep_cvar_observation_ensemble5"
+    },
+    {
+      "contrast_id": "focused_joint_visible_dependence_contribution",
+      "family": "retrospective_focused_mechanisms",
+      "candidate_source": "focused_walk_forward",
+      "candidate": "full_vine_state_and_cvar_observation_ensemble5",
+      "comparator_source": "focused_walk_forward",
+      "comparator": "zero_vine_features_and_cvar_observation_ensemble5"
+    },
+    {
+      "contrast_id": "historical_vs_original_bootstrap",
+      "family": "post_holdout_pretraining_sources",
+      "candidate_source": "causal_components",
+      "candidate": "historical_only_no_synthetic_pretraining_ensemble",
+      "comparator_source": "causal_components",
+      "comparator": "moving_block_bootstrap_pretraining_ensemble"
+    },
+    {
+      "contrast_id": "concentrated_synthetic_vs_full_state",
+      "family": "post_holdout_presentation_mechanism",
+      "candidate_source": "synthetic_presentations",
+      "candidate": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence_ensemble",
+      "comparator_source": "synthetic_presentations",
+      "comparator": "synthetic_100_unique_1000_presentations_full_vine_state_ensemble"
+    },
+    {
+      "contrast_id": "concentrated_synthetic_vs_historical_masked",
+      "family": "post_holdout_terminal_pretraining_controls",
+      "candidate_source": "synthetic_presentations",
+      "candidate": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence_ensemble",
+      "comparator_source": "masked_pretraining_controls",
+      "comparator": "masked_historical_prefix_1000_presentations_ensemble"
+    },
+    {
+      "contrast_id": "concentrated_synthetic_vs_bootstrap_masked",
+      "family": "post_holdout_terminal_pretraining_controls",
+      "candidate_source": "synthetic_presentations",
+      "candidate": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence_ensemble",
+      "comparator_source": "masked_pretraining_controls",
+      "comparator": "masked_moving_block_bootstrap_1000_presentations_ensemble"
+    }
+  ],
+  "stop_rule": "No additional same-holdout policy training or model selection after this terminal campaign. Further confirmation requires future or independently frozen external data."
+}

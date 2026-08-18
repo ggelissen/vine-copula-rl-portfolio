@@ -1,0 +1,37 @@
+% AUTO-GENERATED. DO NOT EDIT BY HAND.
+% Figure: Drift-aware turnover and cost accounting
+% Evidence class: post_holdout_exploratory
+% Regenerate with publication_pipeline_draft/generate_publication_tikz.py.
+\begin{tikzpicture}
+\begin{groupplot}[
+ group style={group size=2 by 1, horizontal sep=2cm},
+ publication axis, width=0.42\linewidth, height=0.25\linewidth,
+]
+\nextgroupplot[title={Turnover}, xlabel={Monthly turnover}, ytick={1,2}, yticklabels={Mean seed,Ensemble}, y dir=reverse, ymin=0.55, ymax=2.45, grid=none, xlabel style={yshift=-1.5mm}]
+\draw[pubGray, line width=0.8pt] (axis cs:0.5747084513,1) -- (axis cs:0.584447881,1);
+\addplot[only marks, mark=*, mark size=3pt, pubSlate] coordinates {(0.5747084513,1)};
+\addplot[only marks, mark=diamond*, mark size=3.3pt, pubNavy] coordinates {(0.584447881,1)};
+\node[font=\tiny, anchor=south, inner sep=2pt, text=pubNavy] at (axis cs:0.5795781661,1) {+$\Delta$ 0.010};
+\draw[pubGray, line width=0.8pt] (axis cs:0.3169771455,2) -- (axis cs:0.3303314715,2);
+\addplot[only marks, mark=*, mark size=3pt, pubSlate] coordinates {(0.3169771455,2)};
+\addplot[only marks, mark=diamond*, mark size=3.3pt, pubNavy] coordinates {(0.3303314715,2)};
+\node[font=\tiny, anchor=south, inner sep=2pt, text=pubNavy] at (axis cs:0.3236543085,2) {+$\Delta$ 0.013};
+\nextgroupplot[title={Trading cost}, xlabel={Transaction cost (bps)}, ytick={1,2}, yticklabels={Mean seed,Ensemble}, y dir=reverse, ymin=0.55, ymax=2.45, grid=none, xlabel style={yshift=-1.5mm}]
+\draw[pubGray, line width=0.8pt] (axis cs:5.747084513,1) -- (axis cs:5.84447881,1);
+\addplot[only marks, mark=*, mark size=3pt, pubSlate] coordinates {(5.747084513,1)};
+\addplot[only marks, mark=diamond*, mark size=3.3pt, pubNavy] coordinates {(5.84447881,1)};
+\node[font=\tiny, anchor=south, inner sep=2pt, text=pubNavy] at (axis cs:5.795781661,1) {+$\Delta$ 0.097};
+\draw[pubGray, line width=0.8pt] (axis cs:3.169771455,2) -- (axis cs:3.303314715,2);
+\addplot[only marks, mark=*, mark size=3pt, pubSlate] coordinates {(3.169771455,2)};
+\addplot[only marks, mark=diamond*, mark size=3.3pt, pubNavy] coordinates {(3.303314715,2)};
+\node[font=\tiny, anchor=south, inner sep=2pt, text=pubNavy] at (axis cs:3.236543085,2) {+$\Delta$ 0.134};
+\end{groupplot}
+\matrix[draw=none, font=\scriptsize, column sep=3pt, row sep=2pt,
+ anchor=east]
+ at ($(current bounding box.east)+(-1mm,0)$) {
+ \node[draw=pubSlate, fill=pubSlate, circle, inner sep=1.2pt] {}; &
+ \node[anchor=west] {Target-to-target}; \\
+ \node[draw=pubNavy, fill=pubNavy, diamond, inner sep=1.2pt] {}; &
+ \node[anchor=west] {Drift-aware}; \\
+};
+\end{tikzpicture}

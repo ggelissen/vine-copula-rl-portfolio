@@ -1,0 +1,54 @@
+CANONICAL COPY AUDIT PASSED
+===========================
+
+The verifier found no missing or mismatched canonical evidence. The following
+conditional cleanup groups from HPC_SAFE_DELETION_AUDIT_2026-08-18.txt are now
+authorized:
+
+1. Full-model duplicated training work trees
+   data/rl_runs/
+   data/publication_training_artifacts_20seeds/
+
+2. No-vine duplicated/superseded training work trees
+   data/no_vine_rl_runs_secondary_v3/
+   data/publication_no_vine_training_artifacts_10seeds/
+   data/no_vine_rl_runs_4gpu/
+
+3. Masked-pretraining duplicated work products
+   data/masked_pretraining_control_runs_v1/
+   analysis_outputs/masked_pretraining_controls_v1_weights/
+   analysis_outputs/masked_pretraining_controls_v1_audit/
+   logs/masked_pretraining_controls_v1/
+   logs/masked_pretraining_controls_v1*.log
+
+4. Mixed-pretraining duplicated work products
+   data/mixed_pretraining_runs_v1/
+   analysis_outputs/mixed_pretraining_response_v1_weights/
+   analysis_outputs/mixed_pretraining_response_v1_audit/
+   logs/mixed_pretraining_response_v1/
+   logs/mixed_pretraining_response_v1*.log
+
+5. Causal replay/accounting intermediates listed in Section C5 of the audit.
+
+6. The extracted secondary_evaluation directory listed in Section C6, provided
+   no current command uses it as an input.
+
+7. The terminal clean-room duplicate listed in Section C7.
+
+Also delete every Section A path; those did not require canonical-copy checks.
+
+STILL BLOCKED — DO NOT DELETE
+=============================
+
+data/focused_original_7asset_runs_v1/
+data/publication_extension_runs_v4/
+data/synthetic_dose_response_runs_v1/
+data/synthetic_presentation_response_runs_v2/
+
+The repository tree did not show complete independent checkpoint archives for
+these four raw run roots. Their result archives do not prove checkpoint
+preservation. Keep them until purpose-built checkpoint releases exist.
+
+Retain every path in Section D2–D6 of the deletion audit, all frozen releases,
+all archive sidecars, protocol/environment evidence, source, tests, and active
+manuscript artifacts.

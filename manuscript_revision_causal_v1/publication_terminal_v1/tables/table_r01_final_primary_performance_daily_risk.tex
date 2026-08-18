@@ -1,0 +1,23 @@
+% Requires booktabs and graphicx.
+\begin{table}[tbp]
+\centering
+\caption{Frozen Primary Performance with Intramonth Risk Reconstruction}
+\label{tab:terminal-primary-daily-risk}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrr}
+\toprule
+Strategy & CAGR & Monthly vol. & Daily vol. & Monthly DD & Daily DD & Daily CVaR$_{95}$ & CRRA CE \\
+\midrule
+Equal weight & 24.30 & 13.40 & 13.84 & 5.22 & 11.80 & 1.90 & 23.31 \\
+Shrinkage MV & 24.08 & 14.15 & 16.67 & 7.83 & 13.68 & 2.41 & 22.91 \\
+DCC-GARCH & 28.60 & 13.53 & 15.09 & 5.79 & 11.44 & 2.16 & 27.53 \\
+Static vine & 31.09 & 16.86 & 23.07 & 6.51 & 14.95 & 3.00 & 29.45 \\
+Rolling vine & 20.46 & 18.92 & 21.62 & 9.91 & 18.84 & 3.09 & 18.47 \\
+Dynamic NN-vine & 29.76 & 16.43 & 24.02 & 6.78 & 15.78 & 3.22 & 28.20 \\
+\textbf{NN-vine TD3} & 28.99 & 13.17 & 16.51 & 6.64 & 13.45 & 2.30 & 27.96 \\
+\bottomrule
+\end{tabular}%
+}
+\caption*{\footnotesize Notes: All entries are percentages and use the 22 complete locked periods. Daily metrics reconstruct the exact within-period mark-to-market path. CVaR$_{95}$ is descriptive and is based on 22 tail days from 431 observations. Rankings do not establish superiority.}
+\end{table}

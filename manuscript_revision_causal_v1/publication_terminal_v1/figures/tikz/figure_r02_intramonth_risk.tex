@@ -1,0 +1,47 @@
+% AUTO-GENERATED. DO NOT EDIT BY HAND.
+% Figure: Monthly versus daily path risk
+% Evidence class: frozen_primary_evaluation_descriptive_daily_audit
+% Regenerate with generate_terminal_publication_artifacts.py.
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1,horizontal sep=2.00cm},
+  publication axis,
+  width=0.31\linewidth,
+  height=0.37\linewidth,
+]
+\nextgroupplot[
+  title={(a) Drawdown horizon},
+  xlabel={Maximum drawdown (\%)}, ylabel={},
+  ymin=0.55, ymax=5.45, y dir=reverse, enlarge y limits=false,
+  ytick={1,2,3,4,5},
+  yticklabels={Equal weight,DCC--GARCH,Static vine,Dynamic vine,NN-vine TD3},
+]
+\addplot[pubGray,thick] coordinates {(5.223702,1) (11.79752,1)};
+\addplot[only marks,mark=o,mark size=2.2pt,pubGray,fill=white] coordinates {(5.223702,1)};
+\addplot[publication point,pubGray,fill=pubGray] coordinates {(11.79752,1)};
+\addplot[pubTeal,thick] coordinates {(5.792247,2) (11.44161,2)};
+\addplot[only marks,mark=o,mark size=2.2pt,pubTeal,fill=white] coordinates {(5.792247,2)};
+\addplot[publication point,pubTeal,fill=pubTeal] coordinates {(11.44161,2)};
+\addplot[pubGold,thick] coordinates {(6.509514,3) (14.94654,3)};
+\addplot[only marks,mark=o,mark size=2.2pt,pubGold,fill=white] coordinates {(6.509514,3)};
+\addplot[publication point,pubGold,fill=pubGold] coordinates {(14.94654,3)};
+\addplot[pubPurple,thick] coordinates {(6.783004,4) (15.78133,4)};
+\addplot[only marks,mark=o,mark size=2.2pt,pubPurple,fill=white] coordinates {(6.783004,4)};
+\addplot[publication point,pubPurple,fill=pubPurple] coordinates {(15.78133,4)};
+\addplot[pubNavy,thick] coordinates {(6.640475,5) (13.45052,5)};
+\addplot[only marks,mark=o,mark size=2.2pt,pubNavy,fill=white] coordinates {(6.640475,5)};
+\addplot[publication point,pubNavy,fill=pubNavy] coordinates {(13.45052,5)};
+\nextgroupplot[
+  width=0.38\linewidth,
+  title={(b) Daily tail risk},
+  xlabel={Annualized daily volatility (\%)},
+  ylabel={Daily CVaR$_{95}$ loss (\%)},
+  xmin=12.8, xmax=25.3, ymin=1.7, ymax=3.45,
+]
+\addplot[publication point,pubGray,fill=pubGray] coordinates {(13.84416,1.900691)} node[font=\scriptsize,anchor=north west,text=pubInk,xshift=2pt,yshift=-2pt] {Equal weight};
+\addplot[publication point,pubTeal,fill=pubTeal] coordinates {(15.09388,2.161725)} node[font=\scriptsize,anchor=west,text=pubInk,xshift=3pt,yshift=-5pt] {DCC--GARCH};
+\addplot[publication point,pubGold,fill=pubGold] coordinates {(23.07321,3.004062)} node[font=\scriptsize,anchor=north east,text=pubInk,xshift=-2pt,yshift=-3pt] {Static vine};
+\addplot[publication point,pubPurple,fill=pubPurple] coordinates {(24.02161,3.215147)} node[font=\scriptsize,anchor=south east,text=pubInk,xshift=-2pt,yshift=3pt] {Dynamic vine};
+\addplot[publication point,pubNavy,fill=pubNavy] coordinates {(16.51309,2.302924)} node[font=\scriptsize,anchor=west,text=pubInk,xshift=3pt,yshift=4pt] {NN-vine TD3};
+\end{groupplot}
+\end{tikzpicture}

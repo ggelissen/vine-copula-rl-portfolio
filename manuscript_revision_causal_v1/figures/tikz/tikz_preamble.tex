@@ -1,0 +1,72 @@
+% Journal-quality TikZ/PGFPlots visual system.
+% Add \input{figures/tikz/tikz_preamble.tex} once in the manuscript preamble.
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usetikzlibrary{arrows.meta,backgrounds,calc,fit,matrix,patterns.meta,plotmarks,positioning}
+\usepgfplotslibrary{colorbrewer,dateplot,fillbetween,groupplots,statistics}
+\pgfplotsset{compat=1.18}
+
+\definecolor{pubNavy}{HTML}{17365D}
+\definecolor{pubBlue}{HTML}{2878B5}
+\definecolor{pubTeal}{HTML}{2A9D8F}
+\definecolor{pubGold}{HTML}{D79A22}
+\definecolor{pubRose}{HTML}{C94C5C}
+\definecolor{pubPurple}{HTML}{7656A7}
+\definecolor{pubSlate}{HTML}{5F6B7A}
+\definecolor{pubGray}{HTML}{9AA3AD}
+\definecolor{pubLight}{HTML}{EDF1F5}
+\definecolor{pubInk}{HTML}{18212B}
+
+\pgfplotscreateplotcyclelist{publication cycle}{%
+  pubNavy, thick\\
+  pubTeal, thick, dashed\\
+  pubGold, thick, dashdotted\\
+  pubRose, thick, densely dashed\\
+  pubPurple, thick, dotted\\
+  pubSlate, thick, dash pattern=on 4pt off 1.5pt\\
+}
+
+\pgfplotsset{
+  publication axis/.style={
+    width=0.92\linewidth,
+    height=0.42\linewidth,
+    axis line style={draw=pubSlate!70, line width=0.35pt},
+    tick style={draw=pubSlate!70, line width=0.35pt},
+    tick label style={font=\scriptsize, text=pubInk},
+    label style={font=\footnotesize, text=pubInk},
+    title style={font=\footnotesize\bfseries, text=pubInk, yshift=0.6mm},
+    legend style={font=\scriptsize, draw=none, fill=none,
+      cells={anchor=west}, row sep=1pt},
+    grid=major,
+    grid style={draw=pubGray!24, line width=0.3pt},
+    minor grid style={draw=pubGray!12, line width=0.2pt},
+    clip mode=individual,
+    cycle list name=publication cycle,
+    every axis plot/.append style={line join=round, line cap=round},
+  },
+  publication group/.style={
+    group style={horizontal sep=0.9cm, vertical sep=0.7cm},
+  },
+  publication point/.style={
+    only marks, mark=*, mark size=2.2pt,
+    draw=white, line width=0.45pt,
+  },
+  publication interval/.style={
+    only marks, mark=*, mark size=2.3pt, thick,
+    error bars/.cd, x dir=both, x explicit,
+  },
+}
+
+\tikzset{
+  publication note/.style={
+    fill=white, fill opacity=0.94, text opacity=1,
+    draw=pubGray!55, rounded corners=1.2pt,
+    inner xsep=4pt, inner ysep=3pt,
+    font=\scriptsize, text=pubInk, align=left,
+  },
+  publication warning/.style={
+    publication note, draw=pubGold!80!black,
+    fill=pubGold!8,
+  },
+}

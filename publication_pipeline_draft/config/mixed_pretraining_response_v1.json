@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "experiment_id": "post_holdout_mixed_pretraining_response_v1",
+  "evidence_class": "post_holdout_explanatory",
+  "confirmatory_claim_permitted": false,
+  "consumed_holdout_reused": true,
+  "terminal_same_holdout_training": true,
+  "protocol_deviation_from_prior_stop_rule": true,
+  "hypothesis": "At a fixed 1000-presentation interaction budget and under the selected no-policy-visible-dependence TD3-LSTM architecture, proportionally pooling 100 frozen NN-vine trajectories with all 61 historical-prefix trajectories during pretraining improves risk-adjusted portfolio utility relative to historical-only, synthetic-only, and synthetic-pretrain-plus-historical-finetune controls.",
+  "scientific_motivation": "The attached pooled-real-and-synthetic RL study reports that moderate synthetic augmentation can reduce policy-estimation variance and that benefits may plateau once generated paths are of the same order as real paths. This experiment tests the analogous mechanism without claiming that generated paths add independent statistical information.",
+  "selection_disclosure": "This hypothesis was formulated after inspecting the consumed 24-month holdout and prior synthetic-dose, presentation, and pretraining-control results. The mixed arm is a post-holdout mechanism test, not a fresh confirmatory model-selection exercise.",
+  "prior_stop_rule_disclosure": "The frozen terminal_masked_pretraining_controls_v1 contract prohibited further same-holdout neural training. Running this user-authorized mixed experiment is therefore an explicit protocol deviation. Its output is exploratory development evidence and may not be used to retrofit a confirmatory superiority claim on locked_oos_v1.",
+  "outcome_independent_rule": "The mixed curriculum and all four comparison arms are reported regardless of rank, sign, or significance. A mixed-arm loss or null result is retained without another same-holdout redesign.",
+  "source_100_path_bundle": "data/synthetic_dose_response_v1/vine_synthetic_100.RData",
+  "source_100_path_bundle_sha256": "65eb5c715436f155c6cb8447d811e6cb96c2e9b55cc5b2d6ffeb560f9396b314",
+  "bundle": "data/mixed_pretraining_response_v1/mixed_100synthetic_61historical_1000presentations.RData",
+  "bundle_manifest": "data/mixed_pretraining_response_v1/mixed_pretraining_bundle_manifest.csv",
+  "synthetic_unique_episode_count": 100,
+  "historical_unique_episode_count": 61,
+  "mixed_unique_episode_count": 161,
+  "pretrain_episode_presentations": 1000,
+  "synthetic_episode_presentations": 621,
+  "historical_episode_presentations": 379,
+  "finetune_episodes": 61,
+  "episode_length": 24,
+  "presentation_protocol": "proportional_midpoint_interleave_100synthetic_61historical_1000_v1",
+  "base_model": {
+    "RL_ALGORITHM": "td3",
+    "POLICY_ENCODER": "lstm",
+    "VINE_OBSERVATION_MODE": "zero",
+    "VINE_FEATURE_MODE": "zero",
+    "CVAR_OBSERVATION_MODE": "zero",
+    "CVAR_REWARD_MODE": "full",
+    "PRETRAIN_DATA_MODE": "mixed_historical_synthetic",
+    "RUN_FINETUNE": "true",
+    "CHECKPOINT_PREFIX": "td3_lstm_mixed100synth61hist1000",
+    "LR_ACTOR": "0.00003",
+    "LR_CRITIC": "0.0001",
+    "ENTROPY_COEF": "0.005",
+    "PRETRAIN_BEHAVIOR_GATE_MODE": "report_only",
+    "PRETRAIN_EPISODES": "1000",
+    "PRETRAIN_RANDOM_EXPLORATION_STEPS": "1000",
+    "PRETRAIN_NOISE_DECAY": "0.998",
+    "PRETRAIN_BEHAVIOR_GATE_WINDOW": "100"
+  },
+  "experiments": [
+    {
+      "experiment_id": "mixed_100synthetic_61historical_pretrain_plus_historical_finetune",
+      "scientific_question": "Does real-plus-NN-vine pooling during pretraining improve utility under matched architecture, seeds, interaction budget, and historical fine-tuning?",
+      "overrides": {}
+    }
+  ],
+  "seeds": [20261001, 20261002, 20261003, 20261004, 20261005, 20261006, 20261007, 20261008, 20261009, 20261010],
+  "minimum_successful_seeds_per_experiment": 10,
+  "reused_evidence": {
+    "synthetic_presentation_contract": "publication_pipeline_draft/config/synthetic_presentation_response_v2.json",
+    "synthetic_presentation_jobs": "protocol_manifests/synthetic_presentation_jobs_v2.csv",
+    "synthetic_presentation_audit": "analysis_outputs/synthetic_presentation_response_v2_audit",
+    "synthetic_presentation_weights": "analysis_outputs/synthetic_presentation_response_v2_weights/synthetic_presentation_policy_weight_manifest.csv",
+    "masked_control_contract": "publication_pipeline_draft/config/masked_pretraining_controls_v1.json",
+    "masked_control_weights": "analysis_outputs/masked_pretraining_controls_v1_weights/masked_pretraining_control_weight_manifest.csv"
+  },
+  "comparison_arms": [
+    {
+      "arm_id": "historical_only_training",
+      "source_experiment_id": "masked_historical_prefix_1000_presentations",
+      "checkpoint_model": "full",
+      "description": "Historical-prefix repetition in pretraining followed by historical fine-tuning."
+    },
+    {
+      "arm_id": "synthetic_only_training",
+      "source_experiment_id": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence",
+      "checkpoint_model": "pretrained",
+      "description": "Concentrated NN-vine pretraining checkpoint before historical fine-tuning."
+    },
+    {
+      "arm_id": "mixed_pretraining_plus_historical_finetuning",
+      "source_experiment_id": "mixed_100synthetic_61historical_pretrain_plus_historical_finetune",
+      "checkpoint_model": "full",
+      "description": "Pooled 100-synthetic/61-historical pretraining followed by historical fine-tuning."
+    },
+    {
+      "arm_id": "synthetic_pretraining_plus_historical_finetuning",
+      "source_experiment_id": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence",
+      "checkpoint_model": "full",
+      "description": "Concentrated NN-vine pretraining followed by historical fine-tuning."
+    }
+  ],
+  "primary_contrasts": [
+    {
+      "candidate": "mixed_pretraining_plus_historical_finetuning",
+      "comparator": "historical_only_training",
+      "label": "Mixed curriculum versus historical throughout"
+    },
+    {
+      "candidate": "mixed_pretraining_plus_historical_finetuning",
+      "comparator": "synthetic_only_training",
+      "label": "Mixed curriculum plus fine-tuning versus synthetic pretraining only"
+    },
+    {
+      "candidate": "mixed_pretraining_plus_historical_finetuning",
+      "comparator": "synthetic_pretraining_plus_historical_finetuning",
+      "label": "Mixed versus synthetic pretraining, both historically fine-tuned"
+    }
+  ],
+  "primary_estimand": "annualized_CRRA_certainty_equivalent_difference_on_the_common_22_complete_periods",
+  "inference": {
+    "bootstrap": "paired_circular_moving_block",
+    "block_length": 3,
+    "replications": 9999,
+    "multiplicity": "Holm_across_three_predeclared_mixed_curriculum_contrasts",
+    "seed_scope": "matched optimization robustness only; seeds are not independent market histories"
+  },
+  "economic_guardrails": {
+    "maximum_mean_monthly_turnover_increase": 0.10,
+    "maximum_mean_gross_exposure_increase": 0.10
+  },
+  "decision_rule": "Report the mixed arm as supported on the consumed sample only if its annualized CRRA CE effect is positive against all three controls, all three one-sided Holm-adjusted p-values are at most 0.05, and turnover and gross exposure do not materially worsen. Otherwise report the exact mixed, null, or adverse conclusion without further same-holdout tuning.",
+  "stop_rule": "This is the final same-holdout neural training campaign. No further architecture, curriculum, seed, or hyperparameter selection is authorized on locked_oos_v1.",
+  "failure_policy": "fail_closed_no_seed_substitution_no_silent_fallback"
+}

@@ -1,0 +1,27 @@
+% Requires booktabs and graphicx.
+\begin{table}[tbp]
+\centering
+\caption{Full Registered Terminal-Robustness Contrasts}
+\label{tab:terminal-full-contrasts}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Contrast (candidate minus comparator) & Evidence class & CE effect (pp) & MBB(3) 95\% CI & Holm $p_{+}$ & LOO positive \\
+\midrule
+Synthetic vs bootstrap & Post-holdout & +6.54 & [-5.15, 23.51] & 0.327 & 100\% \\
+Masked vs full-state synthetic & Post-holdout & +4.92 & [-5.28, 17.43] & 0.188 & 100\% \\
+Synthetic vs historical & Post-holdout & -1.28 & [-16.41, 20.70] & 0.529 & 27\% \\
+Focused visible dependence & Retrospective & -4.99 & [-9.02, -0.65] & 1.000 & 0\% \\
+Focused raw vine state & Retrospective & -0.30 & [-2.79, 2.31] & 1.000 & 9\% \\
+Historical vs original bootstrap & Post-holdout & +18.91 & [7.21, 35.79] & 0.002 & 100\% \\
+Joint visible dependence & Post-holdout & +2.50 & [-2.95, 7.86] & 0.376 & 100\% \\
+TD3 vs dynamic NN-vine & Frozen primary & -0.25 & [-18.26, 14.33] & 1.000 & 50\% \\
+TD3 vs equal weight & Frozen primary & +4.65 & [-9.00, 16.74] & 0.729 & 100\% \\
+TD3 vs static vine & Frozen primary & -1.50 & [-17.59, 11.63] & 1.000 & 18\% \\
+Raw vine state & Post-holdout & -7.21 & [-13.67, -2.48] & 0.995 & 0\% \\
+\bottomrule
+\end{tabular}%
+}
+\caption*{\footnotesize Notes: $p_{+}$ tests the preregistered positive-effect alternative. Consequently, robust adverse-direction effects have $p_{+}$ near one. LOO reports the fraction of leave-one-period-out effects above zero. Frozen, post-holdout, and retrospective evidence must not be pooled into a confirmatory claim.}
+\end{table}

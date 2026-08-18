@@ -83,13 +83,30 @@ def synthetic_artifacts(source: Path, output: Path) -> dict[str, object]:
     figure_dir.mkdir(parents=True, exist_ok=True)
     for name, frame in frames.items():
         copy_table(frame, table_dir / f"synthetic_{name}")
+    summary_rows = [
+        ["marginal assets: strict target", len(fidelity),
+         sum(parse_bool(x, "pass_marginals") for x in fidelity["pass_marginals"])],
+        ["correlation pairs: strict target", len(correlation),
+         sum(parse_bool(x, "pass_correlation") for x in correlation["pass_correlation"])],
+        ["lower-tail pairs: interval compatibility", len(tail),
+         sum(parse_bool(x, "pass_lower_tail") for x in tail["pass_lower_tail"])],
+        ["temporal assets", len(temporal),
+         sum(parse_bool(x, "pass_temporal") for x in temporal["pass_temporal"])],
+    ]
+    if "statistically_compatible" in fidelity:
+        summary_rows.insert(1, [
+            "marginal assets: sampling-aware gate", len(fidelity),
+            sum(parse_bool(x, "statistically_compatible")
+                for x in fidelity["statistically_compatible"]),
+        ])
+    if "statistically_compatible" in correlation:
+        summary_rows.insert(3, [
+            "correlation pairs: sampling-aware gate", len(correlation),
+            sum(parse_bool(x, "statistically_compatible")
+                for x in correlation["statistically_compatible"]),
+        ])
     summary = pd.DataFrame(
-        [
-            ["marginal assets", len(fidelity), sum(parse_bool(x, "pass_marginals") for x in fidelity["pass_marginals"])],
-            ["correlation pairs", len(correlation), sum(parse_bool(x, "pass_correlation") for x in correlation["pass_correlation"])],
-            ["lower-tail pairs", len(tail), sum(parse_bool(x, "pass_lower_tail") for x in tail["pass_lower_tail"])],
-            ["temporal assets", len(temporal), sum(parse_bool(x, "pass_temporal") for x in temporal["pass_temporal"])],
-        ],
+        summary_rows,
         columns=["diagnostic_family", "tests", "passed"],
     )
     summary["pass_fraction"] = summary["passed"] / summary["tests"]

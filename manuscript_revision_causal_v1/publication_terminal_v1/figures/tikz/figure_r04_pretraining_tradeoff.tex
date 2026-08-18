@@ -1,0 +1,30 @@
+% AUTO-GENERATED. DO NOT EDIT BY HAND.
+% Figure: Pretraining performance, stability, and tail-risk trade-off
+% Evidence class: post_holdout_explanatory
+% Regenerate with generate_terminal_publication_artifacts.py.
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1,horizontal sep=0.95cm},
+  publication axis,
+  width=0.41\linewidth,
+  height=0.39\linewidth,
+]
+\nextgroupplot[
+  title={(a) Optimization stability},
+  xlabel={Across-seed CE standard deviation (pp)},
+  ylabel={Ensemble annual CRRA CE (\%)},
+  xmin=3.2,xmax=17.5,ymin=21.5,ymax=34.0,
+]
+\addplot[publication point,pubNavy,fill=pubNavy,mark size=3pt] coordinates {(15.65157,32.18119)} node[font=\scriptsize,anchor=south east,xshift=-2pt,text=pubInk] {Historical};
+\addplot[publication point,pubTeal,fill=pubTeal,mark size=3pt] coordinates {(7.610384,30.89871)} node[font=\scriptsize,anchor=north west,xshift=2pt,text=pubInk] {Vine synthetic};
+\addplot[publication point,pubGold,fill=pubGold,mark size=3pt] coordinates {(4.466956,24.36363)} node[font=\scriptsize,anchor=north west,xshift=2pt,text=pubInk] {Block bootstrap};
+\nextgroupplot[
+  title={(b) Realized tail-risk trade-off},
+  xlabel={Daily CVaR$_{95}$ loss (\%)},
+  xmin=1.75,xmax=2.75,ymin=21.5,ymax=34.0,
+]
+\addplot[publication point,pubNavy,fill=pubNavy,mark size=3pt] coordinates {(1.885952,32.18119)} node[font=\scriptsize,anchor=south west,xshift=2pt,text=pubInk] {Historical};
+\addplot[publication point,pubTeal,fill=pubTeal,mark size=3pt] coordinates {(2.605789,30.89871)} node[font=\scriptsize,anchor=north east,xshift=-2pt,text=pubInk] {Vine synthetic};
+\addplot[publication point,pubGold,fill=pubGold,mark size=3pt] coordinates {(2.220485,24.36363)} node[font=\scriptsize,anchor=north west,xshift=2pt,text=pubInk] {Block bootstrap};
+\end{groupplot}
+\end{tikzpicture}

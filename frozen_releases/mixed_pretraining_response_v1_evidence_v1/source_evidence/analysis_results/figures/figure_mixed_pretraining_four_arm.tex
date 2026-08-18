@@ -1,0 +1,20 @@
+% Auto-generated post-holdout explanatory figure.
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.7cm},
+  width=0.47\textwidth,height=5.2cm,
+  tick label style={font=\scriptsize},label style={font=\small},
+  title style={font=\small\bfseries},grid=major]
+\nextgroupplot[title={(a) Four-arm economic value},
+  ylabel={Annualized CRRA CE (\%)},xtick={1,2,3,4},
+  xticklabels={{Historical throughout},{Synthetic only},{Mixed + fine-tune},{Synthetic + fine-tune}},x tick label style={rotate=20,anchor=east,font=\scriptsize}]
+\addplot+[ybar,bar width=9pt,fill=black!30,draw=black] coordinates {(1,32.177896) (2,23.550247) (3,33.072064) (4,30.899737)};
+\nextgroupplot[title={(b) Mixed curriculum minus controls},
+  xlabel={Annualized CRRA CE difference (pp)},ytick={1,2,3},
+  yticklabels={{Historical throughout},{Synthetic only},{Synthetic + fine-tune}},
+  yticklabel style={font=\scriptsize},axis y line*=left]
+\addplot[black,dashed] coordinates {(0,0.5) (0,3.5)};
+\addplot+[only marks,error bars/.cd,x dir=both,x explicit] coordinates {(0.89416826,1) += (13.982765,0) -= (9.3836956,0)};
+\addplot+[only marks,error bars/.cd,x dir=both,x explicit] coordinates {(9.5218171,2) += (10.56892,0) -= (8.9426815,0)};
+\addplot+[only marks,error bars/.cd,x dir=both,x explicit] coordinates {(2.1723273,3) += (8.7255497,0) -= (9.7405564,0)};
+\end{groupplot}
+\end{tikzpicture}

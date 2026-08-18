@@ -1,0 +1,28 @@
+% AUTO-GENERATED. DO NOT EDIT BY HAND.
+% Figure: Turnover and implementation drag
+% Evidence class: frozen_confirmatory_primary_evaluation
+% Regenerate with publication_pipeline_draft/generate_publication_tikz.py.
+\begin{tikzpicture}
+\begin{groupplot}[
+ group style={group size=2 by 1, horizontal sep=0.70cm,
+   group name=implementation},
+ publication axis, height=0.43\linewidth,
+ ytick={1,2,3,4,5,6,7},
+ y dir=reverse, ymin=0.5, ymax=7.5,
+]
+\nextgroupplot[
+ width=0.56\linewidth,
+ title={Trading intensity}, xlabel={Mean monthly turnover},
+ yticklabels={Equal weight,Shrinkage MV,DCC--GARCH,Static vine,Rolling vine,Dynamic NN-vine,NN-vine TD3},
+]
+\addplot[xbar, bar width=5pt, fill=pubNavy!70, draw=pubNavy]
+ coordinates {(0,1) (0.05195489657,2) (0.1534098552,3) (1.050859561,4) (1.236889067,5) (1.087010719,6) (0.3169771455,7)};
+\nextgroupplot[
+ width=0.30\linewidth,
+ title={Realized cost drag}, xlabel={Total-return drag (pp)},
+ yticklabels=\empty,
+]
+\addplot[only marks, mark=diamond*, mark size=2.7pt, pubRose]
+ coordinates {(0,1) (0.1701913512,2) (0.5461043281,3) (5.908050628,4) (5.80145347,5) (5.955308169,6) (1.215260924,7)};
+\end{groupplot}
+\end{tikzpicture}

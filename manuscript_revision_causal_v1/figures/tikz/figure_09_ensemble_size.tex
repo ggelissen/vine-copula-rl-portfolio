@@ -1,0 +1,23 @@
+% AUTO-GENERATED. DO NOT EDIT BY HAND.
+% Figure: Ensemble-size sensitivity
+% Evidence class: post_holdout_exploratory
+% Regenerate with publication_pipeline_draft/generate_publication_tikz.py.
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, vertical sep=0.75cm},
+  publication axis,
+  width=0.47\linewidth, height=0.31\linewidth,
+  xtick={1,2,3,5,10,15,20},
+]
+\nextgroupplot[title={Sharpe ratio}, xlabel={Ensemble size $k$}]
+\addplot[name path=low1, draw=none] coordinates {(1,1.138318446) (2,1.332090614) (3,1.492830719) (5,1.65960772) (10,1.772013254) (15,1.832420684) (20,1.862137644)};
+\addplot[name path=high1, draw=none] coordinates {(1,2.14091247) (2,2.17273372) (3,2.187537292) (5,2.1643709) (10,2.127264551) (15,2.113058782) (20,2.106065202)};
+\addplot[pubNavy!14] fill between[of=low1 and high1];
+\addplot[pubNavy, ultra thick, mark=*] coordinates {(1,1.656472903) (2,1.810459512) (3,1.884767543) (5,1.940733943) (10,1.970722674) (15,1.988786147) (20,1.997752173)};
+\nextgroupplot[title={Monthly turnover}, xlabel={Ensemble size $k$}]
+\addplot[name path=low2, draw=none] coordinates {(1,0.3833531004) (2,0.3389124133) (3,0.3358163279) (5,0.3071836943) (10,0.2908509438) (15,0.2889465393) (20,0.2881438029)};
+\addplot[name path=high2, draw=none] coordinates {(1,1.001197891) (2,0.6794880635) (3,0.594953798) (5,0.5176084171) (10,0.4486133854) (15,0.4098436859) (20,0.3993076911)};
+\addplot[pubNavy!14] fill between[of=low2 and high2];
+\addplot[pubNavy, ultra thick, mark=*] coordinates {(1,0.5393691599) (2,0.4633387249) (3,0.4426614853) (5,0.3993098613) (10,0.3588253943) (15,0.3425975656) (20,0.3379332665)};
+\end{groupplot}
+\end{tikzpicture}

@@ -42,12 +42,14 @@ def build_inputs(tmp_path: Path) -> tuple[Path, Path, Path]:
     with schedule.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=[
             "window_id", "evidence_class", "claim_limit", "test_data_role",
-            "test_start", "test_end", "test_months",
+            "confirmatory_claim_permitted", "test_start", "test_end",
+            "test_months",
         ])
         writer.writeheader(); writer.writerow({
             "window_id": "w1", "evidence_class": "retrospective_walk_forward",
             "claim_limit": "development_and_robustness_only",
             "test_data_role": "retrospective_development_only",
+            "confirmatory_claim_permitted": False,
             "test_start": "2018-12-28", "test_end": "2020-12-28",
             "test_months": 24,
         })
@@ -79,4 +81,34 @@ def test_rejects_parent_hash_mismatch(tmp_path: Path) -> None:
         materialize(
             daily_returns=daily, panel_manifest_path=panel, schedule_path=schedule,
             window_id="w1", output=tmp_path / "bad", reference_asset="BIL",
+        )
+
+
+def test_rejects_schedule_without_explicit_nonconfirmatory_status(
+    tmp_path: Path,
+) -> None:
+    daily, panel, schedule = build_inputs(tmp_path)
+    rows = list(csv.DictReader(schedule.open(newline="", encoding="utf-8")))
+    fieldnames = [
+        name for name in rows[0]
+        if name != "confirmatory_claim_permitted"
+    ]
+    with schedule.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows([
+            {name: value for name, value in row.items() if name in fieldnames}
+            for row in rows
+        ])
+    with pytest.raises(
+        WindowInputError,
+        match="explicitly prohibit confirmation",
+    ):
+        materialize(
+            daily_returns=daily,
+            panel_manifest_path=panel,
+            schedule_path=schedule,
+            window_id="w1",
+            output=tmp_path / "bad_claim_status",
+            reference_asset="BIL",
         )

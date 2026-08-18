@@ -1,0 +1,36 @@
+% Native TikZ/PGFPlots; post-holdout explanatory evidence.
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1,horizontal sep=2.35cm},
+  height=5.35cm,
+  tick label style={font=\scriptsize},label style={font=\small},
+  title style={font=\small\bfseries},grid=major]
+\nextgroupplot[
+  width=0.40\linewidth,
+  title={(a) Ensemble economic value},
+  ylabel={Annualized CRRA CE (\%)},
+  xmin=0.45,xmax=4.55,ymin=20,ymax=35,
+  xtick={1,2,3,4},
+  xticklabels={Historical,Synthetic,{Mixed},{Two-Stage}},
+  x tick label style={font=\tiny,align=center,yshift=-2pt}]
+\addplot+[ybar,bar width=10pt,fill=black!32,draw=black] coordinates {(1,32.1779) (2,23.5502) (3,33.0721) (4,30.8997)};
+\nextgroupplot[
+  width=0.44\linewidth,
+  title={(b) Mixed curriculum minus controls},
+  xlabel={Annualized CRRA CE difference (pp)},
+  xmin=-32,xmax=36,ymin=0.55,ymax=3.45,
+  ytick={1,2,3},
+  yticklabels={Two-Stage,Synthetic,Historical},
+  legend style={at={(0.5,-0.31)},anchor=north,legend columns=2,font=\scriptsize,
+    draw=none,/tikz/every even column/.append style={column sep=20pt}}]
+\addplot[black,dashed,forget plot] coordinates {(0,0.55) (0,3.45)};
+\addplot+[only marks,mark=o,mark size=1.45pt,draw=black!60,fill=white]
+  coordinates {(-3.20817,2.8425) (27.6294,2.8875) (-9.27714,2.9325) (-7.16205,2.9775) (33.0516,3.0225) (-27.2513,3.0675) (-2.41385,3.1125) (3.62238,3.1575) (-19.5445,3.2025) (6.94035,2.7975) (-1.42765,1.8425) (17.0959,1.8875) (5.99741,1.9325) (22.9056,1.9775) (17.1375,2.0225) (-9.09836,2.0675) (2.09835,2.1125) (11.057,2.1575) (21.0242,2.2025) (1.73614,1.7975) (-4.6046,0.8425) (7.03795,0.8875) (3.48838,0.9325) (16.7133,0.9775) (-0.914269,1.0225) (-5.94193,1.0675) (1.416,1.1125) (-4.07934,1.1575) (11.5427,1.2025) (-7.62174,0.7975)};
+\addlegendentry{Matched-seed effects}
+\addplot+[only marks,mark=diamond*,mark size=2.2pt,black,error bars/.cd,x dir=both,x explicit] coordinates {(0.894168,3) += (13.9828,0) -= (9.3837,0)};
+\addplot+[only marks,mark=diamond*,mark size=2.2pt,black,error bars/.cd,x dir=both,x explicit] coordinates {(9.52182,2) += (10.5689,0) -= (8.94268,0)};
+\addplot+[only marks,mark=diamond*,mark size=2.2pt,black,error bars/.cd,x dir=both,x explicit] coordinates {(2.17233,1) += (8.72555,0) -= (9.74056,0)};
+\addlegendimage{only marks,mark=diamond*,black,error bars/.cd,x dir=both,x explicit}
+\addlegendentry{Ensemble effect and MBB(3) 95\% CI}
+\end{groupplot}
+\end{tikzpicture}

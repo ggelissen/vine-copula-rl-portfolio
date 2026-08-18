@@ -1,0 +1,65 @@
+\documentclass[11pt,a4paper]{article}
+
+% Encoding and fonts
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+% Mathematics
+\usepackage{amsmath,amssymb}
+
+% Page layout
+\usepackage[margin=2cm]{geometry}
+
+% Figures and captions
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+% Shared publication visual system for generated vector-native result figures.
+\input{figures/tikz/tikz_preamble.tex}
+
+% Tables
+\usepackage{booktabs}
+
+% Pseudocode
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% Bibliography
+\usepackage[numbers,square,sort&compress]{natbib}
+
+% Hyperlinks and cross-references
+\usepackage[hidelinks]{hyperref}
+\renewcommand{\eqref}[1]{Equation~\textup{(\ref{#1})}}
+
+% Title information
+\title{Neural Dynamic Vine Copula Pre-Training for Risk-Sensitive Reinforcement Learning in Dynamic Portfolio Optimization}
+\author{Gabriël M.J.\ Gelissen and Fengyi Yuan\\
+\small School of Science and Engineering (SSE), The Chinese University of Hong Kong, Shenzhen}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Deep reinforcement learning provides a natural framework for sequential portfolio choice, but financial samples are short and joint tail dependence is difficult to learn from returns alone. We propose a synthetic-data-assisted portfolio controller that combines a fully dynamic, all-tree Student-$t$ D-vine with an LSTM-based Twin Delayed Deep Deterministic Policy Gradient (TD3) agent. Edge-specific neural networks update the D-vine correlations from lagged marginal and dependence information, while fixed edge degrees of freedom preserve identifiability. The fitted training-prefix model generates 1,000 synthetic 24-month episodes for pre-training; the agent is then fine-tuned once on 61 realised historical trajectories. The policy maximises multi-period terminal-wealth CRRA utility subject to a scenario-CVaR penalty, transaction and financing costs, and self-financing long--short constraints. In a frozen evaluation of seven US and Chinese equity indices and gold, the preregistered mean-weight ensemble of 20 independently trained policies is compared on the same realised path with equal weight, constrained shrinkage mean--variance, DCC--GARCH, static and rolling vines, and a dynamic neural vine optimiser without RL. Over the 22 periods satisfying the preregistered completeness rule, the ensemble achieves the highest observed Sharpe ratio (2.018) and lowest volatility (13.19\%), but ranks third in total return and annualised CRRA certainty-equivalent return. Its utility advantage over equal weight is positive but not statistically significant under paired circular-block bootstrap inference. Post-holdout explanatory ablations show that a coarse no-vine TD3 ensemble performs better descriptively and that historical fine-tuning adds little on this sample; these findings motivate a preregistered matched-seed causal decomposition of vine features, scenario-CVaR information, synthetic pre-training, recurrence, and reward shaping. The evidence supports competitive risk and implementation efficiency, rather than statistically proven superiority or an established incremental vine effect.
+\end{abstract}
+
+\medskip
+\noindent\textit{Keywords:} Portfolio Optimisation, Dynamic Vine Copula, Deep Reinforcement Learning, TD3, LSTM, Synthetic Data, Tail Risk.
+
+% Main sections
+\input{01_Introduction}
+%\input{02_LiteratureReview}
+\input{03_Methodology}
+\input{04_Data}
+\input{05_Results}
+\input{06_Conclusion}
+\input{07_Appendix} 
+
+% Bibliography
+\bibliographystyle{plainnat} 
+\bibliography{Zotero}
+
+\end{document}

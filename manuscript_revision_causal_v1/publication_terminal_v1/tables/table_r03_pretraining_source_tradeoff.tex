@@ -1,0 +1,17 @@
+% Requires booktabs.
+\begin{table}[tbp]
+\centering
+\caption{Matched Pretraining Sources Under the Masked-State Architecture}
+\label{tab:terminal-pretraining-tradeoff}
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Source & Ensemble CE & Daily vol. & Daily DD & Daily CVaR$_{95}$ & Seed CE SD & Seed CE range \\
+\midrule
+Historical prefix & 32.18 & 14.33 & 10.31 & 1.89 & 15.65 & [7.42, 53.56] \\
+Concentrated vine synthetic & 30.90 & 18.99 & 13.12 & 2.61 & 7.61 & [14.64, 41.39] \\
+Moving-block bootstrap & 24.36 & 16.41 & 12.68 & 2.22 & 4.47 & [15.52, 29.08] \\
+\bottomrule
+\end{tabular}
+\caption*{\footnotesize Notes: All entries except the source name are percentage points or percentages. Each source uses ten matched seeds and 1,000 pretraining presentations. These results are post-holdout explanatory.}
+\end{table}

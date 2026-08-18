@@ -23,7 +23,8 @@ import numpy as np
 import pandas as pd
 
 from publication_pipeline_draft.publication_pipeline import (
-    crra_utility, holm_adjust, moving_block_indices,
+    Contract, crra_utility, empirical_metrics, holm_adjust,
+    moving_block_indices,
 )
 from publication_pipeline_draft.focused_window_training_protocol import (
     validate_protocol,
@@ -119,6 +120,133 @@ def bootstrap(reference_returns: list[np.ndarray],
     }
 
 
+def descriptive_metric_tables(
+        frame: pd.DataFrame, gamma: float) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Return transparent per-window and pooled strategy diagnostics.
+
+    Inference remains window-stratified in bootstrap. These tables are
+    descriptive disclosures used to diagnose regime consistency, economic
+    magnitude, implementation drag, and seed dispersion without treating seeds
+    as additional market observations.
+    """
+    metric_columns = {
+        "gross_return", "turnover", "transaction_cost", "financing_cost",
+        "gross_exposure", "short_notional",
+    }
+    require(metric_columns <= set(frame),
+            "Focused period panel lacks common-accounting diagnostic columns: "
+            f"{sorted(metric_columns - set(frame))}")
+    metric_contract = Contract({
+        "periods_per_year": 12,
+        "annualization_convention": "actual_elapsed_years_v1",
+        "day_count_basis": 365,
+        "annual_risk_free_rate": 0.0,
+        "crra_gamma": gamma,
+        "initial_wealth": 100000.0,
+    })
+
+    identifiers = [
+        "window_id", "experiment_id", "strategy_level", "strategy_id", "seed",
+    ]
+    window_rows: list[dict[str, Any]] = []
+    for key, group in frame.groupby(identifiers, dropna=False, sort=True):
+        row = dict(zip(identifiers, key))
+        row.update(empirical_metrics(group, metric_contract))
+        window_rows.append(row)
+    window_metrics = pd.DataFrame(window_rows)
+
+    pooled_identifiers = [
+        "experiment_id", "strategy_level", "strategy_id", "seed",
+    ]
+    pooled_rows: list[dict[str, Any]] = []
+    for key, group in frame.groupby(
+            pooled_identifiers, dropna=False, sort=True):
+        row = dict(zip(pooled_identifiers, key))
+        row["window_count"] = int(group["window_id"].nunique())
+        row.update(empirical_metrics(group, metric_contract))
+        pooled_rows.append(row)
+    return window_metrics, pd.DataFrame(pooled_rows)
+
+
+def descriptive_window_effects(
+        window_metrics: pd.DataFrame, protocol: dict[str, Any]) -> pd.DataFrame:
+    """Expose each preregistered contrast in every window without extra tests."""
+    metrics = [
+        "total_return", "cagr", "annual_volatility", "sharpe_ratio",
+        "max_drawdown", "annualized_certainty_equivalent_return",
+        "mean_monthly_turnover", "mean_gross_exposure", "mean_short_notional",
+        "implementation_drag_total_return",
+    ]
+    rows: list[dict[str, Any]] = []
+    ensemble = window_metrics[window_metrics["strategy_level"] == "ensemble"]
+    benchmarks = window_metrics[window_metrics["strategy_level"] == "benchmark"]
+
+    def append_effect(window_id: str, family: str, label: str,
+                      reference_id: str, alternative_id: str,
+                      reference: pd.Series, alternative: pd.Series) -> None:
+        row: dict[str, Any] = {
+            "window_id": window_id,
+            "comparison_family": family,
+            "label": label,
+            "reference_experiment_id": reference_id,
+            "alternative_experiment_id": alternative_id,
+        }
+        for metric in metrics:
+            row[f"reference_{metric}"] = float(reference[metric])
+            row[f"alternative_{metric}"] = float(alternative[metric])
+            row[f"difference_{metric}"] = (
+                float(reference[metric]) - float(alternative[metric]))
+        rows.append(row)
+
+    for window_id in sorted(window_metrics["window_id"].unique()):
+        window_ensembles = ensemble[ensemble["window_id"] == window_id]
+        for contrast in protocol["contrasts"]:
+            reference_id = contrast["reference_experiment_id"]
+            alternative_id = contrast["alternative_experiment_id"]
+            reference = window_ensembles[
+                window_ensembles["experiment_id"] == reference_id]
+            alternative = window_ensembles[
+                window_ensembles["experiment_id"] == alternative_id]
+            require(len(reference) == len(alternative) == 1,
+                    f"Missing window metric for {contrast['label']} in {window_id}.")
+            append_effect(
+                window_id, "mechanism", contrast["label"], reference_id,
+                alternative_id, reference.iloc[0], alternative.iloc[0])
+
+        # This third edge completes the three-level observation decomposition.
+        # It was not one of the two preregistered multiplicity-controlled
+        # contrasts, so it is disclosed as derived exploratory evidence.
+        cvar_only_id = "zero_vine_features_keep_cvar_observation"
+        no_visible_id = "zero_vine_features_and_cvar_observation"
+        cvar_only = window_ensembles[
+            window_ensembles["experiment_id"] == cvar_only_id]
+        no_visible = window_ensembles[
+            window_ensembles["experiment_id"] == no_visible_id]
+        require(len(cvar_only) == len(no_visible) == 1,
+                f"Missing derived CVaR-observation metric in {window_id}.")
+        append_effect(
+            window_id, "derived_mechanism",
+            "Scenario-CVaR observation contribution (derived)",
+            cvar_only_id, no_visible_id, cvar_only.iloc[0], no_visible.iloc[0])
+
+        candidate_id = protocol["benchmark_candidate_experiment_id"]
+        candidate = window_ensembles[
+            window_ensembles["experiment_id"] == candidate_id]
+        require(len(candidate) == 1,
+                f"Missing candidate ensemble metric in {window_id}.")
+        for benchmark_id in protocol["financial_benchmarks"]:
+            benchmark = benchmarks[
+                (benchmarks["window_id"] == window_id) &
+                (benchmarks["experiment_id"] == benchmark_id)]
+            require(len(benchmark) == 1,
+                    f"Missing benchmark metric {benchmark_id} in {window_id}.")
+            append_effect(
+                window_id, "financial_benchmark",
+                f"Scenario-CVaR representation minus {benchmark_id}",
+                candidate_id, benchmark_id, candidate.iloc[0], benchmark.iloc[0])
+    return pd.DataFrame(rows)
+
+
 def analyze(protocol_path: Path, panel_path: Path, output: Path) -> dict[str, Any]:
     require(not output.exists(), f"Analysis output already exists: {output}")
     protocol, protocol_sha256 = validate_protocol(protocol_path)
@@ -179,6 +307,8 @@ def analyze(protocol_path: Path, panel_path: Path, output: Path) -> dict[str, An
     annual_factor = len(calendar) / (holding_days / 365.0)
 
     gamma = float(protocol["crra_gamma"])
+    window_metrics, pooled_metrics = descriptive_metric_tables(frame, gamma)
+    window_effects = descriptive_window_effects(window_metrics, protocol)
     repetitions = int(protocol["bootstrap"]["replications"])
     block = int(protocol["bootstrap"]["block_length_periods"])
     base_seed = int(protocol["bootstrap"]["seed"])
@@ -220,6 +350,43 @@ def analyze(protocol_path: Path, panel_path: Path, output: Path) -> dict[str, An
         (contrast_frame["holm_adjusted_p_value"] <= 0.05))
     contrast_frame["opposite_direction_signal"] = (
         (contrast_frame["annualized_ce_ci_upper"] < 0))
+
+    derived_reference = "zero_vine_features_keep_cvar_observation"
+    derived_alternative = "zero_vine_features_and_cvar_observation"
+    derived_reference_windows: list[np.ndarray] = []
+    derived_alternative_windows: list[np.ndarray] = []
+    for window_id in intervals.index:
+        window = frame[(frame["window_id"] == window_id) &
+                       (frame["strategy_level"] == "ensemble")]
+        reference_path = window[
+            window["experiment_id"] == derived_reference].sort_values(
+                "holding_end_date")
+        alternative_path = window[
+            window["experiment_id"] == derived_alternative].sort_values(
+                "holding_end_date")
+        require(len(reference_path) == len(alternative_path) >= 20 and
+                reference_path["holding_end_date"].tolist() ==
+                alternative_path["holding_end_date"].tolist(),
+                f"Unaligned derived mechanism comparison in {window_id}.")
+        derived_reference_windows.append(
+            reference_path["net_return"].to_numpy(float))
+        derived_alternative_windows.append(
+            alternative_path["net_return"].to_numpy(float))
+    derived_result = bootstrap(
+        derived_reference_windows, derived_alternative_windows,
+        repetitions, block, base_seed + 900, gamma, annual_factor)
+    derived_frame = pd.DataFrame([{
+        "label": "Scenario-CVaR observation contribution (derived)",
+        "reference_experiment_id": derived_reference,
+        "alternative_experiment_id": derived_alternative,
+        "window_count": len(intervals),
+        "observations": sum(len(value)
+                            for value in derived_reference_windows),
+        **derived_result,
+        "analysis_status":
+            "post_hoc_derived_not_in_preregistered_multiplicity_family",
+        "confirmatory_claim_permitted": False,
+    }])
 
     # Separate exploratory economic family: the compressed vine-CVaR ensemble
     # versus six financial benchmarks. This does not alter the two mechanism
@@ -302,6 +469,9 @@ def analyze(protocol_path: Path, panel_path: Path, output: Path) -> dict[str, An
     try:
         contrast_frame.to_csv(temporary / "focused_walk_forward_contrasts.csv",
                               index=False)
+        derived_frame.to_csv(
+            temporary / "focused_walk_forward_derived_contrasts.csv",
+            index=False)
         benchmark_frame.to_csv(
             temporary / "focused_walk_forward_benchmark_comparisons.csv",
             index=False)
@@ -309,6 +479,12 @@ def analyze(protocol_path: Path, panel_path: Path, output: Path) -> dict[str, An
                           index=False)
         stability.to_csv(temporary / "focused_walk_forward_seed_stability.csv",
                          index=False)
+        window_metrics.to_csv(
+            temporary / "focused_walk_forward_window_metrics.csv", index=False)
+        pooled_metrics.to_csv(
+            temporary / "focused_walk_forward_pooled_metrics.csv", index=False)
+        window_effects.to_csv(
+            temporary / "focused_walk_forward_window_effects.csv", index=False)
         manifest = {
             "schema_version": 1,
             "status": "focused_walk_forward_analysis_complete",
@@ -317,6 +493,10 @@ def analyze(protocol_path: Path, panel_path: Path, output: Path) -> dict[str, An
             "window_count": len(intervals),
             "experiment_count": 3, "seed_count_per_experiment": 5,
             "contrast_count": 2, "benchmark_comparison_count": 6,
+            "derived_exploratory_contrast_count": 1,
+            "window_metric_rows": len(window_metrics),
+            "pooled_metric_rows": len(pooled_metrics),
+            "window_effect_rows": len(window_effects),
             "bootstrap_replications": repetitions,
             "annualization_factor": annual_factor,
             "windows_nonoverlapping": True,

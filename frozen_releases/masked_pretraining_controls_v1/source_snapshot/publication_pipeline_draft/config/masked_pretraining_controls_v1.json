@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "experiment_id": "terminal_masked_pretraining_controls_v1",
+  "evidence_class": "post_holdout_explanatory",
+  "confirmatory_claim_permitted": false,
+  "consumed_holdout_reused": true,
+  "terminal_hpc_experiment": true,
+  "hypothesis": "Conditional on the selected no-policy-visible-dependence TD3-LSTM architecture and a fixed 1000-presentation optimization budget, concentrated NN-vine pretraining provides incremental portfolio value relative to matched historical-prefix repetition and a nonparametric moving-block bootstrap.",
+  "design_revision_reason": "The 100-unique/1000-presentation study identified a favorable masked synthetic curriculum, but the existing historical-prefix and moving-block controls were trained under the full-state architecture. This terminal experiment removes that architecture-by-pretraining confound without changing the selected policy, calendar, costs, seeds, or optimization budget.",
+  "selection_disclosure": "The masked architecture and concentrated 100-path curriculum were selected after observing the consumed holdout. These controls are explanatory mechanism evidence and cannot support a fresh confirmatory superiority claim.",
+  "candidate_experiment_id": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence",
+  "candidate_weight_manifest": "analysis_outputs/synthetic_presentation_response_v2_weights/synthetic_presentation_policy_weight_manifest.csv",
+  "candidate_weight_manifest_sha256": "96a93e6f7b48a23f40def86a7f23c99c2129b411272198962d859fe8628783fe",
+  "pretrain_episode_presentations": 1000,
+  "finetune_episodes": 61,
+  "episode_length": 24,
+  "base_model": {
+    "RL_ALGORITHM": "td3",
+    "POLICY_ENCODER": "lstm",
+    "VINE_OBSERVATION_MODE": "zero",
+    "VINE_FEATURE_MODE": "zero",
+    "CVAR_OBSERVATION_MODE": "zero",
+    "CVAR_REWARD_MODE": "full",
+    "PRETRAIN_DATA_MODE": "historical_prefix_repeated",
+    "RUN_FINETUNE": "true",
+    "CHECKPOINT_PREFIX": "td3_lstm_masked_histprefix1000",
+    "LR_ACTOR": "0.00003",
+    "LR_CRITIC": "0.0001",
+    "ENTROPY_COEF": "0.005",
+    "PRETRAIN_BEHAVIOR_GATE_MODE": "report_only",
+    "PRETRAIN_EPISODES": "1000",
+    "PRETRAIN_RANDOM_EXPLORATION_STEPS": "1000",
+    "PRETRAIN_NOISE_DECAY": "0.998",
+    "PRETRAIN_BEHAVIOR_GATE_WINDOW": "100"
+  },
+  "experiments": [
+    {
+      "experiment_id": "masked_historical_prefix_1000_presentations",
+      "scientific_question": "Does the concentrated NN-vine curriculum add value beyond balanced repetition of real training-prefix trajectories under the identical masked controller and interaction budget?",
+      "bundle": "data/ablation_training_bundles/historical_prefix_repeated.RData",
+      "bundle_sha256": "1f07f655064ccb33dac3c60b2d1ca16ad2c91c73509313de46caeaa15b99e52e",
+      "overrides": {}
+    },
+    {
+      "experiment_id": "masked_moving_block_bootstrap_1000_presentations",
+      "scientific_question": "Does the NN-vine generator add value beyond a six-month circular moving-block bootstrap under the identical masked controller and interaction budget?",
+      "bundle": "data/ablation_training_bundles/moving_block_bootstrap.RData",
+      "bundle_sha256": "0f82cd46391b4c7e08e34470826fef3886cb14a8f3cbf67966a70af36a6bf2a9",
+      "overrides": {
+        "PRETRAIN_DATA_MODE": "moving_block_bootstrap",
+        "CHECKPOINT_PREFIX": "td3_lstm_masked_mbb1000"
+      }
+    }
+  ],
+  "seeds": [20261001, 20261002, 20261003, 20261004, 20261005, 20261006, 20261007, 20261008, 20261009, 20261010],
+  "minimum_successful_seeds_per_experiment": 10,
+  "primary_contrasts": [
+    {
+      "candidate": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence",
+      "comparator": "masked_historical_prefix_1000_presentations",
+      "label": "Concentrated NN-vine curriculum versus historical-prefix repetition"
+    },
+    {
+      "candidate": "synthetic_100_unique_1000_presentations_no_policy_visible_dependence",
+      "comparator": "masked_moving_block_bootstrap_1000_presentations",
+      "label": "Concentrated NN-vine curriculum versus moving-block bootstrap"
+    }
+  ],
+  "secondary_contrasts": [
+    {
+      "candidate": "masked_historical_prefix_1000_presentations",
+      "comparator": "masked_moving_block_bootstrap_1000_presentations",
+      "label": "Historical-prefix repetition versus moving-block bootstrap"
+    }
+  ],
+  "benchmark_ids": [
+    "equal_weight",
+    "shrinkage_mean_variance",
+    "dcc_garch",
+    "static_vine",
+    "rolling_vine",
+    "dynamic_nn_vine"
+  ],
+  "primary_estimand": "annualized_CRRA_certainty_equivalent_difference_on_the_common_22_complete_periods",
+  "inference": {
+    "bootstrap": "paired_circular_moving_block",
+    "block_length": 3,
+    "replications": 9999,
+    "multiplicity": "Holm_across_the_two_predeclared_generator_value_contrasts",
+    "seed_scope": "matched optimization robustness only; seeds are not independent market histories"
+  },
+  "decision_rule": "If the concentrated NN-vine curriculum has positive CRRA CE effects against both controls with stable seed-level signs and no material turnover or leverage penalty, the data support conditional generator value within the masked architecture. If either control matches or exceeds it, synthetic pretraining is not necessary for the observed result; report the corresponding negative or mixed mechanism conclusion without further model search.",
+  "stop_rule": "After this experiment, no further same-holdout neural training is authorized. Remaining work is frozen-weight robustness, reporting, external data, or genuinely future evaluation.",
+  "failure_policy": "fail_closed_no_seed_substitution_no_silent_fallback"
+}

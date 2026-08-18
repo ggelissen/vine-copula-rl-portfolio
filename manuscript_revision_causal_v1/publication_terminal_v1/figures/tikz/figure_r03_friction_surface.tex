@@ -1,0 +1,32 @@
+% AUTO-GENERATED. DO NOT EDIT BY HAND.
+% Figure: Frozen-weight transaction-cost robustness
+% Evidence class: robustness_rescoring_no_retraining
+% Regenerate with generate_terminal_publication_artifacts.py.
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1,horizontal sep=1.05cm},
+  publication axis,
+  width=0.47\linewidth,
+  height=0.39\linewidth,
+  xlabel={One-way transaction cost (bps)},
+  xmin=-1, xmax=51,
+  xtick={0,10,25,50},
+  legend columns=2,
+  legend style={font=\tiny,at={(0.5,-0.23)},anchor=north,
+                cells={anchor=west},column sep=3pt,row sep=1pt},
+]
+\nextgroupplot[title={(a) Frozen primary strategies},ylabel={Annual CRRA CE (\%)},
+               ymin=20,ymax=33]
+\addplot[pubNavy,ultra thick,mark=*] coordinates {(0,28.44776) (10,27.96041) (25,27.23274) (50,26.02882)}; \addlegendentry{NN-vine TD3}
+\addplot[pubGray,densely dotted,thick,mark=*] coordinates {(0,23.31134) (10,23.31134) (25,23.31134) (50,23.31134)}; \addlegendentry{Equal weight}
+\addplot[pubGold,dashed,thick,mark=*] coordinates {(0,31.0905) (10,29.45197) (25,27.03145) (50,23.09474)}; \addlegendentry{Static vine}
+\addplot[pubPurple,dashdotted,thick,mark=*] coordinates {(0,29.88389) (10,28.20409) (25,25.72419) (50,21.695)}; \addlegendentry{Dynamic NN-vine}
+\addplot[pubSlate!70,thin,densely dotted] coordinates {(12.064,20) (12.064,33)};
+\addplot[pubSlate!70,thin,densely dashed] coordinates {(23.198,20) (23.198,33)};
+\nextgroupplot[title={(b) Matched pretraining sources},ymin=18,ymax=35]
+\addplot[pubNavy,ultra thick,mark=*] coordinates {(0,33.13676) (10,32.18119) (25,30.76039) (50,28.4255)}; \addlegendentry{Historical prefix}
+\addplot[pubTeal,dashed,thick,mark=*] coordinates {(0,31.45754) (10,30.89871) (25,30.06475) (50,28.68624)}; \addlegendentry{Concentrated vine synthetic}
+\addplot[pubGold,dashdotted,thick,mark=*] coordinates {(0,25.60182) (10,24.36363) (25,22.52888) (50,19.53009)}; \addlegendentry{Moving-block bootstrap}
+\addplot[pubSlate!70,thin,densely dashed] coordinates {(43.114,18) (43.114,35)};
+\end{groupplot}
+\end{tikzpicture}

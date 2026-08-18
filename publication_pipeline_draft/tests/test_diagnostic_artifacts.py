@@ -35,11 +35,13 @@ class DiagnosticArtifactTests(unittest.TestCase):
                 "historical_q05": [-0.06, -0.07], "synthetic_q05": [-0.061, -0.069],
                 "historical_cvar05": [-0.08, -0.09], "synthetic_cvar05": [-0.081, -0.089],
                 "pass_marginals": [True, True],
+                "statistically_compatible": [True, True],
             }
         )
         correlation = pd.DataFrame(
             {"asset_i": ["A"], "asset_j": ["B"], "historical_correlation": [0.4],
-             "synthetic_correlation": [0.39], "pass_correlation": [True]}
+             "synthetic_correlation": [0.39], "pass_correlation": [True],
+             "statistically_compatible": [True]}
         )
         tail = pd.DataFrame(
             {"asset_i": ["A"], "asset_j": ["B"], "historical_lower_tail": [0.2],
@@ -60,6 +62,7 @@ class DiagnosticArtifactTests(unittest.TestCase):
         output = self.base / "synthetic_output"
         result = synthetic_artifacts(source, output)
         self.assertEqual(result["gate_summary"][0]["passed"], 2)
+        self.assertEqual(len(result["gate_summary"]), 6)
         self.assertTrue((output / "tables" / "table_s01_synthetic_gate_summary.csv").is_file())
         self.assertTrue((output / "figures" / "figure_s02_dependence_fidelity.pdf").is_file())
 

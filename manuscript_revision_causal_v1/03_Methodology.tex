@@ -1,0 +1,788 @@
+\section{Methodology}
+\label{sec:methodology}
+
+This section presents the complete methodological framework underlying our vine-augmented deep reinforcement learning approach to dynamic portfolio optimisation. We begin by developing the D-vine copula model with neural network-driven time-varying parameters (\ref{subsec:3_Dvine_copula_model}), which serves both as the basis for the vine-augmented state representation and for generating synthetic training data. We then formalise the portfolio optimisation problem as a Markov decision process (\ref{subsec:3_markov_decision_process}), specifying the recurrent vine-augmented state, constrained continuous action space, and risk-sensitive multi-period reward. Next, we describe the LSTM-TD3 architecture (\ref{subsec:3_lstm_td3}) and the two-stage training strategy combining synthetic pre-training with historical fine-tuning (\ref{subsec:3_two_stage_training}). Finally, we define the benchmark models (\ref{subsec:3_benchmark_models}) and provide implementation details (\ref{subsec:3_implementation}).
+
+\subsection{D-Vine Copula Model}
+\label{subsec:3_Dvine_copula_model}
+
+The modelling of multivariate dependencies in financial asset returns presents a fundamental challenge in portfolio optimization. Standard approaches, such as the Gaussian copula or the Dynamic Conditional Correlation (DCC) model, impose restrictive assumptions of linearity or elliptical dependence structures that fail to capture the asymmetric tail dependencies and non-linear relationships observed in financial markets during periods of stress. This section develops a flexible dependence framework based on vine copulas, which decompose a high-dimensional joint distribution into a cascade of bivariate pair-copulas, each of which can be selected from a broad family of parametric copula functions. The resulting framework accommodates complex, asymmetric, and tail-dependent structures while remaining computationally tractable for portfolios of moderate dimension.
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.92\textwidth}{\centering
+\textbf{Training prefix only}\par
+Adjusted levels $\rightarrow$ daily log returns $\rightarrow$ diagnostically selected marginals
+$\rightarrow$ frozen empirical PITs\par
+$\Downarrow$\par
+All-tree Student-$t$ D-vine $\rightarrow$ 21 edge-specific correlation networks
+$\rightarrow$ causal monthly vine snapshots\par
+$\Downarrow$\par
+1,000 synthetic 24-month episodes $\rightarrow$ LSTM-TD3 pre-training
+$\rightarrow$ one pass over 61 realised historical trajectories\par
+$\Downarrow$\par
+20 frozen seed policies $\rightarrow$ mean target weights $\rightarrow$ one common cost and constraint scorer
+}}
+\caption{Implemented Leakage-Controlled Neural-Vine and RL Pipeline}
+\label{fig:vine_pipeline}
+\end{figure}
+
+
+\subsubsection{Copula Fundamentals and Sklar's Theorem}
+\label{subsubsec:3_copula_fundamentals}
+
+The theoretical foundation of all copula-based methods is Sklar's theorem \cite{sklar_fonctions_1959}, which establishes that any multivariate joint distribution can be expressed as a function of its univariate marginal distributions. Specifically, for an \( n \)-dimensional random vector \( \boldsymbol{Y} = (Y_1, \dots, Y_n) \) with joint distribution function \( F \) and marginal distribution functions \( F_1, \dots, F_n \), there exists an \( n \)-dimensional copula \( C \) such that
+
+\begin{equation}
+F(y_1, \dots, y_n) = C\{F_1(y_1), \dots, F_n(y_n)\},
+\label{eq:sklar_joint}
+\end{equation}
+
+where the copula \( C: [0,1]^n \to [0,1] \) is itself a joint distribution function with uniform marginals. For continuous marginals, the joint density factorizes as
+
+\begin{equation}
+f(y_1, \dots, y_n) = c\{F_1(y_1), \dots, F_n(y_n)\} \cdot \prod_{i=1}^n f_i(y_i),
+\label{eq:joint_density}
+\end{equation}
+
+where \( c \) is the copula density. The copula itself is defined as
+
+\begin{equation}
+C(u_1, \dots, u_n) = P(U_1 \leq u_1, \dots, U_n \leq u_n),
+\label{eq:copula_def}
+\end{equation}
+
+with the transformed variables \( u_i = F_i(y_i) \sim \mathcal{U}[0,1] \) for \( i = 1, \dots, n \). This separation of marginal behaviour from dependence structure constitutes the central insight of the copula approach: the marginal dynamics of each asset can be modelled independently using univariate time-series models, while the joint dependence among assets is captured entirely by the copula function. 
+
+The flexibility of the copula framework arises from the range of parametric pair-copula families available in principle. Table \ref{tab:copula_families} summarises the principal families used by the static and rolling benchmark estimators. The proposed dynamic generator deliberately restricts every active edge to the Student-$t$ family: the neural network changes dependence continuously through the correlation parameter, while the edge-specific degrees of freedom remain fixed. This restriction makes the dynamic claim identifiable and avoids discontinuous family switching.
+
+\begin{table}[H]
+\centering
+\caption{D-Vine Copula Family Selection Criteria}
+\label{tab:copula_families}
+\begin{tabular}{l c c c}
+\toprule
+\textbf{Copula Family} & \textbf{Parameter Range} & \textbf{Tail Dependence} & \textbf{AIC/BIC Criterion} \\
+\midrule
+Gaussian & \(\rho \in (-1, 1)\) & No tail dependence & — \\
+Student-t & \(\rho \in (-1, 1), \nu > 2\) & Symmetric tail dependence & — \\
+Clayton & \(\theta \in (0, \infty)\) & Lower tail dependence & — \\
+Gumbel & \(\theta \in [1, \infty)\) & Upper tail dependence & — \\
+Frank & \(\theta \in \mathbb{R} \setminus \{0\}\) & No tail dependence & — \\
+Joe & \(\theta \in [1, \infty)\) & Upper tail dependence & — \\
+\bottomrule
+\end{tabular}
+\caption*{\footnotesize Notes: The table describes the available benchmark family set. The proposed dynamic D-vine uses Student-$t$ pair copulas on all active edges and does not switch families through time.}
+\end{table}
+\vspace{-15pt}
+
+\subsubsection{Pair-Copula Construction (PCC)}
+\label{subsubsec:3_pair_copula_construction}
+
+For \( n > 2 \), specifying a valid \( n \)-dimensional copula directly is mathematically challenging, as not every combination of bivariate copulas yields a valid multivariate copula. The Pair-Copula Construction (PCC), introduced by Bedford and Cooke \cite{bedford_probability_2001,bedford_vinesnew_2002}, overcomes this limitation by decomposing the \( n \)-dimensional copula density into a product of \( n(n-1)/2 \) bivariate pair-copulas. This decomposition is hierarchical in nature: the first tree captures unconditional pairwise dependencies, the second tree captures dependencies conditional on one intermediate variable, and subsequent trees capture dependencies conditional on increasingly many variables.
+
+For a D-vine with ordering \( 1-2-\dots-d \), the copula density is given by \eqref{eq:dvine_density}, where \( \ell \) indexes the tree level, \( k \) indexes the edge within each tree, and \( c_{k,k+\ell;k+1:k+\ell-1} \) denotes the conditional pair-copula density for variables \( k \) and \( k+\ell \) given the intermediate variables \( k+1, \dots, k+\ell-1 \). The functions \( \mathbb{C}_{k|k+1:k+\ell-1} \) represent the conditional distribution functions of \( U_k \) given the intermediate variables. This hierarchical structure allows the D-vine to capture higher-order dependencies that simple multivariate copulas, such as the Gaussian or Student-t, cannot represent.
+
+\begin{equation}
+\begin{aligned}
+c_{1:d}(u_1, \dots, u_d) = \prod_{\ell=1}^{d-1} \prod_{k=1}^{d-\ell} c_{k,k+\ell;k+1:k+\ell-1}\{ &\mathbb{C}_{k|k+1:k+\ell-1}(u_k | \boldsymbol{u}_{k+1:k+\ell-1}), \\ &\mathbb{C}_{k+\ell|k+1:k+\ell-1}(u_{k+\ell} | \boldsymbol{u}_{k+1:k+\ell-1}) \}.
+\label{eq:dvine_density}
+\end{aligned}
+\end{equation}
+
+The conditional distributions in \eqref{eq:dvine_density} are evaluated using the so-called \( h \)-functions. For a pair-copula \( C_{ij;D} \), the \( h \)-function is defined as the partial derivative of the copula with respect to its second argument:
+
+\begin{equation}
+h_{i|j;D}(u_i | u_j) = \frac{\partial C_{ij;D}(u_i, u_j)}{\partial u_j}.
+\label{eq:h_function}
+\end{equation}
+
+This function maps a pair of uniform variables to the conditional distribution of one given the other. The \( h \)-function enables the sequential evaluation of conditional distributions required for the vine decomposition:
+
+\begin{equation}
+\mathbb{C}_{i|D}(u_i | \boldsymbol{u}_D) = h_{i|j;D\setminus\{j\}}\{ \mathbb{C}_{i|D\setminus\{j\}}(u_i | \boldsymbol{u}_{D\setminus\{j\}}), \mathbb{C}_{j|D\setminus\{j\}}(u_j | \boldsymbol{u}_{D\setminus\{j\}}) \}.
+\label{eq:conditional_dist}
+\end{equation}
+
+Similarly, for simulation from the vine copula, the inverse \( h \)-function is required:
+
+\begin{equation}
+u_i = h^{-1}_{i|j;D}(u_{i|D} | u_j).
+\label{eq:h_inverse}
+\end{equation}
+
+The \( h \)-functions play a central role in both estimation and simulation. In estimation, they enable the sequential parameter estimation across vine trees: starting from Tree 1 (unconditional pair-copulas), parameters are estimated via maximum likelihood, the \( h \)-functions are computed, and the transformed variables are passed to Tree 2, where the process repeats. In simulation, the inverse \( h \)-functions are applied in reverse order to generate samples from the vine copula.
+
+Figure \ref{fig:dvine_structure} illustrates the D-vine tree structure for a 7-asset portfolio, corresponding to the empirical application in this study. Tree 1 captures the unconditional pairwise dependencies among the seven assets, with the ordering \( 1-2-3-4-5-6-7 \). Tree 2 captures dependencies conditional on one intermediate variable, and this hierarchical structure continues through Tree 6, which captures the highest-order conditional dependence.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/d_vine_structure.pdf}
+\caption{D-Vine Tree Structure for 7 Assets}
+\label{fig:dvine_structure}
+\end{figure}
+
+\subsubsection{Marginal Models and Causal Probability Integral Transforms}
+\label{subsubsec:3_marginal_models}
+
+Before the copula can be estimated, each marginal return process must absorb serial dependence, volatility clustering, leverage effects, and heavy tails. Marginals are fitted once on the training prefix; their parameters and empirical residual distributions are then frozen. No evaluation observation can alter either the fitted model or the ranks used to construct pseudo-observations.
+
+For each asset, the candidate conditional mean is either constant or AR(1):
+
+\begin{equation}
+r_{i,t}=\mu_i+\phi_i r_{i,t-1}+\varepsilon_{i,t},\qquad
+\varepsilon_{i,t}=\sigma_{i,t}z_{i,t},
+\label{eq:ar1_mean}
+\end{equation}
+
+where $\phi_i=0$ for the constant-mean candidate. The candidate volatility grid contains symmetric GARCH, GJR-GARCH, and exponential GARCH specifications, each with order $(1,1)$ and Student-$t$ or skewed Student-$t$ innovations. The symmetric candidate is
+
+\begin{equation}
+\sigma_{i,t}^2=\omega_i+\alpha_i\varepsilon_{i,t-1}^2+\beta_i\sigma_{i,t-1}^2,
+\label{eq:garch11}
+\end{equation}
+
+with the usual positivity and covariance-stationarity conditions
+
+\begin{equation}
+\omega_i>0,\qquad \alpha_i\geq0,\qquad\beta_i\geq0,
+\qquad\alpha_i+\beta_i<1.
+\label{eq:garch_constraints}
+\end{equation}
+
+The GJR candidate adds an indicator-weighted negative-shock term and the eGARCH candidate evolves log variance. Every converged candidate is tested for remaining autocorrelation in both $z_{i,t}$ and $z_{i,t}^2$ at lags 5, 10, and 20. A candidate enters the BIC selection pool only if the minimum p-value in both diagnostic families is at least 0.01. If no one-component GARCH candidate passes, a causal two-component EWMA grid with short- and long-horizon variance filters is evaluated under the same residual gate. The run fails closed if no admissible marginal remains.
+
+The standardised residuals are
+
+\begin{equation}
+z_{i,t}=\frac{\varepsilon_{i,t}}{\sigma_{i,t}},
+\label{eq:standardized_residuals}
+\end{equation}
+
+and the probability integral transform required by the copula is implemented with training-residual mid-ranks:
+
+\begin{equation}
+u_{i,t}=\widehat F_{i,\mathrm{train}}(z_{i,t}).
+\label{eq:pit}
+\end{equation}
+
+Values are clipped away from zero and one. For later dates, fixed-parameter filtering produces $z_{i,t}$ and the frozen training empirical distribution maps it to $u_{i,t}$; hence evaluation ranks cannot leak backward into model fitting. The likelihood for a candidate marginal has the generic form
+
+\begin{equation}
+\mathcal{L}_i(\boldsymbol\theta_i)=\sum_{t\in\mathcal T_{\mathrm{train}}}
+\left[\log f_{\eta_i}(z_{i,t})-\log\sigma_{i,t}\right],
+\label{eq:garch_likelihood}
+\end{equation}
+
+where $f_{\eta_i}$ is the selected innovation density and $\boldsymbol\theta_i$ includes the corresponding mean, variance, shape, and skew parameters. Hybrid numerical optimisation is used, non-converged fits are discarded, and BIC is compared only after the residual gate. This separation allows each asset to retain its own marginal dynamics while the D-vine models the cross-sectional dependence of the filtered uniforms.
+
+\subsubsection{Dynamic D-Vine with Neural Network Parametrisation}
+\label{subsubsec:3_dynamic_vine_with_NN_param}
+
+The vine copula framework described thus far is static, whereas financial dependence evolves through time \cite{so_vine-copula_2014}. The implemented model is a fully dynamic Student-$t$ D-vine. A Kendall's-tau path selects a fixed D-vine order on the training prefix, all $d(d-1)/2=21$ edges are retained for $d=7$, and every edge is fitted with a Student-$t$ pair copula. Edge-specific degrees of freedom $\nu_e$ are fixed after training-prefix estimation; an edge-specific neural network forecasts the time-varying correlation $\rho_{e,t}$.
+
+For edge $e$, the eight-dimensional causal feature vector is
+
+\begin{equation}
+\boldsymbol x_{e,t}=\left(u_{1,t-1},u_{2,t-1},z_{1,t-1},z_{2,t-1},
+\log\sigma_{1,t-1},\log\sigma_{2,t-1},\rho_{e,t-1},s_{e,t-1}\right)^{\top},
+\label{eq:tau_evolution}
+\end{equation}
+
+where $s_{e,t-1}$ is the lagged Student-$t$ copula score. For higher trees, the two uniform inputs are causal conditional pseudo-observations obtained recursively from the preceding trees. A two-hidden-layer network with widths 16 and 8 maps these features to a bounded correlation:
+
+\begin{equation}
+\rho_{e,t}=\tanh\!\left[\operatorname{atanh}(\bar\rho_e)+a_e
+g_e(\boldsymbol x_{e,t};\boldsymbol w_e)\right],
+\label{eq:nn_parameter}
+\end{equation}
+
+where $\bar\rho_e$ is the static training-prefix estimate and $a_e$ limits dynamic departures. The network is trained directly by the Student-$t$ copula negative log-likelihood, rather than by regression to rolling-window estimates:
+
+\begin{equation}
+\mathcal{L}_{e}(\boldsymbol w_e)=-\sum_{t\in\mathcal T_{\mathrm{fit}}}
+\log c_{t,\nu_e}\!\left(u_{1,t},u_{2,t};\rho_{e,t}(\boldsymbol w_e)\right).
+\label{eq:nn_objective}
+\end{equation}
+
+The final 20\% of the training sequence is kept in chronological order for early stopping, with patience 50. Networks are initialised at the static edge estimate, so a weak dynamic signal reduces to the fitted backbone rather than an arbitrary dependence path. The resulting model is estimated once on the training prefix and replayed causally; it is not a rolling-window vine.
+
+Table \ref{tab:copula_families_definitions} records the broader family set relevant to conventional vine benchmarks. In the proposed neural model, only the Student-$t$ row is active. Consequently, lower and upper tail dependence are symmetric conditional on an edge, but remain time-varying through $\rho_{e,t}$.
+
+\begin{table}[H]
+\centering
+\caption{Bivariate Copula Families Used in the Framework and Benchmarks}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Family} & \multicolumn{1}{c}{$\mathbf{C(u,v)}$} & \textbf{Parameter Range} & $\mathbf{\lambda_L}$ & $\mathbf{\lambda_U}$ \\
+\midrule
+Gaussian & $\Phi_\rho(\Phi^{-1}(u), \Phi^{-1}(v))$ & $\rho \in (-1,1)$ & 0 & 0 \\
+Student-$t$ & $T_{\rho,\nu}(T_\nu^{-1}(u), T_\nu^{-1}(v))$ & $\rho \in (-1,1), \nu > 2$ & $2t_{\nu+1}\left(-\sqrt{\frac{(\nu+1)(1-\rho)}{1+\rho}}\right)$ & same as $\lambda_L$ \\
+Clayton & $\left(u^{-\theta} + v^{-\theta} - 1\right)^{-1/\theta}$ & $\theta > 0$ & $2^{-1/\theta}$ & 0 \\
+Gumbel & $\exp\left\{-\left[(-\ln u)^\theta + (-\ln v)^\theta\right]^{1/\theta}\right\}$ & $\theta \geq 1$ & 0 & $2 - 2^{1/\theta}$ \\
+Frank & $-\frac{1}{\theta}\ln\left\{1 + \frac{(e^{-\theta u} - 1)(e^{-\theta v} - 1)}{e^{-\theta} - 1}\right\}$ & $\theta \neq 0$ & 0 & 0 \\
+Joe & $1 - \left\{(1-u)^\theta + (1-v)^\theta - (1-u)^\theta(1-v)^\theta\right\}^{1/\theta}$ & $\theta \geq 1$ & 0 & $2 - 2^{1/\theta}$ \\
+\bottomrule
+\end{tabular}%
+}
+\label{tab:copula_families_definitions}
+\caption*{\footnotesize Notes: $\Phi_\rho$ denotes the bivariate normal CDF with correlation $\rho$; $\Phi^{-1}$ is the inverse standard normal CDF. $T_{\rho,\nu}$ denotes the bivariate Student-$t$ CDF with correlation $\rho$ and degrees of freedom $\nu$; $T_\nu^{-1}$ is the inverse univariate Student-$t$ CDF. $\lambda_L$ and $\lambda_U$ denote lower and upper tail dependence, respectively. For the Student-$t$ copula, lower and upper tail dependence are symmetric.}
+\end{table}
+\vspace{-15pt}
+
+The tail dependence coefficients quantify limiting joint extremes. In the implemented state, each active edge contributes its correlation, implied Kendall's $\tau$, and symmetric Student-$t$ tail coefficient. These 63 features inform the RL policy, and the same causal edge snapshots generate conditional scenarios. Dynamic family selection and asymmetric upper/lower coefficients are therefore not claimed for the principal model.
+
+
+\subsubsection{Synthetic Data Generation}
+\label{subsubsec:3_synthetic_data_generation}
+
+A central contribution of this study is the use of the training-prefix neural D-vine as a controlled data generator. The generator is not assumed to reproduce every feature of the market merely because its marginals pass a diagnostic. It is accepted only after separate marginal, Pearson-correlation, lower-tail co-exceedance, and temporal-dependence checks compare simulated and historical training-prefix data. These diagnostics are treated as generator validation, not as evidence of investment performance.
+
+The daily marginal filters first produce training-only pseudo-observations. These are aggregated to monthly holding-period uniforms, and a fitted univariate Student-$t$ Markov copula for each asset supplies serial and tail persistence. Conditional innovations retain the contemporaneous neural D-vine dependence. At month $t$, forward simulation draws
+
+\begin{equation}
+\boldsymbol v_t\sim C^{\mathrm{NN\mbox{-}vine}}_t,\qquad
+\boldsymbol u_t=\mathcal S(\boldsymbol v_t,\boldsymbol u_{t-1}),
+\label{eq:dvine_sample}
+\end{equation}
+
+where $\mathcal S$ denotes the seven fitted serial-copula transitions. The resulting uniforms are mapped through continuous empirical quantiles of training-prefix monthly log returns:
+
+\begin{equation}
+\widetilde r_{i,t}=\widehat Q_{i,\mathrm{train}}(u_{i,t}),
+\label{eq:inverse_returns}
+\end{equation}
+
+using midpoint plotting positions to avoid excess mass beyond an isolated minimum. A single Fisher-$z$ dependence multiplier is calibrated by simulated method of moments against the 21 training-prefix Pearson correlations. This parsimonious correction preserves edge signs and dynamic ordering and avoids pair-specific calibration to 21 noisy targets.
+
+The realised training bundle contains $M=1{,}000$ synthetic episodes. Every episode has a 30-month causal burn-in followed by $T'=24$ monthly decisions. For each decision, one draw supplies the realised synthetic transition and 512 additional draws supply the conditional loss distribution used for CVaR:
+
+\begin{equation}
+\mathcal D_{\mathrm{synth}}=
+\left\{\left(S^{(m)}_{0},\{\widetilde{\boldsymbol R}^{(m)}_{t,j}\}_{j=0}^{512}\right)_{t=1}^{24}\right\}_{m=1}^{1000}.
+\label{eq:synth_paths}
+\end{equation}
+
+The starting dependence snapshot is sampled only from causal sequences that fit within the training prefix. No historical realised return is inserted into a synthetic episode. Conversely, fine-tuning episodes use the actual permissible historical return as row zero and use simulated rows only as ex-ante CVaR scenarios. Thus all synthetic episodes serve pre-training, all permissible realised history serves fine-tuning, and the locked final 24 decision periods serve evaluation only.
+
+Algorithm \ref{alg:dvine} summarises the implemented generator. The D-vine and marginal models are fitted once; monthly snapshots are then replayed without rolling re-estimation.
+
+\begin{algorithm}[H]
+\caption{Neural D-Vine Estimation and Synthetic Episode Generation}
+\label{alg:dvine}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Training-prefix daily returns; $N=7$; $M=1{,}000$; $T'=24$; burn-in $L=30$
+\STATE \textbf{Output:} Frozen marginal models, causal D-vine snapshots, synthetic episodes
+\STATE Fit and diagnostically gate the marginal candidate grid on the training prefix
+\STATE Construct frozen empirical PITs and monthly serial-copula innovations
+\STATE Select one D-vine order and fit an all-tree Student-$t$ backbone
+\FOR{each of the 21 edges}
+    \STATE Train the correlation network by copula likelihood with chronological validation
+\ENDFOR
+\STATE Calibrate one training-only Fisher-$z$ dependence scale by simulated moments
+\STATE Build the causal sequence $\{C_t^{\mathrm{NN\mbox{-}vine}\}}$
+\FOR{$m=1,\ldots,M$}
+    \STATE Sample a valid $L+T'$ snapshot sequence
+    \FOR{$t=1,\ldots,L+T'$}
+        \STATE Draw 513 D-vine innovations and apply the serial transitions
+        \STATE Map uniforms through training-prefix monthly empirical quantiles
+    \ENDFOR
+    \STATE Store burn-in context and the 24 realised/scenario matrices
+\ENDFOR
+\STATE Validate marginal, correlation, tail, and temporal fidelity; write immutable hashes
+\RETURN the frozen training bundle
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+
+\subsection{Markov Decision Process (MDP) Formulation}
+\label{subsec:3_markov_decision_process}
+
+To model portfolio optimisation as a sequential decision-making problem, we must formalise the investment process as a Markov Decision Process (MDP) \cite{sutton_reinforcement_2018}. The MDP is defined by the tuple $(\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$, where $\mathcal{S}$ is the state space, $\mathcal{A}$ is the action space, $\mathcal{P}$ is the state transition kernel, $\mathcal{R}$ is the reward function, and $\gamma \in (0,1]$ is the discount factor. At each rebalancing period $t$, the agent observes the current market state $s_t \in \mathcal{S}$, selects a portfolio allocation $a_t \in \mathcal{A}$, receives a reward $r_t = \mathcal{R}(s_t, a_t)$, and transitions to a new state $s_{t+1}$ according to the market dynamics $\mathcal{P}(s_{t+1} | s_t, a_t)$. The objective is to learn a policy $\pi: \mathcal{S} \to \mathcal{A}$ that maximises the expected cumulative discounted reward $\mathbb{E}[\sum_{t=0}^{T} \gamma^t r_t]$. Table \ref{tab:mdp_components} summarises the MDP components, which are detailed in the following subsections.
+
+\begin{table}[H]
+\centering
+\caption{Markov Decision Process Components for Portfolio Optimisation}
+\label{tab:mdp_components}
+\begin{tabular}{p{2.5cm} p{10cm}}
+\toprule
+\textbf{Component} & \textbf{Definition} \\
+\midrule
+State $S_t$ & A 30-observation sequence containing wealth, monthly returns, volatilities, scenario CVaR, prior holdings and exposures, and all D-vine edge features \\
+Action $a_t$ & Self-financing long-short weights with net exposure 1, gross exposure at most 1.5, and asset limits of $+0.60/-0.20$ \\
+Reward $r_t$ & Increment in terminal-wealth CRRA utility minus scenario-based CVaR; transaction and financing costs enter wealth and CVaR directly \\
+Transition $P$ & Stochastic market dynamics governing asset returns (unknown to the agent, learned through experience) \\
+Discount $\gamma$ & Discount factor controlling the trade-off between immediate and future rewards \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{State Space Design}
+\label{subsubsec:3_state_space_design}
+
+The state design determines the information available to every actor and critic update. The implementation distinguishes the current observation $o_t$ from the recurrent state $S_t$. Each observation contains normalised wealth, the most recently realised vector of monthly log returns, annualised rolling volatilities, the preceding action, its gross and net exposures, the most recently estimated scenario CVaR, and the complete D-vine feature vector. Rolling Pearson correlations are not supplied separately. The recurrent input is the ordered sequence
+%
+\begin{equation}
+S_t=(o_{t-L+1},\ldots,o_t), \qquad L=30,
+\label{eq:recurrent_state}
+\end{equation}
+%
+so temporal information is represented by 30 monthly observations rather than by embedding 30 daily returns inside one vector.
+
+For asset $i$, the return component is the monthly log gross return $r_{i,t}=\log G_{i,t}$, expressed in percentage points before entering the network. Volatility is the annualised root mean square of the latest 20 monthly log returns,
+%
+\begin{equation}
+\sigma_{i,t}=100\sqrt{12\left(\frac{1}{20}\sum_{j=0}^{19}r_{i,t-j}^{2}\right)},
+\label{eq:volatility}
+\end{equation}
+%
+which supplies a causal measure of changing return scale. Every generated training episode also contains exactly 30 burn-in returns and corresponding vine states preceding its first decision. This prevents the LSTM history from being formed by repeating the reset observation and ensures that the first action is conditioned only on information available before that action.
+
+The D-vine block contains three features for every unconditional and conditional pair-copula edge: Kendall's tau and lower- and upper-tail dependence. For an edge copula $C_{e,t}$,
+%
+\begin{equation}
+\tau_{e,t}=4\int_0^1\int_0^1 C_{e,t}(u,v)\,dC_{e,t}(u,v)-1,
+\qquad
+(\lambda^L_{e,t},\lambda^U_{e,t}),
+\label{eq:vine_state_features}
+\end{equation}
+%
+where $\lambda^L_{e,t}=\lambda^U_{e,t}$ is evaluated from the edge's dynamic Student-$t$ correlation and fixed degrees of freedom. The coarse no-vine ablation preserves the same observation dimension but sets this vector, together with the policy-visible scenario-CVaR channel, to zero. The causal analysis additionally masks these two channels separately, so direct dependence features are not conflated with a risk statistic derived from vine scenarios.
+
+Portfolio context consists of $V_t/V_0$, the drifted pre-trade weight vector $\widetilde w_{t^-}$, $\lVert\widetilde w_{t^-}\rVert_1$, and $\mathbf{1}^{\top}\widetilde w_{t^-}$. The reset allocation is the neutral equal-weight portfolio, not a zero-holdings or all-cash state. The scenario-CVaR component is the mean loss in the worst 5\% of the 512 joint monthly return scenarios used at the preceding step. Accordingly,
+%
+\begin{equation}
+o_t=\left[\frac{V_t}{V_0},\ 100r_t,\ \sigma_t,\ 100\operatorname{CVaR}_{0.95,t},\ \widetilde w_{t^-},\ \lVert\widetilde w_{t^-}\rVert_1,\ \mathbf{1}^{\top}\widetilde w_{t^-},\ \theta^{\mathrm{vine}}_t\right]^{\top}.
+\label{eq:state_vector}
+\end{equation}
+%
+With $N=7$ assets and $3N(N-1)/2=63$ vine features, a single observation has
+%
+\begin{equation}
+d_o=1+N+N+1+N+2+\frac{3N(N-1)}{2}=88
+\label{eq:state_dimension}
+\end{equation}
+%
+components, and each recurrent network receives a tensor of dimension $30\times88$ per decision.
+
+\subsubsection{Action Space}
+\label{subsubsec:3_action_space}
+
+At each monthly rebalancing date, the actor produces $N+1$ raw outputs: one cross-sectional score per asset and one leverage logit. Scores are smoothly bounded as $d_{i,t}=b\tanh(z_{i,t}/b)$ with $b=5$, while the leverage gate is $g_t=\operatorname{sigmoid}(z_{N+1,t})\in(0,1)$. The feasible mandate is
+%
+\begin{equation}
+\mathcal{A}=\left\{w\in\mathbb{R}^{N}:\ \mathbf{1}^{\top}w=1,\ \lVert w\rVert_1\leq1.5,\ -0.20\leq w_i\leq0.60\right\}.
+\label{eq:action_space}
+\end{equation}
+%
+Thus, the implemented policy is self-financing and long-short rather than long-only.
+
+The two lowest-ranked asset scores form a disjoint short support and the remaining assets form the long support. For net exposure one and maximum gross exposure 1.5, the gate determines the short and long budgets as
+%
+\begin{equation}
+B_t^- = 0.25g_t, \qquad B_t^+ = 1+B_t^-.
+\label{eq:book_budgets}
+\end{equation}
+%
+Within each support, an interior logistic capped-simplex map with temperature 1.5 converts scores to probability vectors $p_t^+$ and $p_t^-$. Its caps are $0.60/B_t^+$ for the long probabilities and $0.20/B_t^-$ for the short probabilities. Portfolio weights are then
+%
+\begin{equation}
+w_t=B_t^+p_t^+-B_t^-p_t^-, \qquad
+\lVert w_t\rVert_1=1+0.5g_t.
+\label{eq:constrained_action_map}
+\end{equation}
+%
+Because the supports do not overlap, the gate is identifiable with realised gross exposure, and the net, gross, and individual-position constraints hold by construction. The smooth interior map retains gradients near the position limits, unlike a clipped softmax or Euclidean projection that can create exact boundary plateaus.
+
+\subsubsection{Reward Function}
+\label{subsubsec:3_reward_function}
+
+The reward implements a multi-period terminal-wealth objective with dense learning signals. Let $G_t$ denote the vector of realised holding-period gross asset returns. For newly selected target weights $w_t$, the pre-cost growth factor and economically implementable turnover are
+%
+\begin{equation}
+g_{p,t}=1+w_t^{\top}(G_t-\mathbf{1}),
+\qquad \operatorname{TO}_t=\lVert w_t-\widetilde w_{t^-}\rVert_1.
+\label{eq:portfolio_return}
+\end{equation}
+%
+Transaction and financing costs are applied multiplicatively rather than subtracted as a second reward term. With proportional cost $\kappa=0.001$, annual short-borrow rate $c_s=0.03$, annual cash-borrow rate $c_c=0.02$, and holding-period year fraction $\Delta_t$, the cost multiplier is
+%
+\begin{equation}
+m_t=\exp\left[-\kappa\operatorname{TO}_t-\Delta_t\{c_s\sum_i(-w_{i,t})_+ + c_c(\mathbf{1}^{\top}w_t-1)_+\}\right],
+\qquad V_{t+1}=V_t\max(g_{p,t}m_t,10^{-12}).
+\label{eq:cost_adjusted_wealth}
+\end{equation}
+%
+After the realised move, the next pre-trade risky holdings are $\widetilde w_{(t+1)^-}=w_t\odot G_t/g_{p,t}$. The same target weights and costs are applied to 512 joint scenarios generated from the contemporaneous vine. For scenario loss $\ell_t^{(m)}=1-g_{p,t}^{(m)}m_t$, $\operatorname{CVaR}_{0.95,t}$ is the mean of the largest $\lceil0.05\times512\rceil=26$ losses.
+
+CRRA utility is defined on the wealth ratio, $U_{\gamma_U}(x)=(x^{1-\gamma_U}-1)/(1-\gamma_U)$ for $\gamma_U\neq1$, with $\gamma_U=2$. The implemented reward is
+%
+\begin{equation}
+r_t=U_{\gamma_U}\!\left(\frac{V_{t+1}}{V_0}\right)-U_{\gamma_U}\!\left(\frac{V_t}{V_0}\right)-\lambda\operatorname{CVaR}_{0.95,t},
+\qquad \lambda=0.05.
+\label{eq:reward_function}
+\end{equation}
+%
+The utility increments telescope across the 24-month episode to terminal-wealth utility, while still providing a reward after every decision. The agent discount is therefore fixed at one. Turnover, short-borrow costs, and any cash-borrow costs affect both realised wealth and the forward loss distribution; they are not counted again through a separate additive turnover penalty.
+
+
+
+
+
+
+
+
+
+\subsection{LSTM-TD3 Architecture}
+\label{subsec:3_lstm_td3}
+
+The current agent is a recurrent implementation of Twin Delayed Deep Deterministic Policy Gradient (TD3) \cite{fujimoto_addressing_2018}, which extends DDPG \cite{lillicrap_continuous_2015} for continuous control. It retains a deterministic actor but replaces the single critic with two independently parameterised critics, uses the smaller target estimate, smooths target actions with clipped Gaussian noise, and updates the actor less frequently than the critics. These changes address value overestimation and rapidly moving policy targets. The recurrence is not a shared feature extractor: the actor and each critic own a separate LSTM encoder and therefore learn task-specific temporal representations.
+
+Figure \ref{fig:lstm_td3_architecture} illustrates the implemented architecture. A 30-observation vine-augmented sequence is normalised feature-wise and processed by a one-layer LSTM. The actor converts its last temporal representation into $N$ asset scores and one leverage logit, which are passed through the constrained action map in Equation \eqref{eq:constrained_action_map}. Each critic processes the state sequence through its own recurrent encoder, concatenates the last hidden representation with the realised constrained action, and estimates a scalar action value.
+
+\begin{figure}[H]
+\centering
+\input{figures/tikz/figure_m01_lstm_td3_architecture.tex}
+\caption{Implemented LSTM-TD3 Architecture and Update Loop}
+\label{fig:lstm_td3_architecture}
+\caption*{\footnotesize Notes: The actor, critic 1, and critic 2 have separate LayerNorm--LSTM encoders. The actor's $N+1$ raw outputs are mapped to capped disjoint long and short books. TD3 trains both critics against the minimum smoothed target value and updates the actor and all target networks every second critic update.}
+\end{figure}
+
+\subsubsection{LSTM Temporal Encoding}
+\label{subsubsec:3_lstm_temporal_encoding}
+
+Financial returns and dependence states can exhibit persistence, regime shifts, and volatility clustering. Each recurrent network therefore processes the causal sequence $S_t$ with an LSTM \cite{hochreiter_long_1997}. For network $j\in\{\mu,1,2\}$,
+%
+\begin{equation}
+h_t^{j}=\operatorname{LN}\!\left(\operatorname{LSTM}_{j}\!\left(\operatorname{LN}(S_t);\theta_j^L\right)_{L}\right),
+\label{eq:lstm_encoding}
+\end{equation}
+%
+where the subscript $L$ selects the last sequence output. The input LayerNorm standardises each 88-dimensional observation inside the network, and a second LayerNorm is applied to the 64-dimensional LSTM output. The actor retains outputs at all sequence positions internally but acts only from the final one; each critic likewise uses only its last recurrent representation. The one-layer, 64-unit design replaces the earlier two-layer, 128-unit specification.
+
+\subsubsection{TD3 Algorithm}
+\label{subsubsec:3_td3_algorithm}
+
+Let $\mathcal{P}$ denote the constrained long-short map and let the deterministic policy be $a_t=\mathcal{P}(\mu(S_t;\theta^\mu))$. TD3 maintains online critics $Q_1,Q_2$, an actor $\mu$, and a target copy of each network. For replay transition $(S_t,a_t,r_t,S_{t+1},d_t)$, target-policy smoothing is applied to the raw target-actor output before portfolio projection:
+%
+\begin{equation}
+\widetilde a_{t+1}=\mathcal{P}\!\left(\mu'(S_{t+1})+\operatorname{clip}(\epsilon,-c,c)\right), \quad
+\epsilon\sim\mathcal{N}(0,\sigma_{\mathrm{targ}}^2I),
+\label{eq:td_target1}
+\end{equation}
+%  
+\begin{equation}
+y_t=r_t+(1-d_t)\gamma\min_{k\in\{1,2\}}Q'_k(S_{t+1},\widetilde a_{t+1}),
+\label{eq:td_target2}
+\end{equation}
+%
+with $\sigma_{\mathrm{targ}}=0.10$, $c=0.25$, and $\gamma=1$. Both critics are updated on every gradient step using
+%
+\begin{equation}
+\mathcal{L}_Q=\mathbb{E}_{\mathcal{D}}\left[(Q_1(S_t,a_t)-y_t)^2+(Q_2(S_t,a_t)-y_t)^2\right],
+\label{eq:critic_loss}
+\end{equation}
+%
+where $\mathcal{D}$ is a uniform replay buffer with capacity 100,000 \cite{mnih_human-level_2015}.
+
+The actor is updated once every $d=2$ critic updates using critic 1 and the differentiable action map. In addition to the deterministic policy objective \cite{silver_deterministic_2014}, the implementation uses a small allocation-entropy reward and a soft penalty on excessive leverage-gate use:
+%
+\begin{equation}
+\mathcal{L}_{\mu}=-\mathbb{E}_{\mathcal{D}}[Q_1(S_t,\mathcal{P}(\mu(S_t)))]
+-\beta_H\mathbb{E}_{\mathcal{D}}[H_t]
++\beta_g\mathbb{E}_{\mathcal{D}}[(g_t-g_0)_+^2],
+\label{eq:actor_objective}
+\end{equation}
+%
+where $\beta_H=0.005$, $\beta_g=0.25$, and $g_0=0.80$. The entropy term averages diversification within the long and active short books; it regularises the deterministic allocations and does not make TD3 a stochastic policy. After each delayed actor update, all target networks receive the Polyak update
+%
+\begin{equation}
+\theta^{(\cdot)'}\leftarrow\tau\theta^{(\cdot)}+(1-\tau)\theta^{(\cdot)'},\qquad \tau=0.005.
+\label{eq:soft_update}
+\end{equation}
+
+\subsubsection{Network Architectures}
+\label{subsubsec:3_network_architectures}
+
+The actor applies a 64-unit fully connected ReLU layer to its recurrent output and then produces $N+1$ unconstrained outputs:
+%
+\begin{equation}
+z_t=W_2^\mu\operatorname{ReLU}(W_1^\mu h_t^\mu+b_1^\mu)+b_2^\mu,
+\qquad a_t=\mathcal{P}(z_t).
+\label{eq:actor_network}
+\end{equation}
+%
+The final leverage-head weights are initialised to zero and its bias is set so that $g_t=0.10$ before learning, providing a conservative approximately unlevered starting policy. Each critic has its own LayerNorm--LSTM stack followed by one 64-unit ReLU layer:
+%
+\begin{equation}
+Q_k(S_t,a_t)=W_{2,k}^Q\operatorname{ReLU}\!\left(W_{1,k}^Q[h_t^k;a_t]+b_{1,k}^Q\right)+b_{2,k}^Q,
+\qquad k\in\{1,2\}.
+\label{eq:critic_network}
+\end{equation}
+%
+The actor and critics use separate Adam optimisers \cite{kingma_adam_2015}; gradient norms are clipped at one. Publication runs use deterministic PyTorch algorithms and full float32 arithmetic by default, with separate gradient scalers retained only for the optional mixed-precision mode.
+
+\subsubsection{Exploration in Raw Action Space}
+\label{subsubsec:3_exploration}
+
+During the first 1,000 pre-training decisions, raw $N+1$ action vectors are sampled from a standard normal distribution to populate replay memory with broad action support. Thereafter, independent Gaussian exploration is added to the actor's raw asset-score and leverage outputs before the constrained projection:
+%
+\begin{equation}
+a_t=\mathcal{P}\!\left(\mu(S_t)+\sigma_e\xi_t\right),
+\qquad \xi_t\sim\mathcal{N}(0,I).
+\label{eq:exploration_action}
+\end{equation}
+%
+The episode-level scale is $0.15\times0.998^e$ during synthetic pre-training and $0.05\times0.995^e$ during historical fine-tuning. Adding noise before projection preserves every hard portfolio constraint. The action counter is stored in the checkpoint, so the initial random-action phase cannot restart when the pretrained agent is loaded for fine-tuning.
+
+Algorithm \ref{alg:lstm_td3} summarises the complete LSTM-TD3 procedure, including the two-stage training strategy described next.
+
+
+\subsection{Two-Stage Training Strategy}
+\label{subsec:3_two_stage_training}
+
+A central innovation of our framework is the separation of synthetic pre-training from strictly pre-holdout historical adaptation. The first stage trains TD3 on generated 24-month episodes, while the second stage starts from the resulting checkpoint and performs one controlled pass over realised historical trajectories. Both stages use the same recurrent observation, constrained action map, cost model, CRRA--CVaR reward, and one gradient update per environment step. The final 24 monthly holding periods are excluded from marginal and vine fitting, episode generation, fine-tuning, and all training diagnostics.
+
+\subsubsection{Stage 1: Pre-Training on Synthetic Data}
+\label{subsubsec:3_stage1_training}
+
+The current configuration generates $E_{\mathrm{synth}}=1{,}000$ synthetic episodes from the training-only neural dynamic D-vine. Each episode contains 30 causal burn-in months, followed by 24 decision months. For every decision, one synthetic draw is designated as the realised return and 512 additional joint draws are retained for the CVaR calculation. The trainer verifies bundle metadata---including synthetic realised-return provenance, dynamic-vine structure, sequence length, training cutoff, and the reserved 24-period evaluation horizon---before the first update. It then uses every generated episode exactly once:
+
+\begin{equation}
+\theta_{\mathrm{pre}}=\operatorname{TD3}\!\left(\mathcal{D}_{\mathrm{synth}};E_{\mathrm{synth}}=1000,B=128,\sigma_e=0.15\times0.998^e\right).
+\label{eq:pretrain_objective}
+\end{equation}
+
+Pre-training uses actor and critic learning rates $3\times10^{-5}$ and $10^{-4}$, respectively. Once training finishes, the actor is evaluated deterministically, without exploration noise, on a fixed held-in window of 100 synthetic episodes. Fine-tuning fails closed unless preregistered checks on leverage-gate use, gross-cap frequency, turnover, gate-to-gross identity, true position-limit violations, normalised allocation entropy, and effective number of positions all pass. Contact with a valid hard position cap is recorded as a warning rather than treated as a constraint violation. This gate tests the learned behaviour before any historical adaptation and does not select a policy using historical returns.
+
+\subsubsection{Stage 2: Fine-Tuning on Real Data}
+\label{subsubsec:3_stage2_training}
+
+Fine-tuning uses realised historical monthly returns only. The configured bundle contains 61 distinct, overlapping 24-month trajectories from the training prefix; the final OOS block does not appear in any of them. To diagnose adaptation without target overlap, the last 24 months of the training prefix form one chronological validation trajectory, the 23 earlier trajectories that overlap those targets are purged, and the first 37 trajectories form the diagnostic fit. The number of passes is preregistered as one, so the validation reward is logged but cannot adaptively choose training duration.
+
+After this diagnostic, the candidate and its replay memory are discarded. A fresh agent is loaded from the same pretrained checkpoint and refitted once on all 61 permissible historical trajectories in a deterministic seeded permutation:
+
+\begin{equation}
+\theta_{\mathrm{final}}=\operatorname{TD3}\!\left(\mathcal{D}_{\mathrm{hist}};\theta_{\mathrm{pre}},E_{\mathrm{hist}}=61,B=64,\sigma_e=0.05\times0.995^e\right).
+\label{eq:finetune_objective}
+\end{equation}
+
+The actor learning rate is reduced to $2\times10^{-5}$ and the critic rate remains $10^{-4}$. This is a one-pass refit, not a 2,000-episode continuation and not an early-stopping search. The replay buffer is newly initialised for the final refit, whereas optimiser state, the action counter, and architecture metadata are restored from the pretrained checkpoint; all three target networks are then re-synchronised to their loaded online counterparts. Consequently, the random warm-up does not restart and the final policy uses all permissible historical trajectories without consulting the locked evaluation horizon.
+
+\begin{figure}[H]
+\centering
+\input{figures/tikz/figure_m02_training_strategy.tex}
+\caption{Implemented Two-Stage Training Strategy for Vine-Augmented LSTM-TD3}
+\label{fig:two_stage_training}
+\end{figure}
+
+
+
+\subsubsection{Curriculum Learning (Optional)}
+\label{subsubsec:3_curriculum_learning}
+
+While our main implementation uses a fixed pre-training stage followed by fine-tuning, the framework can be extended with curriculum learning, where the agent is trained on progressively harder tasks \cite{bengio_curriculum_2009}. Starting with easy synthetic scenarios (low volatility, moderate correlations) and progressing to harder scenarios (high volatility, extreme correlations) can improve sample efficiency and final policy performance. The training data at each curriculum stage is:
+
+\begin{equation}
+\mathcal{D}_k = \begin{cases}
+\mathcal{D}_{\text{synth}}^{(\text{easy})}, & k = 1 \\
+\mathcal{D}_{\text{synth}}^{(\text{medium})}, & k = 2 \\
+\mathcal{D}_{\text{synth}}^{(\text{hard})}, & k = 3 \\
+\mathcal{D}_{\text{real}}, & k = 4
+\end{cases}
+\label{eq:curriculum}
+\end{equation}
+
+This approach gradually introduces complexity, allowing the agent to build robust policies before facing the full challenge of real market data. While not employed in our main experiments, this extension demonstrates the flexibility of the framework.
+
+Algorithm \ref{alg:lstm_td3} presents the complete training procedure, including both pre-training and fine-tuning stages.
+
+\begin{algorithm}[H]
+\caption{LSTM-TD3 Training Procedure}
+\label{alg:lstm_td3}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Synthetic episodes $\mathcal{D}_{\text{synth}}$, historical training-prefix episodes $\mathcal{D}_{\text{hist}}$, hyperparameters
+\STATE \textbf{Output:} Trained policy $\mu(s|\theta^\mu)$
+\STATE
+\STATE Validate episode metadata, causal burn-in histories, and locked 24-period OOS exclusion
+\STATE Initialize recurrent actor $\mu$, twin recurrent critics $Q_1,Q_2$, and their target copies
+\STATE Initialize replay buffer $\mathcal{B}$ with capacity $N_B$
+\STATE
+\STATE \textbf{Stage 1: Pre-training on Synthetic Data}
+\FOR{each of 1,000 synthetic episodes}
+    \STATE Reset from its 30-month causal burn-in sequence $S_0$
+    \FOR{$t=1$ to $24$}
+        \STATE Select raw random action during the first 1,000 decisions; otherwise use $\mu(S_t)+\sigma_e\xi_t$
+        \STATE Project raw outputs to $a_t=\mathcal{P}(z_t)$; execute and observe $(r_t,S_{t+1},d_t)$
+        \STATE Store $(S_t,a_t,r_t,S_{t+1},d_t)$ in $\mathcal{B}$ and sample a uniform mini-batch when $|\mathcal{B}|\geq128$
+        \STATE Form smoothed target actions and $y_i=r_i+(1-d_i)\min(Q'_1,Q'_2)$
+        \STATE Update both critics; clip each gradient norm at 1
+        \IF{critic update count is divisible by 2}
+            \STATE Update the actor with $-Q_1$, entropy regularisation, and the leverage penalty
+            \STATE Soft-update the actor and both critic targets with $\tau=0.005$
+        \ENDIF
+    \ENDFOR
+\ENDFOR
+\STATE Save the pretrained checkpoint and evaluate the deterministic actor on 100 held-in synthetic episodes
+\STATE Abort unless every preregistered behavioural gate passes
+\STATE
+\STATE \textbf{Stage 2: Fine-tuning on Real Data}
+\STATE Load a fresh copy of the pretrained agent; fit once on 37 target-disjoint trajectories and log one purged validation trajectory
+\STATE Discard the diagnostic candidate and replay buffer
+\STATE Reload the pretrained agent and train once on all 61 historical trajectories in a seeded permutation, using $B=64$
+\STATE Save the full checkpoint, diagnostics, episode schedule, and validation log
+\RETURN $\mu(s|\theta^\mu)$
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Benchmark Models}
+\label{subsec:3_benchmark_models}
+
+The locked main evaluation contains six causal, non-RL benchmarks: equal weight, constrained shrinkage mean--variance, DCC--GARCH, static vine, rolling vine, and dynamic NN-vine optimisation. Every strategy receives the same dates, asset order, realised returns, transaction and financing costs, and long--short mandate. A benchmark may use only observations dated no later than its decision date; solver failure is recorded and never replaced by a silent fallback.
+
+\subsubsection{Classical Models}
+\label{subsubsec:3_classical_models}
+
+Equal weight provides a transparent passive reference. The optimised classical benchmarks are shrinkage mean--variance, which regularises the covariance matrix before solving the Markowitz objective \cite{markowitz_portfolio_1952}, and the Dynamic Conditional Correlation model of Engle \cite{engle_dynamic_2002}. At decision date $t$, the generic problem is
+
+\begin{equation}
+w^* = \arg\min_{w \in \mathcal{A}} \frac{1}{2} w^\top \Sigma w - \lambda w^\top \mu,
+\label{eq:markowitz_constrained}
+\end{equation}
+
+where $\Sigma_t$ is the causal covariance estimate, $\mu_t$ the causal mean estimate, and the feasible set $\mathcal A$ is the same net-one, gross-1.5, $[-0.20,0.60]$ set as the RL policy. Shrinkage stabilises $\Sigma_t$ in the short sample. DCC--GARCH instead combines univariate conditional volatilities with a time-varying correlation matrix and solves
+
+\begin{equation}
+w_t^* = \arg\min_{w \in \mathcal{A}} \frac{1}{2} w^\top \Sigma_t w - \lambda w^\top \hat{\mu}_t.
+\end{equation}
+
+This captures time-varying linear dependence but, like all elliptical models, fails to accommodate non-linear or asymmetric tail dependencies.
+
+\subsubsection{Vine-Based Models}
+\label{subsubsec:3_vine_based_models}
+
+The three vine benchmarks isolate the value of nonlinear dependence from the value of learned sequential control. The \textit{Static D-Vine} estimates one training-prefix vine and reuses it at every decision. The \textit{Rolling D-Vine} refits on the available lookback at each date. The \textit{Dynamic NN-D-Vine} uses the neural parameterisation of Section \ref{subsubsec:3_dynamic_vine_with_NN_param} without RL. Each model generates 512 causal return scenarios and chooses a portfolio by constrained one-period CRRA expected utility:
+
+\begin{equation}
+w_t^*=\arg\max_{w\in\mathcal A}\frac{1}{512}\sum_{m=1}^{512}
+U_{\gamma_U}\!\left(g_{p,t}^{(m)}(w)m_t(w)\right),
+\label{eq:myopic_eu}
+\end{equation}
+
+where the same trading and financing costs are included in the scenario growth factors. The dynamic NN-vine optimiser is the most direct non-RL comparator: it shares the proposed dependence engine and scenario distribution but replaces the recurrent policy with a transparent myopic optimiser.
+
+\subsubsection{RL Baseline}
+\label{subsubsec:3_rl_baseline}
+
+The frozen coarse \textit{no-vine LSTM-TD3} ablation retains the recurrent architecture, input dimension, long--short action map, CRRA--CVaR reward, two-stage training protocol, costs, and matched training logic. It sets both the 63-dimensional vine vector and the policy-visible scenario-CVaR component to zero while leaving their input positions present. Because that intervention removes two channels simultaneously, it is an informative systems ablation but not a clean estimate of the direct vine-state effect.
+
+\subsubsection{Matched-Seed Causal Mechanism Analysis}
+\label{subsubsec:3_causal_analysis}
+
+To identify mechanisms more precisely, a prospective post-holdout contract defines 13 experiments on the same architecture and data pipeline. The reference is full TD3 with vine state, scenario-CVaR observation, and CVaR reward. Eight primary interventions separately remove direct vine features, the scenario-CVaR observation, both policy-visible dependence channels, the CVaR reward term, synthetic pre-training, recurrence, and historical fine-tuning; the eighth replaces neural-vine pre-training with a moving-block-bootstrap bundle. Four exploratory algorithm controls replace TD3 with DDPG, SAC, PPO, or A2C while holding the observation, reward, cost, constraint, and environment-interaction contracts fixed.
+
+Every experiment uses the matched seeds 20261001--20261010. Seeds measure optimisation variability only; they are not treated as independent market histories. For each variant, target weights are averaged across seeds and the ensemble is rescored once with drifted pre-trade holdings. The primary outcome is the paired monthly CRRA-utility difference relative to the reference, supplemented by the annualised certainty-equivalent effect. Inference uses 9,999 circular moving-block bootstrap draws of length three. One-sided p-values for the eight component contrasts are Holm-adjusted as one family; the four algorithm comparisons form a separate two-sided exploratory family. Because the market holdout had already been evaluated when this protocol was written, all causal results are labelled post-holdout explanatory and cannot restore confirmatory status.
+
+
+
+
+\subsection{Implementation Details}
+\label{subsec:3_implementation}
+
+This section describes the software and hardware environment, the hyperparameter configuration, and the key implementation choices necessary for reproducibility of the empirical results.
+
+\subsubsection{Software and Hardware}
+\label{subsubsec:3_software_hardware}
+
+Experiments are executed on a Linux HPC cluster with AMD EPYC CPUs and NVIDIA A100-SXM4-80GB GPUs under Conda/Miniforge environments. Data handling, vine estimation, scenario generation, and the portfolio environment are implemented in \textsf{R}; neural policies are implemented in \textsf{Python}/PyTorch. The exact executable paths, package inventories, CUDA runtime, source hashes, and data hashes are stored with each frozen release rather than inferred from the interactive shell. Training uses the GPU PyTorch environment, whereas evaluation launches policy inference in a separate CPU PyTorch process. This process isolation prevents the R Lantern and Python libtorch libraries from loading incompatible symbols into one address space. The implementation uses the following resource controls:
+\begin{itemize}
+    \item \textbf{Parallel simulation}: The \texttt{rvinecopulib} simulator requests the configured physical-core budget for synthetic episodes and scenarios, capped at the cores detected by the worker.
+    \item \textbf{Pre-computed episodes}: The current configuration stores 1,000 synthetic 24-step episodes and 61 realised historical 24-step trajectories in portable \texttt{qs}/R bundles. Each episode also carries a 30-step causal burn-in, dynamic vine states, and the scenario matrices required for CVaR, avoiding vine re-estimation inside the PyTorch update loop.
+    \item \textbf{GPU execution}: One training process uses one CUDA device. Independent seed replicates are sharded across the available two or four GPUs; a single agent is not data-parallel. Deterministic PyTorch algorithms and float32 arithmetic are the publication defaults, with automatic mixed precision disabled.
+    \item \textbf{Update frequency}: The trainer performs one twin-critic update per environment transition and one actor/target update per two critic updates. The former three-updates-per-step schedule is no longer used.
+\end{itemize}
+The complete software stack, configuration, source hashes, data hashes, checkpoint schema, and diagnostic files are captured in the run artifacts. Training and evaluation runtimes are reported from those manifests; timings from the superseded DDPG schedule are not used.
+
+
+\begin{table}[htbp]
+\centering
+\caption{Software and Hardware Specifications}
+\label{tab:hardware}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Specification} \\
+\midrule
+CPU & AMD EPYC; worker allocation recorded per run (up to 128 cores) \\
+GPU & NVIDIA A100-SXM4-80GB; one GPU per training worker \\
+RAM & HPC allocation recorded in the run manifest \\
+Operating System & Linux \\
+Environment Manager & Conda (Miniforge3) \\
+R Stack & \texttt{rvinecopulib}, \texttt{rugarch}, \texttt{torch}/Lantern, \texttt{xts}, \texttt{qs} \\
+Training Python & Frozen GPU environment; PyTorch 2.10.0+cu128 in the causal sweep \\
+Evaluation Python & Isolated CPU environment; PyTorch 2.7.1+cpu \\
+Inter-process Interface & Immutable file IPC for policy observations and actions \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Hyperparameter Configuration}
+\label{subsubsec:3_hyperparameter_config}
+
+Table \ref{tab:hyperparameters} reports the values frozen in the current master configuration. The recurrent lookback is 30 monthly observations, not 30 trading days. Because dense utility increments telescope to terminal-wealth utility, the TD discount is fixed at one. The environment uses CRRA coefficient 2, CVaR penalty 0.05, proportional turnover cost 0.001, and 512 scenarios for the 95\% CVaR estimate. Hyperparameters are not selected on the final 24-period OOS path.
+
+\begin{table}[H]
+\centering
+\caption{Current LSTM-TD3 and Training Hyperparameters}
+\label{tab:hyperparameters}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l c c l c c}
+\toprule
+\textbf{Parameter} & \textbf{Symbol} & \textbf{Value} & \textbf{Parameter} & \textbf{Symbol} & \textbf{Value} \\
+\midrule
+LSTM sequence length & $L$ & 30 months & Batch size (pre/fine) & $B$ & 128 / 64 \\
+LSTM hidden units & — & 64 & Replay buffer capacity & $N_B$ & 100,000 \\
+LSTM layers & — & 1 & Discount factor & $\gamma$ & 1.0 \\
+Actor learning rate (pre/fine) & $\alpha_\mu$ & $3\times10^{-5}$ / $2\times10^{-5}$ & Target update rate & $\tau$ & 0.005 \\
+Critic learning rate (pre/fine) & $\alpha_Q$ & $10^{-4}$ / $10^{-4}$ & Policy delay & $d$ & 2 \\
+Target noise / clip & $\sigma_{\rm targ},c$ & 0.10 / 0.25 & Episodes (pre/fine) & — & 1,000 / 61 \\
+Exploration scale (pre/fine) & $\sigma_e$ & 0.15 / 0.05 & Exploration decay & — & 0.998 / 0.995 \\
+CVaR penalty / scenarios & $\lambda,M$ & 0.05 / 512 & Transaction cost & $\kappa$ & 0.001 \\
+Utility risk aversion & $\gamma_U$ & 2 & Gross / net exposure & — & 1.5 / 1.0 \\
+Maximum long / short & — & 0.60 / 0.20 & Entropy coefficient & $\beta_H$ & 0.005 \\
+Leverage target / penalty & $g_0,\beta_g$ & 0.80 / 0.25 & Gradient clip norm & — & 1.0 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Exploration uses independent Gaussian noise in the actor's raw output space, following the stage-specific scales and decay rates in Table \ref{tab:hyperparameters}. Target-policy smoothing is a separate TD3 mechanism and uses its own fixed standard deviation and clipping threshold.
+
+\subsubsection{Training Procedure}
+\label{subsubsec:3_training_procedure}
+
+The training procedure follows Section \ref{subsec:3_two_stage_training}: 1,000 synthetic episodes are used once for pre-training, a deterministic 100-episode policy check must pass, and one historical pass is then performed. The diagnostic fine-tuning fit and the final all-history refit each begin from the same pretrained checkpoint and use separate replay buffers. The historical validation path is diagnostic because the configuration fixes the pass count at one; there is no 100-epoch early-stopping rule.
+
+At each environment step, the trainer appends one transition and, once the replay buffer contains a full batch, samples uniformly. Batch size is 128 during pre-training and 64 during fine-tuning. Adam updates both critics on every step and the actor on alternating updates; all recurrent and fully connected gradients are clipped at norm one. Non-finite actions, rewards, actor losses, or critic losses terminate the run rather than being silently skipped.
+
+Monitoring is artifact-based rather than a subjective reward-plateau test. Episode CSV files record reward, terminal wealth, turnover, CVaR, gross exposure, short notional, leverage-gate behaviour, position-cap contact, and allocation entropy. Update CSV files record both Q estimates, their target and disagreement, losses, gradient norms, actor regularisers, and precision scales. Checkpoint metadata locks the TD3 architecture, recurrent dimensions, action schema, mandate, costs, utility mode, vine-observation mode, and schema version before evaluation can load the policy.
+
+\subsubsection{Reproducibility and Code Availability}
+\label{subsubsec:3_reproducibility}
+
+The master configuration uses seed 20260741 for the first full-policy run and 20260741--20260760 for the frozen 20-policy ensemble. Seeds are applied to R, NumPy, Python, and PyTorch. Deterministic algorithms, code and data hashes, the exact configuration, checkpoint architecture metadata, and a source snapshot are written for every run. Seed replications quantify optimisation instability; paired time-series inference is performed over realised holding periods and never treats seeds as additional market observations. The locked main batch, frozen releases, operational-retry logs, and post-holdout evidence classes are retained so that unsuccessful execution attempts and later explanatory analyses remain distinguishable from the original evaluation.

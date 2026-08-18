@@ -1,0 +1,22 @@
+% Requires booktabs and graphicx.
+\begin{table}[tbp]
+\centering
+\caption{Evidence Classes and Audited Sample Boundaries}
+\label{tab:terminal-evidence-ledger}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Source & Evidence class & Strategies & Windows & Complete rows & Decision-to-holding dates \\
+\midrule
+frozen\_primary\_oos & frozen\_primary\_evaluation & 27 & 1 & 594 & 2024-07-31--2026-07-06 \\
+causal\_components & post\_holdout\_explanatory & 143 & 1 & 3146 & 2024-07-31--2026-07-06 \\
+focused\_walk\_forward & retrospective\_walk\_forward & 24 & 2 & 1104 & 2020-12-31--2024-12-31 \\
+synthetic\_dose & post\_holdout\_explanatory & 22 & 1 & 484 & 2024-07-31--2026-06-30 \\
+synthetic\_presentations & post\_holdout\_explanatory & 22 & 1 & 484 & 2024-07-31--2026-06-30 \\
+masked\_pretraining\_controls & post\_holdout\_explanatory & 22 & 1 & 484 & 2024-07-31--2026-06-30 \\
+\bottomrule
+\end{tabular}%
+}
+\caption*{\footnotesize Notes: The frozen primary, post-holdout explanatory, and retrospective evidence layers are kept separate throughout estimation and interpretation. Hashes are available in the accompanying CSV and immutable campaign manifest.}
+\end{table}

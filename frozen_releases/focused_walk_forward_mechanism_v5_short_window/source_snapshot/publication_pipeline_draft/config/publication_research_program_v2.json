@@ -1,0 +1,241 @@
+{
+  "schema_version": 2,
+  "program_id": "vine_rl_publication_extension_v2",
+  "program_status": "development_framework_not_frozen",
+  "scientific_objective": "Identify whether vine-generated training data, vine-based risk shaping, recurrent control, or policy-visible vine features add incremental portfolio value under causal common-path evaluation.",
+  "consumed_evidence": [
+    {
+      "evidence_id": "locked_oos_v1",
+      "holding_start": "2024-07-31",
+      "holding_end": "2026-07-06",
+      "archive_sha256": "770d2944f915d0ad21ae9af32e31d68d652fdb54e98939caeab45c327b4e5ea1",
+      "status": "consumed_mixed_result"
+    },
+    {
+      "evidence_id": "post_holdout_explanatory_ablation_v2",
+      "holding_start": "2024-07-31",
+      "holding_end": "2026-07-06",
+      "archive_sha256": "8457cf6fca34526591ac89d356cf52ca99c69a7789035a41dfbc41345f8595ff",
+      "status": "frozen_post_holdout_explanatory"
+    }
+  ],
+  "evidence_classes": {
+    "retrospective_walk_forward": "development_and_robustness_only",
+    "external_cross_sectional": "external_validity_not_temporally_independent",
+    "future_temporal": "eligible_for_confirmatory_inference_after_preregistration"
+  },
+  "panels": [
+    {
+      "panel_id": "global_liquid_etf_18",
+      "purpose": "main_external_investable_panel",
+      "status": "requires_licensed_adjusted_total_return_data",
+      "base_currency": "USD",
+      "price_type": "adjusted_total_return_index_or_adjusted_close",
+      "asset_order": [
+        "SPY", "QQQ", "IWM", "EFA", "EEM", "MCHI", "EWJ", "VGK",
+        "VNQ", "TLT", "IEF", "LQD", "HYG", "GLD", "DBC", "USO",
+        "UUP", "BIL"
+      ],
+      "minimum_assets": 15,
+      "maximum_assets": 20,
+      "universe_rule": "symbols_and_order_fixed_before_panel_return_access",
+      "survivorship_rule": "funds_selected_by ex_ante_liquidity_asset_class_coverage_and_inception_before_train_start",
+      "currency_rule": "all_returns_measured_in_unhedged_USD_total_return_terms",
+      "missing_data_rule": "no_return_interpolation; common tradable calendar with stale-price zero returns separately flagged",
+      "vine_representation": {
+        "mode": "dense_all_tree_dvine",
+        "maximum_observation_dimension": 700
+      }
+    },
+    {
+      "panel_id": "liquid_asset_scalability_30_50",
+      "purpose": "scalability_and_external_validity_appendix",
+      "status": "fixed_40_etf_universe_requires_licensed_returns",
+      "base_currency": "USD",
+      "price_type": "adjusted_total_return_index_or_adjusted_close",
+      "asset_order": [
+        "SPY", "QQQ", "IWM", "DIA", "MDY",
+        "XLB", "XLE", "XLF", "XLI", "XLK", "XLP", "XLU", "XLV", "XLY",
+        "EFA", "EEM", "EWJ", "VGK", "MCHI", "EWZ", "EWC", "EWA", "INDA",
+        "SHY", "IEF", "TLT", "TIP", "AGG", "LQD", "HYG", "EMB",
+        "GLD", "SLV", "DBC", "USO", "VNQ", "UUP", "FXE", "FXY", "BIL"
+      ],
+      "minimum_assets": 30,
+      "maximum_assets": 50,
+      "universe_rule": "forty-symbol cross-asset ETF universe fixed in scalability_universe_v1.json before return access",
+      "survivorship_rule": "ETF inception and delisting metadata required; survival-selection limitation reported explicitly",
+      "currency_rule": "USD_total_return_or_explicit_causal_FX_conversion",
+      "missing_data_rule": "no_return_interpolation; explicit listing_and_tradability masks",
+      "vine_representation": {
+        "mode": "truncated_dvine",
+        "maximum_trees": 3,
+        "maximum_observation_dimension": 800,
+        "truncation_selection": "fixed_three_trees_before_test_access"
+      }
+    }
+  ],
+  "window_designs": [
+    {
+      "design_id": "retrospective_expanding_24m_v1",
+      "evidence_class": "retrospective_walk_forward",
+      "panel_id": "global_liquid_etf_18",
+      "training_mode": "expanding",
+      "minimum_train_months": 60,
+      "validation_months": 24,
+      "test_months": 24,
+      "step_months": 24,
+      "minimum_windows": 4,
+      "allow_overlap_between_test_windows": false,
+      "selection_scope": "earlier_train_and_validation_only",
+      "claim_limit": "post_design_retrospective_robustness_not_fresh_confirmation"
+    },
+    {
+      "design_id": "external_cross_sectional_locked_calendar_v1",
+      "evidence_class": "external_cross_sectional",
+      "panel_id": "global_liquid_etf_18",
+      "training_mode": "expanding",
+      "minimum_train_months": 84,
+      "validation_months": 24,
+      "test_months": 24,
+      "step_months": 24,
+      "minimum_windows": 1,
+      "allow_overlap_between_test_windows": false,
+      "selection_scope": "panel_train_and_validation_only",
+      "claim_limit": "cross_sectional_generalization_only_due_to_shared_market_calendar"
+    },
+    {
+      "design_id": "future_nonoverlapping_24m_v1",
+      "evidence_class": "future_temporal",
+      "panel_id": "global_liquid_etf_18",
+      "training_mode": "expanding",
+      "minimum_train_months": 84,
+      "validation_months": 24,
+      "test_months": 24,
+      "step_months": 24,
+      "minimum_windows": 2,
+      "allow_overlap_between_test_windows": false,
+      "earliest_test_start": "2026-07-07",
+      "selection_scope": "all_selection_locked_before_each_unseen_window",
+      "claim_limit": "confirmatory_only_after_access_ledger_and_frozen_release"
+    },
+    {
+      "design_id": "scalability_panel_locked_calendar_v1",
+      "evidence_class": "external_cross_sectional",
+      "panel_id": "liquid_asset_scalability_30_50",
+      "training_mode": "expanding",
+      "minimum_train_months": 84,
+      "validation_months": 24,
+      "test_months": 24,
+      "step_months": 24,
+      "minimum_windows": 1,
+      "allow_overlap_between_test_windows": false,
+      "selection_scope": "panel_train_and_validation_only",
+      "claim_limit": "scalability_and_cross_sectional_generalization_only"
+    }
+  ],
+  "financial_benchmarks": [
+    "equal_weight",
+    "minimum_variance",
+    "risk_parity",
+    "shrinkage_mean_variance",
+    "mean_cvar",
+    "momentum_tilt",
+    "black_litterman_momentum_views",
+    "dcc_garch",
+    "static_vine",
+    "rolling_vine",
+    "dynamic_nn_vine"
+  ],
+  "rl_algorithms": [
+    {
+      "algorithm_id": "td3",
+      "encoder": "lstm",
+      "role": "proposed_control"
+    },
+    {
+      "algorithm_id": "ddpg",
+      "encoder": "lstm",
+      "role": "td3_algorithmic_ablation"
+    },
+    {
+      "algorithm_id": "sac",
+      "encoder": "lstm",
+      "role": "strong_off_policy_baseline"
+    },
+    {
+      "algorithm_id": "ppo",
+      "encoder": "lstm",
+      "role": "strong_on_policy_baseline"
+    },
+    {
+      "algorithm_id": "a2c",
+      "encoder": "lstm",
+      "role": "on_policy_actor_critic_baseline"
+    }
+  ],
+  "rl_comparison_protocol": {
+    "environment_interaction_budget": "identical_pretraining_and_finetuning_episodes",
+    "observation_reward_cost_constraint_contract": "identical_across_algorithms",
+    "encoder_contract": "same_lstm_hidden_width_depth_and_normalization",
+    "algorithm_specific_update_rule": "canonical_off_policy_replay_or_episodic_on_policy_updates",
+    "td3": "twin_critics_delayed_policy_target_smoothing",
+    "ddpg": "single_critic_one_policy_update_per_gradient_step",
+    "sac": "twin_critics_automatic_latent_entropy_temperature",
+    "ppo": "episodic_gae_lambda_0.95_clip_0.2_ten_epochs",
+    "a2c": "episodic_n_step_advantage_actor_critic_one_epoch",
+    "hyperparameter_selection": "preregistered_algorithm_specific_defaults_validated_on_training_prefix_only_before_external_test_freeze",
+    "post_test_tuning": "forbidden",
+    "report_parameter_counts": true,
+    "report_environment_interactions": true,
+    "report_gradient_updates": true
+  },
+  "causal_ablations": [
+    "full_vine_state_and_cvar_observation",
+    "zero_vine_features_keep_cvar_observation",
+    "keep_vine_features_zero_cvar_observation",
+    "zero_vine_features_and_cvar_observation",
+    "zero_cvar_reward_keep_state",
+    "historical_only_no_synthetic_pretraining",
+    "moving_block_bootstrap_pretraining",
+    "feedforward_capacity_matched",
+    "pretrained_only_no_historical_finetuning"
+  ],
+  "seed_design": {
+    "seeds": [
+      20261001, 20261002, 20261003, 20261004, 20261005,
+      20261006, 20261007, 20261008, 20261009, 20261010
+    ],
+    "minimum_successful_seeds": 10,
+    "ensemble_rule": "arithmetic_mean_target_weights_then_common_constraint_audit",
+    "seed_inference_role": "optimization_variability_not_market_sample",
+    "matched_seed_rule": "same_seed_set_for_every_algorithm_and_ablation"
+  },
+  "cost_sensitivity": {
+    "transaction_cost_bps_one_way": [0, 10, 25, 50],
+    "annual_short_borrow_percent": [0, 3, 6, 10],
+    "primary_cost_bps": 10,
+    "primary_short_borrow_percent": 3,
+    "fixed_weight_rescore_label": "implementation_drag_sensitivity",
+    "fixed_policy_replay_label": "state_feedback_cost_sensitivity"
+  },
+  "inference": {
+    "primary_outcome": "mean_period_crra_utility_difference",
+    "primary_benchmark": "equal_weight",
+    "alpha": 0.05,
+    "time_dependence": "paired_moving_block_bootstrap_by_rebalance_period",
+    "secondary_multiplicity": "holm_within_preregistered_family",
+    "data_snooping_control": "stationary_bootstrap_SPA_or_White_reality_check",
+    "tail_minimum_events": 20,
+    "daily_mark_to_market_tail_metrics": true,
+    "report_individual_seeds": true,
+    "report_ensemble_size_sensitivity": true,
+    "report_effective_leverage_sensitivity": true
+  },
+  "execution_policy": {
+    "test_access": "single_locked_batch_per_frozen_protocol",
+    "solver_failure": "fail_entire_batch_no_fallback",
+    "network_access_during_test": false,
+    "package_installation_during_test": false,
+    "manuscript_numbers": "generated_only_from_frozen_artifacts"
+  }
+}

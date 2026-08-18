@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "protocol_id": "focused_walk_forward_mechanisms_v1",
+  "status": "prospective_retrospective_development_contract",
+  "created_after_evidence": {
+    "locked_main_holdout": "locked_oos_v1_consumed",
+    "causal_analysis": "post_holdout_causal_analysis_v2_consumed"
+  },
+  "evidence_class": "retrospective_walk_forward",
+  "confirmatory_claim_permitted": false,
+  "claim_limit": "Post-design retrospective mechanism robustness only; this analysis cannot restore a consumed confirmatory holdout.",
+  "scientific_objective": "Test whether the adverse direct NN-vine state effect and the weak joint dependence-signal effect persist across two deterministic non-overlapping windows in the original seven-asset history under matched TD3 training and common accounting.",
+  "window_design_id": "retrospective_original_7asset_expanding_24m_v1",
+  "panel_id": "original_seven_asset_panel",
+  "window_design": {
+    "training_mode": "expanding",
+    "minimum_train_months": 60,
+    "validation_months": 24,
+    "test_months": 24,
+    "step_months": 24,
+    "minimum_windows": 2,
+    "allow_overlap_between_test_windows": false
+  },
+  "reference_experiment_id": "full_vine_state_and_cvar_observation",
+  "primary_outcome": "mean_period_crra_utility_difference",
+  "crra_gamma": 2.0,
+  "multiplicity_control": "holm_within_two_preregistered_mechanism_contrasts",
+  "bootstrap": {
+    "replications": 9999,
+    "block_length_periods": 3,
+    "seed": 20261101
+  },
+  "seeds": [20261101, 20261102, 20261103, 20261104, 20261105],
+  "minimum_successful_seeds_per_experiment": 5,
+  "financial_benchmarks": [
+    "equal_weight",
+    "shrinkage_mean_variance",
+    "dcc_garch",
+    "static_vine",
+    "rolling_vine",
+    "dynamic_nn_vine"
+  ],
+  "benchmark_candidate_experiment_id": "zero_vine_features_keep_cvar_observation",
+  "benchmark_multiplicity_control": "holm_across_six_financial_benchmarks",
+  "matched_seed_rule": "identical_seed_set_data_interactions_rewards_costs_constraints_and_optimizer_settings",
+  "behavior_gate_policy": "intent_to_train_report_only_economic_diagnostics_but_fail_nonfinite_or_hard_constraint_failures",
+  "experiments": [
+    {
+      "experiment_id": "full_vine_state_and_cvar_observation",
+      "label": "Full raw NN-vine state plus scenario-CVaR",
+      "role": "reference",
+      "settings": {
+        "RL_ALGORITHM": "td3",
+        "POLICY_ENCODER": "lstm",
+        "VINE_OBSERVATION_MODE": "full",
+        "VINE_FEATURE_MODE": "full",
+        "CVAR_OBSERVATION_MODE": "full",
+        "CVAR_REWARD_MODE": "full",
+        "PRETRAIN_DATA_MODE": "vine_synthetic",
+        "RUN_FINETUNE": "true",
+        "CHECKPOINT_PREFIX": "td3_lstm_vine",
+        "LR_ACTOR": "0.00003",
+        "LR_CRITIC": "0.0001",
+        "ENTROPY_COEF": "0.005",
+        "PRETRAIN_BEHAVIOR_GATE_MODE": "report_only"
+      }
+    },
+    {
+      "experiment_id": "zero_vine_features_keep_cvar_observation",
+      "label": "Scenario-CVaR only dependence representation",
+      "role": "primary_mechanism_alternative",
+      "settings": {
+        "RL_ALGORITHM": "td3",
+        "POLICY_ENCODER": "lstm",
+        "VINE_OBSERVATION_MODE": "full",
+        "VINE_FEATURE_MODE": "zero",
+        "CVAR_OBSERVATION_MODE": "full",
+        "CVAR_REWARD_MODE": "full",
+        "PRETRAIN_DATA_MODE": "vine_synthetic",
+        "RUN_FINETUNE": "true",
+        "CHECKPOINT_PREFIX": "td3_lstm_vine",
+        "LR_ACTOR": "0.00003",
+        "LR_CRITIC": "0.0001",
+        "ENTROPY_COEF": "0.005",
+        "PRETRAIN_BEHAVIOR_GATE_MODE": "report_only"
+      }
+    },
+    {
+      "experiment_id": "zero_vine_features_and_cvar_observation",
+      "label": "No policy-visible vine dependence signal",
+      "role": "secondary_mechanism_alternative",
+      "settings": {
+        "RL_ALGORITHM": "td3",
+        "POLICY_ENCODER": "lstm",
+        "VINE_OBSERVATION_MODE": "zero",
+        "VINE_FEATURE_MODE": "zero",
+        "CVAR_OBSERVATION_MODE": "zero",
+        "CVAR_REWARD_MODE": "full",
+        "PRETRAIN_DATA_MODE": "vine_synthetic",
+        "RUN_FINETUNE": "true",
+        "CHECKPOINT_PREFIX": "td3_lstm_vine",
+        "LR_ACTOR": "0.00003",
+        "LR_CRITIC": "0.0001",
+        "ENTROPY_COEF": "0.005",
+        "PRETRAIN_BEHAVIOR_GATE_MODE": "report_only"
+      }
+    }
+  ],
+  "contrasts": [
+    {
+      "label": "Direct raw NN-vine state contribution",
+      "reference_experiment_id": "full_vine_state_and_cvar_observation",
+      "alternative_experiment_id": "zero_vine_features_keep_cvar_observation",
+      "expected_direction": "reference_minus_alternative",
+      "interpretation": "A negative effect replicates evidence that raw high-dimensional vine features harm decision quality conditional on scenario-CVaR."
+    },
+    {
+      "label": "Joint policy-visible dependence contribution",
+      "reference_experiment_id": "full_vine_state_and_cvar_observation",
+      "alternative_experiment_id": "zero_vine_features_and_cvar_observation",
+      "expected_direction": "reference_minus_alternative",
+      "interpretation": "A positive effect with an adverse direct-state effect supports decision-aligned compression rather than raw dependence-state expansion."
+    }
+  ],
+  "failure_policy": "fail_closed_no_seed_substitution_no_silent_fallback",
+  "selection_policy": "No model selection or tuning from the consumed 2024-2026 holdout; report all windows, experiments, seeds, and contrasts.",
+  "hpc_priority": "Complete two non-overlapping windows before adding further algorithms, ablations, or scalability panels."
+}

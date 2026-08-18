@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "analysis_id": "post_holdout_causal_analysis_v2",
+  "analysis_status": "operational_correction_before_causal_outcome_scoring",
+  "evidence_class": "post_holdout_explanatory",
+  "confirmatory_claim_permitted": false,
+  "training_diagnostics_accessed_before_revision": true,
+  "causal_evaluation_returns_accessed_before_revision": true,
+  "causal_policy_replay_completed_before_revision": true,
+  "causal_performance_outcomes_scored_before_revision": false,
+  "operational_revision": "accounting_v2_locked_calendar_completeness_alignment",
+  "revision_disclosure": "The first audited causal replay and weight-space ensemble construction completed before this correction, but no causal strategy returns, metrics, contrasts, tables, or figures were scored. Common accounting then stopped before scoring because the causal adapter incorrectly required all 24 locked periods to carry the conservative complete-month flag. The immutable main-evaluation contract had already declared 24 locked periods with a minimum of 20 complete periods. Version 2 restores that established sample rule without changing dates, returns, weights, costs, hypotheses, estimands, bootstrap settings, or decision rules. The realized panel contains 24 periods, of which 22 are complete.",
+  "mixed_revision_carry_forward_permitted": true,
+  "mixed_revision_rule": "Carry the exact 70 strict-gate v2 successes and the 31 v3 successes whose strict gates all passed; rerun the exact 29 v3 failures under v4 report-only wiring; bind all three frozen releases and the audited three-revision merge manifest.",
+  "training_contract": "publication_pipeline_draft/config/causal_ablation_contract_v2.json",
+  "expected_training_contract_sha256": "767bf7747c2f21ad8d76fae2717351d2b476200532c47e8a2253a59f0b14afd7",
+  "locked_evaluation_contract": "publication_pipeline_draft/config/evaluation_contract.json",
+  "expected_locked_evaluation_contract_sha256": "1053c96459afd305f2385572b406d460275dfd07f95503be40dbfb8b034fda92",
+  "training_output_root": "data/publication_extension_runs_v4",
+  "reference_experiment_id": "full_vine_state_and_cvar_observation",
+  "expected_seeds": [20261001, 20261002, 20261003, 20261004, 20261005, 20261006, 20261007, 20261008, 20261009, 20261010],
+  "sample": {
+    "window_id": "locked_oos_v1",
+    "expected_periods": 24,
+    "minimum_complete_periods": 20,
+    "observed_complete_periods_before_scoring": 22,
+    "primary_sample_scope": "complete_periods",
+    "periods_per_year": 12,
+    "annualization_convention": "actual_elapsed_years_v1",
+    "seed_inference_scope": "training_randomness_only_not_market_replications"
+  },
+  "economics": {
+    "initial_wealth": 100000.0,
+    "crra_gamma": 2.0,
+    "annual_risk_free_rate": 0.0,
+    "net_exposure": 1.0,
+    "gross_leverage": 1.5,
+    "max_long_weight": 0.6,
+    "max_short_weight": 0.2,
+    "weight_tolerance": 0.000001,
+    "turnover_cost": 0.001,
+    "annual_short_borrow_rate": 0.03,
+    "annual_cash_borrow_rate": 0.02,
+    "turnover_convention": "drifted_pretrade_v1",
+    "financing_proration": "actual_calendar_days_v1",
+    "day_count_basis": 365,
+    "ensemble_construction": "arithmetic_mean_target_weights_then_rescore_costs",
+    "return_aggregation_forbidden": true
+  },
+  "inference": {
+    "primary_outcome": "paired_monthly_crra_utility_difference",
+    "economic_effect": "annualized_certainty_equivalent_return_difference",
+    "bootstrap": "circular_moving_block",
+    "bootstrap_block_length": 3,
+    "bootstrap_replications": 9999,
+    "inference_seed": 20261103,
+    "confidence_level": 0.95,
+    "primary_alternative": "reference_greater_than_ablation",
+    "primary_multiplicity": "holm_across_eight_component_contrasts",
+    "algorithm_multiplicity": "holm_across_four_exploratory_algorithm_contrasts",
+    "zero_effect_handling": "finite_sample_plus_one_correction"
+  },
+  "decision_rules": {
+    "component_supported": "annualized_ce_difference_positive_and_one_sided_holm_p_le_0.05",
+    "component_not_established": "holm_p_gt_0.05_or_effect_nonpositive",
+    "opposite_direction_evidence": "annualized_ce_ci_upper_below_zero",
+    "algorithm_conclusion": "two_sided_exploratory_only",
+    "absence_of_significance_is_not_equivalence": true,
+    "seed_robustness_is_not_market_uncertainty": true
+  },
+  "primary_component_contrasts": [
+    {"alternative_experiment_id": "zero_vine_features_keep_cvar_observation", "label": "Direct NN-vine state contribution"},
+    {"alternative_experiment_id": "keep_vine_features_zero_cvar_observation", "label": "Scenario-CVaR observation contribution"},
+    {"alternative_experiment_id": "zero_vine_features_and_cvar_observation", "label": "Joint policy-visible dependence contribution"},
+    {"alternative_experiment_id": "zero_cvar_reward_keep_state", "label": "CVaR reward-shaping contribution"},
+    {"alternative_experiment_id": "historical_only_no_synthetic_pretraining", "label": "Synthetic NN-vine pretraining contribution"},
+    {"alternative_experiment_id": "moving_block_bootstrap_pretraining", "label": "NN-vine generator versus temporal bootstrap"},
+    {"alternative_experiment_id": "feedforward_capacity_matched", "label": "Recurrent encoder contribution"},
+    {"alternative_experiment_id": "pretrained_only_no_historical_finetuning", "label": "Historical fine-tuning contribution"}
+  ],
+  "algorithm_robustness_contrasts": [
+    {"alternative_experiment_id": "ddpg_lstm_full", "label": "TD3 versus DDPG"},
+    {"alternative_experiment_id": "sac_lstm_full", "label": "TD3 versus SAC"},
+    {"alternative_experiment_id": "ppo_lstm_full", "label": "TD3 versus PPO"},
+    {"alternative_experiment_id": "a2c_lstm_full", "label": "TD3 versus A2C"}
+  ],
+  "required_period_columns": [
+    "window_id", "experiment_id", "strategy_id", "strategy_level", "seed",
+    "decision_date", "holding_end_date", "gross_return", "net_return",
+    "turnover", "transaction_cost", "financing_cost", "gross_exposure",
+    "net_exposure", "short_notional", "max_abs_weight",
+    "gross_constraint_violation", "net_constraint_violation",
+    "position_constraint_violation", "complete",
+    "protocol_eligibility_pass", "behavior_gate_pass",
+    "behavior_gate_mode", "behavior_gate_failed_metrics",
+    "operational_source"
+  ],
+  "required_outputs": {
+    "tables": [
+      "causal_strategy_metrics.csv",
+      "causal_primary_contrasts.csv",
+      "causal_algorithm_robustness.csv",
+      "causal_seed_stability.csv",
+      "causal_seed_pair_effects.csv",
+      "causal_implementation_diagnostics.csv",
+      "causal_training_gate_diagnostics.csv"
+    ],
+    "figures": [
+      "causal_crra_effect_forest.png",
+      "causal_crra_effect_forest.pdf",
+      "causal_seed_stability.png",
+      "causal_seed_stability.pdf",
+      "causal_ensemble_wealth.png",
+      "causal_ensemble_wealth.pdf",
+      "causal_turnover_performance.png",
+      "causal_turnover_performance.pdf"
+    ]
+  },
+  "reporting_rules": [
+    "Report all preregistered contrasts regardless of sign or significance.",
+    "Do not treat ten training seeds as ten independent market histories.",
+    "Construct ensembles in target-weight space and recompute all costs.",
+    "Report raw and Holm-adjusted p-values with effect sizes and intervals.",
+    "Label every result post-holdout explanatory and never confirmatory.",
+    "A failed or missing seed invalidates its full matched experiment; no substitution is permitted."
+  ]
+}

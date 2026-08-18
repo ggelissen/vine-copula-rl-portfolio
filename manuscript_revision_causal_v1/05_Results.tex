@@ -1,0 +1,179 @@
+\section{Results and Discussion}
+\label{sec:results}
+
+This section reports the frozen main evaluation before turning to post-holdout explanatory analyses. The distinction is important. The main batch was specified before successful scoring of the locked path and contains 20 full policies and six benchmarks. The no-vine, pretrained-only, ensemble-mechanism, and causal analyses were conducted after that path had been accessed and therefore explain mechanisms but cannot provide a second independent confirmation.
+
+\subsection{Evaluation Contract and Performance Measures}
+\label{subsec:4_evaluation_contract}
+
+Every strategy is evaluated on the same realised seven-asset return matrix, calendar, asset order, initial wealth of 100,000, and cost convention. The RL deployment is the preregistered arithmetic mean of the 20 seed-specific target weights; returns are never averaged across agents. The common scorer first verifies the net, gross, long, and short constraints and then recomputes portfolio growth and costs from the ensemble weights.
+
+For $n$ complete holding periods spanning $Y$ elapsed years, total return and compound annual growth are
+
+\begin{equation}
+R_{\mathrm{tot}}=\frac{V_n}{V_0}-1,
+\qquad
+R_{\mathrm{CAGR}}=\left(\frac{V_n}{V_0}\right)^{1/Y}-1.
+\label{eq:annualized_return}
+\end{equation}
+
+Volatility is annualised from monthly net returns with factor $\sqrt{12}$. Sharpe and Sortino ratios use a zero risk-free rate; maximum drawdown is computed from the cumulative wealth path. Omega is the ratio of gains above zero to losses below zero. The annualised CRRA certainty-equivalent return, the primary economic measure, is obtained from mean monthly utility $\bar U$ as
+
+\begin{equation}
+R_{\mathrm{CE}}=\left[1+(1-\gamma_U)\bar U\right]^{12/(1-\gamma_U)}-1,
+\qquad \gamma_U=2.
+\label{eq:realized_utility}
+\end{equation}
+
+All annualisation uses the recorded holding calendar rather than the former daily factor of 252. With only 22 complete months, realised 5\% VaR and CVaR depend on one tail event and are treated as descriptive diagnostics.
+
+\subsection{Locked Out-of-Sample Economic Performance}
+\label{subsec:4_outofsample}
+
+Table \ref{tab:outofsample} reports the primary 22-complete-period results. The NN-vine LSTM-TD3 ensemble finishes with 159,668.87, a total return of 59.67\%. It has the lowest observed annual volatility (13.19\%) and the highest observed Sharpe ratio (2.018). It does not, however, maximise wealth or the primary utility measure. The static vine has the highest total return (64.50\%) and certainty-equivalent return (29.55\%); the TD3 ensemble ranks third on both measures, behind the static and dynamic NN-vine optimisers.
+
+\begin{table}[H]
+\centering
+\caption{Frozen Out-of-Sample Performance: 22 Complete Holding Periods}
+\label{tab:outofsample}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l r r r r r r r r}
+\toprule
+\textbf{Strategy} & \textbf{Total} & \textbf{CAGR} & \textbf{Vol.} & \textbf{Sharpe} & \textbf{Sortino} & \textbf{Max DD} & \textbf{Omega} & \textbf{CRRA CE} \\
+\midrule
+Equal weight & 49.16\% & 24.37\% & 13.42\% & 1.702 & \textbf{5.029} & \textbf{5.22\%} & 4.141 & 23.38\% \\
+Shrinkage mean--variance & 48.69\% & 24.16\% & 14.17\% & 1.608 & 2.952 & 7.83\% & 3.363 & 22.98\% \\
+DCC--GARCH & 58.79\% & 28.69\% & 13.55\% & 1.944 & 4.632 & 5.79\% & \textbf{4.965} & 27.62\% \\
+Static vine & \textbf{64.50\%} & \textbf{31.19\%} & 16.88\% & 1.704 & 4.478 & 6.51\% & 3.756 & \textbf{29.55\%} \\
+Rolling vine & 40.81\% & 20.52\% & 18.94\% & 1.082 & 2.033 & 9.90\% & 2.359 & 18.53\% \\
+Dynamic NN-vine, no RL & 61.44\% & 29.86\% & 16.45\% & 1.682 & 4.300 & 6.78\% & 3.760 & 28.30\% \\
+\textbf{NN-vine LSTM-TD3 ensemble} & 59.67\% & 29.08\% & \textbf{13.19\%} & \textbf{2.018} & 4.642 & 6.64\% & 4.880 & 28.05\% \\
+\bottomrule
+\end{tabular}%
+}
+\caption*{\footnotesize Notes: Volatility, CAGR, and CRRA certainty-equivalent return are annualised. Bold denotes the best observed value, with lower values preferred for volatility and drawdown. These rankings are descriptive and do not imply statistical significance.}
+\end{table}
+
+Relative to equal weight, the ensemble creates 10,504.49 more terminal wealth, or 7.04\% of equal-weight terminal wealth. Its terminal-wealth differences are +10,981.78 versus shrinkage mean--variance, +876.88 versus DCC--GARCH, -4,832.60 versus the static vine, +18,857.95 versus the rolling vine, and -1,773.23 versus the dynamic NN-vine without RL. The empirical result is therefore economically competitive but not dominant.
+
+The two incomplete periods are not silently discarded after observing performance: exclusion follows the preregistered minimum of 15 common trading observations. A 24-row shortened-period sensitivity makes the ensemble rank first, but this reversal is driven materially by the final three-day row, in which both non-RL vine optimisers lose approximately 3\% and the ensemble is nearly flat. The 24-row result is accordingly a sensitivity check, not the primary estimate.
+
+\subsection{Paired Statistical Inference}
+\label{subsec:4_inference}
+
+Inference is based on paired monthly CRRA-utility differences, thereby preserving the fact that all strategies experience the same market periods. A circular moving-block bootstrap accounts for short-range temporal dependence. The primary alternative is that the ensemble has higher utility than equal weight; secondary comparisons use the same construction, and Holm adjustment controls multiplicity across the six benchmark contrasts.
+
+\begin{table}[H]
+\centering
+\caption{Paired CRRA-Utility Effects of the TD3 Ensemble}
+\label{tab:paired_inference}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l r c r r}
+\toprule
+\textbf{Benchmark} & \textbf{Mean effect} & \textbf{95\% block-bootstrap interval} & \textbf{One-sided $p$} & \textbf{Holm $p$} \\
+\midrule
+Equal weight & 0.003034 & $[-0.005692,\ 0.010116]$ & 0.2347 & 0.9388 \\
+Shrinkage mean--variance & 0.003303 & $[-0.001176,\ 0.008345]$ & 0.0928 & 0.5568 \\
+DCC--GARCH & 0.000273 & $[-0.004230,\ 0.005428]$ & 0.4406 & 1.0000 \\
+Static vine & -0.000951 & $[-0.009173,\ 0.008199]$ & 0.5639 & 1.0000 \\
+Rolling vine & 0.006323 & $[-0.006399,\ 0.018376]$ & 0.1645 & 0.8225 \\
+Dynamic NN-vine, no RL & -0.000158 & $[-0.009793,\ 0.010222]$ & 0.5024 & 1.0000 \\
+\bottomrule
+\end{tabular}
+}
+\caption*{\footnotesize Notes: Effects are ensemble minus benchmark mean monthly CRRA utility. All intervals include zero. Seeds are not used as market replications.}
+\end{table}
+
+The primary comparison fails to reject: the positive mean effect versus equal weight has one-sided $p=0.2347$ and Holm-adjusted $p=0.9388$. Every interval in Table \ref{tab:paired_inference} contains zero. White's reality check selects the static vine as the best observed candidate against equal weight, but its $p$-value is 0.5142. No strategy therefore has a statistically established advantage after accounting for the short path and strategy search.
+
+The ensemble's realised 5\% VaR and CVaR losses are 5.29\% and 6.64\%, respectively. Since empirical CVaR is based on a single month, it cannot substantiate a tail-risk-dominance claim. The strongest defensible conclusion is that the ensemble occupies an attractive observed risk--return point; the data are insufficient to establish superiority.
+
+\subsection{Seed Robustness and the Ensemble Mechanism}
+\label{subsec:4_seed_robustness}
+
+Training randomness materially affects the learned policy. Table \ref{tab:seed_robustness} compares the worst, median, and best individual seed with the mean-weight ensemble. The ensemble has a higher Sharpe ratio and lower turnover than the median seed, but it is not representative of the typical learned long--short book.
+
+\begin{table}[H]
+\centering
+\caption{Out-of-Sample Dispersion Across 20 Training Seeds}
+\label{tab:seed_robustness}
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{Metric} & \textbf{Worst seed} & \textbf{Median seed} & \textbf{Best seed} & \textbf{Ensemble} \\
+\midrule
+CAGR & 15.47\% & 25.95\% & 45.46\% & 29.08\% \\
+Sharpe ratio & 0.983 & 1.628 & 2.237 & 2.018 \\
+Maximum drawdown & 12.15\% & 8.10\% & 5.45\% & 6.64\% \\
+Terminal wealth & 130,169.62 & 152,677.09 & 198,765.78 & 159,668.87 \\
+Monthly turnover & 1.001 & 0.539 & 0.338 & 0.317 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Only 11 of 20 seeds beat equal weight on CAGR and 9 beat it on Sharpe. Eight beat the static vine on CAGR, while nine beat either the static or dynamic NN-vine on Sharpe. No individual seed beats equal weight on maximum drawdown or empirical CVaR. These fractions reject a seed-robust superiority narrative.
+
+Cross-seed averaging changes the economic exposure. The mean individual policy has gross exposure 1.4023, short notional 20.12\%, monthly turnover 0.5747, transaction costs of 5.747 basis points per month, and financing costs of 5.029 basis points. The ensemble has corresponding values 1.0221, 1.11\%, 0.3170, 3.170 basis points, and 0.277 basis points. Approximately 94.5\% of incremental gross and short exposure cancels because seeds take opposing positions. The high ensemble Sharpe is thus partly an ensemble diversification, de-leveraging, and cost-compression effect, not simply evidence that a typical agent learned a stable leveraged policy.
+
+The ensemble's average allocations are approximately 33.1\% Gold, 26.9\% NASDAQ, 14.1\% Dow Jones, 13.1\% S\&P 500, 7.8\% ChiNext, 2.9\% Dividend, and 2.3\% SSE 50. This concentration benefited from the realised Gold and US growth performance in the locked path and should not be interpreted as evidence of crisis robustness.
+
+\subsection{Implementation, Constraints, and Numerical Integrity}
+\label{subsec:4_implementation}
+
+All 648 strategy-period rows satisfy the declared constraints at tolerance $10^{-6}$. The maximum net-exposure error is $9.92\times10^{-9}$, the largest gross exposure is 1.5000000098, the largest long weight is 0.60, and the smallest short weight is -0.20. The TD3 ensemble's mean and maximum gross exposure are 1.022 and 1.121. Its implementation drag lowers total return by 1.215 percentage points relative to its pre-cost 60.884\% result.
+
+The successful frozen main scorer used target-to-target turnover, because it preceded the later drift-aware correction described in Section \ref{subsubsec:3_reward_function}. A deterministic post-hoc reconciliation using drifted pre-trade holdings raises ensemble turnover from 0.3170 to 0.3303 and lowers total return by only 0.047 percentage points; rankings and substantive conclusions are unchanged. The frozen main table is not overwritten. All causal and future protocols use the corrected drift-aware convention with actual-calendar-day financing.
+
+There is no silent benchmark fallback and all generated weights are finite and feasible. Nevertheless, 12 of 120 optimised benchmark decisions---four each for the static, rolling, and dynamic NN-vine strategies---terminate with NLopt code 5 at the frozen 2,000-evaluation budget. This code means maximum evaluations were reached, not that an optimality tolerance was met. The portfolios are feasible, but numerical optimality is not proven. The original result is retained; subsequent protocols fail closed on code 5 and require preregistered multi-start convergence diagnostics before a new holdout is accessed.
+
+The locked batch itself required 319.7 seconds for six benchmark paths, approximately 11 seconds for each isolated RL-policy replay, 8.9 seconds for common scoring, and less than one second for realised-panel construction. Policy inference was isolated in a CPU PyTorch subprocess to avoid shared-library collisions with R Lantern. Failed operational attempts and the successful release are preserved with immutable logs; overlapping weights and realised panels are byte-identical, but the paper does not describe the successful run as first-ever untouched access.
+
+\subsection{Post-Holdout Explanatory Ablations}
+\label{subsec:4_ablation}
+
+Table \ref{tab:ablation} reports two frozen same-sample ablations. The no-vine ensemble jointly masks the direct vine state and policy-visible scenario-CVaR channel. The pretrained-only ensemble omits historical fine-tuning. Because both were evaluated after the main holdout had been consumed, no confirmatory test is performed and the results are descriptive mechanism evidence.
+
+\begin{table}[H]
+\centering
+\caption{Frozen Post-Holdout Explanatory Ablations: 22 Complete Periods}
+\label{tab:ablation}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l r r r r r r r r}
+\toprule
+\textbf{Variant} & \textbf{Total} & \textbf{CAGR} & \textbf{Vol.} & \textbf{Sharpe} & \textbf{Sortino} & \textbf{Max DD} & \textbf{CRRA CE} & \textbf{Turnover} \\
+\midrule
+Full NN-vine TD3 ensemble & 59.67\% & 29.08\% & 13.19\% & 2.018 & 4.642 & 6.64\% & 28.05\% & 0.317 \\
+No-vine TD3 ensemble & \textbf{62.68\%} & \textbf{30.40\%} & \textbf{12.79\%} & \textbf{2.157} & \textbf{5.213} & 6.75\% & \textbf{29.43\%} & 0.373 \\
+Pretrained-only TD3 ensemble & 59.61\% & 29.05\% & 13.02\% & 2.041 & 4.838 & \textbf{6.26\%} & 28.05\% & \textbf{0.314} \\
+\bottomrule
+\end{tabular}%
+}
+\caption*{\footnotesize Notes: Post-holdout explanatory evidence on the consumed market path. Bold denotes the best observed value within this three-row comparison and is not a significance claim.}
+\end{table}
+
+The full-minus-no-vine mean monthly net-return and utility differences are -0.000824 and -0.000877; the full policy is better in only 8 of 22 periods. The no-vine control also has higher observed CRRA CE and Sharpe. Hence this coarse ablation does not support an incremental benefit from the combined vine-state and scenario-CVaR channels. It does not identify which channel is responsible, nor does non-significance establish equivalence.
+
+The full-minus-pretrained-only mean net-return difference is $3.66\times10^{-5}$ per month and the utility difference is $-2.96\times10^{-7}$. Annualised CRRA CE rounds to 28.05\% for both policies. Historical fine-tuning therefore has no material descriptive increment on this holdout. This finding motivates, rather than substitutes for, the matched-seed component design.
+
+\subsection{Prospective Causal Mechanism Analysis}
+\label{subsec:4_causal_results}
+
+The causal analysis contract was frozen before its evaluation output was available. It requires all eight component contrasts and four algorithm controls to be reported regardless of sign or significance, together with raw and Holm-adjusted p-values, annualised certainty-equivalent effects, seed stability, implementation diagnostics, and ensemble wealth paths. It treats the ten matched seeds as optimisation replicates and performs uncertainty estimation over paired market periods.
+
+\IfFileExists{generated/causal_primary_contrasts.tex}{%
+\input{generated/causal_primary_contrasts.tex}
+}{%
+\begin{quote}
+\textit{Causal results are intentionally not inserted in this revision because the frozen matched-seed sweep and common-path scorer have not yet produced a validated release. This paragraph must be replaced only from the generated causal tables; no manual or partial-run values are permitted.}
+\end{quote}
+}
+
+This interface prevents a partially completed training sweep from becoming a manuscript result. Once frozen, the generated section will report the effects of direct vine state, the scenario-CVaR observation, their joint information, CVaR reward shaping, synthetic pre-training, the neural generator relative to temporal bootstrap, recurrent encoding, historical fine-tuning, and the alternative algorithms. Regardless of outcome, these remain post-holdout explanatory findings.
+
+\subsection{Discussion}
+\label{subsec:4_discussion}
+
+The frozen evidence supports a mixed conclusion. The proposed ensemble is a competitive low-volatility controller with the highest observed Sharpe ratio and modest implementation drag. It is economically better than equal weight, shrinkage mean--variance, and rolling vine on terminal wealth, and nearly ties DCC--GARCH and the dynamic NN-vine. Yet it loses to the static vine on wealth and CRRA CE, none of its utility effects is statistically significant, and individual-seed behaviour is unstable.
+
+The explanatory ablations sharpen the interpretation. The no-vine ensemble performs better descriptively, while fine-tuning adds almost no utility. Together with the dynamic NN-vine benchmark, these findings mean that performance alone does not establish the novel contribution of the neural vine or RL components. The causal study is necessary to determine whether value comes from the synthetic generator, direct dependence features, scenario risk, recurrent memory, reward shaping, or simply weight-space ensemble averaging.
+
+The study also demonstrates why scientific and operational validation must be integrated. Leakage checks, immutable calendar and asset contracts, behavioural gates, checkpoint metadata, process-isolated inference, constraint audits, and explicit failed-run preservation prevent several common backtest errors. They do not compensate for a short holdout. A credible superiority claim requires new, non-overlapping evidence: frozen expanding or rolling windows, an external investable total-return panel, or future observations arriving after protocol freeze.

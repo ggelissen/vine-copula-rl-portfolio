@@ -1,0 +1,507 @@
+HPC / GITHUB REPOSITORY DELETION AUDIT
+========================================
+
+Audit date: 2026-08-18
+Input: C:/Users/gabri/Downloads/project_structure.txt
+Tree represented: /gabirel/copula-portfolio-clean (HPC/GitHub checkout)
+Tree size: 23,565 parsed entries (3,013 directories; 20,552 files)
+
+PURPOSE
+-------
+This is a deletion classification, not a deletion script. Paths are relative to
+the repository root. Nothing was deleted.
+
+The attached file is a path-only tree: it does not contain byte sizes, content
+hashes, modification times, Git tracking status, or the contents of manifests.
+Accordingly, only caches, failed attempts, stale process markers, and clearly
+regenerable previews are classified as SAFE TO DELETE NOW. Scientific outputs
+and checkpoints are classified as conditional unless an independent frozen copy
+is visible in the tree.
+
+IMPORTANT VERSIONING RULE
+-------------------------
+Do not delete a path merely because its name contains v1, v2, or v3.
+
+In this repository:
+
+* causal v2/v3/v4 denotes the 70/31/29 operational merge, not three redundant
+  copies of the same experiment;
+* focused mechanism v5 and v7 correspond to different completed walk-forward
+  windows/protocol corrections;
+* synthetic-dose v1, presentation-response v2, terminal-robustness v1, and
+  mixed-pretraining v1 are different experiments;
+* frozen releases are immutable provenance, not ordinary build output.
+
+
+SECTION A — SAFE TO DELETE NOW
+===============================
+
+A1. Tool caches and temporary review copies
+-------------------------------------------
+Delete these whole directories:
+
+.pytest_cache/
+publication_pipeline_draft/__pycache__/
+publication_pipeline_draft/terminal_publication/__pycache__/
+publication_pipeline_draft/tests/__pycache__/
+publication_pipeline_draft/tikz_figures/__pycache__/
+rl/__pycache__/
+tmp/
+
+Reason: interpreter/test caches and temporary visual-review/extraction copies.
+They are regenerated and are not scientific evidence.
+
+
+A2. Stale process-ID files
+--------------------------
+Delete every file matching:
+
+logs/**/*.pid
+logs/*.pid
+
+All runs represented by this tree have completed. PID files are launch-time
+process markers; they are neither logs nor results and can point to recycled
+Linux process IDs after a run ends.
+
+
+A3. Explicitly failed or superseded attempts
+---------------------------------------------
+Delete these whole directories:
+
+analysis_outputs/causal_policy_weights_v2_v3_v4_retry1/
+data/focused_original_7asset_runs_v1/retrospective_original_7asset_expanding_24m_v1_w01/failed_attempts/
+publication_eval/static_vine_convergence_probe_retrospective_original_7asset_expanding_24m_v1_w01_v3/
+publication_eval/vine_convergence_probe_retrospective_original_7asset_expanding_24m_v1_w01_v4/
+
+Delete these two files:
+
+data/focused_original_7asset_runs_v1/retrospective_original_7asset_expanding_24m_v1_w01/training_data/synthetic_bundle_manifest.strict_v1_failed.json
+data/focused_original_7asset_runs_v1/retrospective_original_7asset_expanding_24m_v1_w01/training_data/synthetic_returns.strict_v1_failed.RData
+
+Reason: the tree explicitly identifies these as failed attempts, retry output,
+or convergence probes. The completed w01 path uses sampling_v5_short_window_fix,
+and completed causal weight replay is preserved in the later replay/final-result
+artifacts.
+
+
+A4. Duplicate rendered report
+-----------------------------
+Delete:
+
+analysis_outputs/SYNTHETIC_DOSE_RESPONSE_V1_INTERPRETATION.html
+analysis_outputs/SYNTHETIC_DOSE_RESPONSE_V1_INTERPRETATION_files/
+
+Retain:
+
+analysis_outputs/SYNTHETIC_DOSE_RESPONSE_V1_INTERPRETATION.md
+
+Reason: the HTML support directory is a large rendered copy. The Markdown is
+the compact, versionable source of the interpretation.
+
+
+A5. Regenerable figure previews and TeX build intermediates
+------------------------------------------------------------
+Delete:
+
+figures/synthetic_monthly_return_distributions.pdf
+figures/wealth_curves.pdf
+manuscript_revision_causal_v1/publication_mixed_pretraining_v1/figures/tikz/preview_mixed_pretraining_figure.aux
+manuscript_revision_causal_v1/publication_mixed_pretraining_v1/figures/tikz/preview_mixed_pretraining_figure.log
+manuscript_revision_causal_v1/publication_mixed_pretraining_v1/figures/tikz/preview_mixed_pretraining_figure.pdf
+manuscript_revision_causal_v1/publication_terminal_v1/figures/tikz/preview_terminal_figures.aux
+manuscript_revision_causal_v1/publication_terminal_v1/figures/tikz/preview_terminal_figures.fdb_latexmk
+manuscript_revision_causal_v1/publication_terminal_v1/figures/tikz/preview_terminal_figures.fls
+manuscript_revision_causal_v1/publication_terminal_v1/figures/tikz/preview_terminal_figures.log
+manuscript_revision_causal_v1/publication_terminal_v1/figures/tikz/preview_terminal_figures.pdf
+
+Reason: these are generated previews or default plot outputs. Retain the TikZ
+sources, plot generators, manifests, and manuscript figures. The top-level
+figures are output targets in the R code, not inputs to the current manuscript.
+
+The manuscript_revision_causal_v1/main.pdf is intentionally NOT on this list:
+it is regenerable, but it is also the convenient current rendered manuscript.
+
+
+A6. Superseded validation/retry logs only
+-----------------------------------------
+These individual logs record failed validation invocations already followed by
+passing retries. They can be deleted without removing successful experiment
+logs:
+
+logs/causal_evaluation_v2_v3_v4_freeze_plan_retry1.log
+logs/causal_evaluation_v2_v3_v4_preflight_retry1.log
+logs/focused_walk_forward_v1_validation.log
+logs/focused_walk_forward_v1_validation_retry1.log
+logs/publication_extension_v4_validation_retry1.log
+logs/synthetic_dose_response_v1_freeze_retry1.log
+logs/no_vine_secondary_v3_preflight_v8.json
+
+Retain the final passing validation/finalization logs until Section C has been
+completed or until they have been archived externally.
+
+
+SECTION B — SAFE ONLY AFTER A SMALL MANUAL DIFF
+================================================
+
+The following files are not referenced by the active main.tex in the mirrored
+checkout, but text can contain unmerged prose. Delete them only after confirming
+that they contain no unique manuscript edits:
+
+manuscript_revision_causal_v1/05_Results_revised_figures.tex
+manuscript_revision_causal_v1/07_Appendix_revised_figures.tex
+manuscript_revision_causal_v1/revised_with_tikz/
+
+Compare each candidate with the active files:
+
+manuscript_revision_causal_v1/05_Results.tex
+manuscript_revision_causal_v1/07_Appendix.tex
+
+If the diff contains only older figure includes/layout, deletion is safe. If it
+contains unique prose, merge that prose first.
+
+
+SECTION C — DELETE ONLY AFTER THE NAMED FROZEN COPY PASSES
+===========================================================
+
+The paths below are scientifically redundant only after the corresponding
+CONTENTS.sha256 and tar.gz.sha256 checks pass. These are the largest legitimate
+cleanup opportunities. Do not skip the condition.
+
+
+C1. Original 20-seed full-model training work tree
+--------------------------------------------------
+Candidates:
+
+data/rl_runs/
+data/publication_training_artifacts_20seeds/
+
+Required canonical copy:
+
+frozen_releases/training_schema5_v1/
+frozen_releases/training_schema5_v1.tar.gz
+frozen_releases/training_schema5_v1.tar.gz.sha256
+
+The frozen release visibly contains all 20 seeds, both pretrained and full .pt
+checkpoints, audit tables, source snapshot, inventories, and manifests. After
+both checksum layers pass and the tar archive is copied off HPC, the two data/
+work trees may be deleted.
+
+
+C2. Final 10-seed no-vine training work tree and its invalid predecessor
+------------------------------------------------------------------------
+Candidates:
+
+data/no_vine_rl_runs_secondary_v3/
+data/publication_no_vine_training_artifacts_10seeds/
+data/no_vine_rl_runs_4gpu/
+
+Required canonical copy:
+
+frozen_releases/no_vine_schema5_secondary_v1/
+frozen_releases/no_vine_schema5_secondary_v1.tar.gz
+frozen_releases/no_vine_schema5_secondary_v1.tar.gz.sha256
+
+The frozen release visibly contains seeds 20260841–20260850 and both .pt files
+per seed. The no_vine_rl_runs_4gpu directory is the superseded earlier run; the
+secondary_v3/frozen release is the attested replacement.
+
+
+C3. Masked-pretraining control work tree
+----------------------------------------
+Candidates:
+
+data/masked_pretraining_control_runs_v1/
+analysis_outputs/masked_pretraining_controls_v1_weights/
+analysis_outputs/masked_pretraining_controls_v1_audit/
+logs/masked_pretraining_controls_v1/
+logs/masked_pretraining_controls_v1*.log
+
+Required canonical copies — BOTH classes must pass:
+
+masked_pretraining_controls_v1_checkpoints.tar.gz
+masked_pretraining_controls_v1_checkpoints.tar.gz.sha256
+masked_pretraining_controls_v1_final.tar.gz
+masked_pretraining_controls_v1_final.tar.gz.sha256
+frozen_releases/masked_pretraining_controls_v1/
+
+Retain analysis_outputs/masked_pretraining_controls_v1_results/ as the convenient
+live analysis input unless the manuscript and final publication bundle have
+already copied every needed table/figure.
+
+
+C4. Mixed-pretraining work tree
+-------------------------------
+Candidates:
+
+data/mixed_pretraining_runs_v1/
+analysis_outputs/mixed_pretraining_response_v1_weights/
+analysis_outputs/mixed_pretraining_response_v1_audit/
+logs/mixed_pretraining_response_v1/
+logs/mixed_pretraining_response_v1*.log
+
+Required canonical copies — BOTH classes must pass:
+
+mixed_pretraining_response_v1_checkpoints.tar.gz
+mixed_pretraining_response_v1_checkpoints.tar.gz.sha256
+mixed_pretraining_response_v1_final.tar.gz
+mixed_pretraining_response_v1_final.tar.gz.sha256
+frozen_releases/mixed_pretraining_response_v1_evidence_v1/
+
+Retain analysis_outputs/mixed_pretraining_response_v1_results/ and
+manuscript_revision_causal_v1/publication_mixed_pretraining_v1/ because they are
+the active numerical and publication artifacts.
+
+
+C5. Causal replay/accounting intermediates
+------------------------------------------
+The following live analysis paths are duplicated inside the final causal result
+release and can be deleted after that release and its external backup verify:
+
+analysis_outputs/causal_analysis_results_v2_v3_v4_plot_runtime_v1/
+analysis_outputs/causal_common_accounting_v2_v3_v4_accounting_v2/
+analysis_outputs/causal_common_accounting_v2_v3_v4_plot_runtime_v1/
+analysis_outputs/causal_evaluation_interface_v2_v3_v4_accounting_v2/
+analysis_outputs/causal_evaluation_interface_v2_v3_v4_plot_runtime_v1/
+analysis_outputs/causal_evaluation_interface_v2_v3_v4_replay_v2/
+analysis_outputs/causal_policy_ensembles_v2_v3_v4_accounting_v2/
+analysis_outputs/causal_policy_ensembles_v2_v3_v4_replay_v2/
+analysis_outputs/causal_policy_weights_v2_v3_v4/
+analysis_outputs/causal_policy_weights_v2_v3_v4_accounting_v2/
+analysis_outputs/causal_sweep_audit_v2_v3_v4/
+analysis_outputs/causal_strategy_periods_v2_v3_v4_accounting_v2.csv
+analysis_outputs/causal_strategy_periods_v2_v3_v4_accounting_v2.csv.manifest.json
+analysis_outputs/causal_strategy_periods_v2_v3_v4_plot_runtime_v1.csv
+analysis_outputs/causal_strategy_periods_v2_v3_v4_plot_runtime_v1.csv.manifest.json
+
+Required canonical copy:
+
+frozen_releases/causal_results_v2_v3_v4_plot_runtime_v1/
+frozen_releases/causal_results_v2_v3_v4_plot_runtime_v1.tar.gz
+frozen_releases/causal_results_v2_v3_v4_plot_runtime_v1.tar.gz.sha256
+frozen_releases/final_evidence/causal_results_v2_v3_v4_plot_runtime_v1.tar.gz
+frozen_releases/final_evidence/causal_results_v2_v3_v4_plot_runtime_v1.tar.gz.sha256
+
+The final release visibly embeds the analysis plan, analysis results, checkpoint
+audit, common accounting, evaluation interface, ensembles, all replayed weights,
+realized input, merged jobs/status, and operational-merge manifest.
+
+Do NOT delete data/publication_extension_runs_v4/ under this rule. The tree does
+not show a frozen causal CHECKPOINT archive; the final causal result archive
+contains replayed weights, not necessarily the 29 v4 training checkpoints.
+
+
+C6. Extracted secondary-evaluation copy
+---------------------------------------
+Candidate:
+
+secondary_evaluation/post_holdout_explanatory_ablation_v2_operational_retry/
+
+Required canonical copy:
+
+secondary_evaluation/post_holdout_explanatory_ablation_v2_operational_retry.tar.gz
+secondary_evaluation/post_holdout_explanatory_ablation_v2_operational_retry.tar.gz.sha256
+
+Delete the extracted directory only if no live script is still being run with
+that directory as its input. Keep the archive and sidecar.
+
+
+C7. Terminal clean-room duplicate
+---------------------------------
+Candidates:
+
+analysis_outputs/terminal_robustness_v1_cleanroom/
+analysis_outputs/terminal_robustness_v1_cleanroom_verification.json
+
+Required canonical copies:
+
+terminal_robustness_v1_final.tar.gz
+terminal_robustness_v1_final.tar.gz.sha256
+frozen_releases/terminal_robustness_v1/
+manuscript_revision_causal_v1/publication_terminal_v1/
+
+Retain analysis_outputs/terminal_robustness_v1/ as the convenient live input to
+the terminal publication-artifact generator.
+
+
+C8. Logs as a whole
+-------------------
+Once every final/checkpoint archive above has passed and been copied off HPC,
+the entire logs/ directory may be deleted without breaking model execution.
+Logs are operational diagnostics; the scientific state is carried by frozen
+manifests, inventories, status CSVs, results, and checkpoints.
+
+Exception: if logs are the only record of a run that has no checkpoint archive
+(focused windows, causal v4 training, synthetic dose, or presentation response),
+retain those experiment subdirectories until Section D1 is resolved.
+
+
+SECTION D — DO NOT DELETE YET
+==============================
+
+D1. Raw checkpoints that are not visibly checkpoint-archived
+-------------------------------------------------------------
+Retain:
+
+data/focused_original_7asset_runs_v1/
+data/publication_extension_runs_v4/
+data/synthetic_dose_response_runs_v1/
+data/synthetic_presentation_response_runs_v2/
+
+The tree shows final result archives for several of these studies, but no
+separate checkpoint archive proving that every .pt model is preserved. Summary
+tables and replayed weights are not substitutes for checkpoints. Create and
+verify checkpoint inventories/archives before deleting these run roots.
+
+
+D2. Current exact input bundles and fitted models
+-------------------------------------------------
+Retain:
+
+data/ablation_training_bundles/
+data/mixed_pretraining_response_v1/
+data/synthetic_dose_response_v1/
+data/synthetic_presentation_response_v2/
+data/nn_vine_models/
+data/synthetic_returns.RData
+data/training_marginal_results.RData
+data/pretrain_returns.qs
+data/finetune_returns.qs
+data/portfolio_A_5assets_2007.csv
+data/portfolio_B_7assets_2013.csv
+data/portfolio_C_8assets_2015.csv
+
+The current configuration and training/window protocols still reference the
+pretrain_returns.qs and finetune_returns.qs paths. They must not be removed just
+because synthetic_returns.RData also exists.
+
+
+D3. Legacy-named RData files still referenced by live code
+-----------------------------------------------------------
+Do not delete these until the legacy benchmark entry points are explicitly
+retired or migrated:
+
+data/benchmark_results.RData
+data/marginal_results.RData
+data/vine_fit.RData
+
+Current config/evaluation or benchmark-model files still reference these exact
+paths. Removing them now could break those entry points.
+
+The following are outputs rather than active scientific inputs, but are small
+and should be removed only as part of an explicit legacy-benchmark retirement:
+
+data/eu_backtest_result.RData
+data/evaluation_results.RData
+data/nn_backtest_result.RData
+
+
+D4. Locked/frozen evidence and checksums
+----------------------------------------
+Retain all of:
+
+frozen_releases/
+locked_evaluation/main_oos_v4_operational_retry/
+locked_evaluation/main_oos_v4_operational_retry.tar.gz
+locked_evaluation/main_oos_v4_operational_retry.tar.gz.sha256
+focused_presimulation_freeze_v1.tar.gz
+focused_presimulation_freeze_v1.tar.gz.sha256
+focused_walk_forward_w01_w02_final.tar.gz
+focused_walk_forward_w01_w02_final.tar.gz.sha256
+masked_pretraining_controls_v1_checkpoints.tar.gz
+masked_pretraining_controls_v1_checkpoints.tar.gz.sha256
+masked_pretraining_controls_v1_final.tar.gz
+masked_pretraining_controls_v1_final.tar.gz.sha256
+mixed_pretraining_response_v1_checkpoints.tar.gz
+mixed_pretraining_response_v1_checkpoints.tar.gz.sha256
+mixed_pretraining_response_v1_final.tar.gz
+mixed_pretraining_response_v1_final.tar.gz.sha256
+synthetic_dose_response_v1_final.tar.gz
+synthetic_dose_response_v1_final.tar.gz.sha256
+synthetic_presentation_response_v2_final.tar.gz
+synthetic_presentation_response_v2_final.tar.gz.sha256
+terminal_robustness_v1_final.tar.gz
+terminal_robustness_v1_final.tar.gz.sha256
+
+The extracted frozen-release directories are live inputs to several scripts and
+runbooks. Keeping only the tar files would currently break those default paths.
+
+
+D5. Protocol, environment, code, and tests
+------------------------------------------
+Retain all of:
+
+benchmark_models/
+config/
+eval/
+helper/
+hpc/
+protocol_manifests/
+provenance_environment_extension_v2/
+provenance_environment_extension_v3_retry/
+provenance_environment_extension_v4/
+provenance_environment_v4/
+publication_pipeline_draft/   (except caches named in A1)
+rl/                           (except its __pycache__)
+tests/
+evaluate_with_config.r
+run_with_config.r
+requirements-secondary-training.txt
+
+The tests are not clutter. Validation shell scripts and frozen protocols call
+them, and they are small relative to model/data artifacts. Deleting old-looking
+test files would weaken reproducibility and can make the fail-closed protocols
+silently unverifiable.
+
+
+D6. Active analysis/manuscript inputs
+-------------------------------------
+Retain:
+
+analysis_outputs/oos_v4_verified_770d2944/
+analysis_outputs/focused_walk_forward_mechanisms_v1_final/
+analysis_outputs/masked_pretraining_controls_v1_results/
+analysis_outputs/mixed_pretraining_response_v1_results/
+analysis_outputs/synthetic_dose_response_v1_results/
+analysis_outputs/synthetic_presentation_response_v2_results/
+analysis_outputs/terminal_robustness_v1/
+analysis_outputs/training_diagnostics/
+manuscript_revision_causal_v1/figures/
+manuscript_revision_causal_v1/publication_terminal_v1/
+manuscript_revision_causal_v1/publication_mixed_pretraining_v1/
+manuscript_revision_causal_v1/01_Introduction.tex
+manuscript_revision_causal_v1/02_LiteratureReview.tex
+manuscript_revision_causal_v1/03_Methodology.tex
+manuscript_revision_causal_v1/04_Data.tex
+manuscript_revision_causal_v1/05_Results.tex
+manuscript_revision_causal_v1/06_Conclusion.tex
+manuscript_revision_causal_v1/07_Appendix.tex
+manuscript_revision_causal_v1/Zotero.bib
+manuscript_revision_causal_v1/main.tex
+
+The publication TikZ manifest explicitly references the oos_v4 and mechanism
+tables. The other result directories are the latest numerical evidence for the
+terminal and mixed-pretraining publication artifacts.
+
+
+SECTION E — RECOMMENDED ORDER
+==============================
+
+1. Commit this audit/report, but do not commit deletions yet.
+2. Remove Section A only.
+3. Run the complete Python and R validation suites.
+4. Verify and copy all canonical archives named in Section C.
+5. Remove one Section C group at a time; rerun tests after each group.
+6. Create checkpoint archives for the four Section D1 raw run roots.
+7. Only then remove raw HPC run trees and most logs.
+8. Keep frozen releases, hashes, compact final tables, claim ledgers, manuscript
+   inputs, environment captures, and all source/tests in Git or durable storage.
+
+
+FINAL DECISION
+==============
+
+The immediate, low-risk cleanup is Section A. The largest space recovery comes
+from Sections C1–C5, but only after checksum verification. Do not perform a
+blanket deletion of every v1/v2/v3 directory, every log, or every data/ run
+tree: that would remove active protocol history and, in several cases, the only
+visible copy of trained checkpoints.

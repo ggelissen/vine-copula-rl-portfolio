@@ -1,0 +1,1235 @@
+============================================================
+PYTHON DEBUG LOG STARTED
+============================================================
+[05:54:40] Run seed: 20261006
+[05:54:40] Run mode: full
+[05:54:40] PyTorch: 2.10.0+cu128
+[05:54:40] Device: cuda
+[05:54:40] Action schema: interior_rank_partition_leverage_gate_v5; projection temperature=1.5
+[05:54:40] Experiment: algorithm=td3; encoder=lstm; vine_features=zero; cvar_observation=zero; cvar_reward=full; pretraining=mixed_historical_synthetic; behavior_gate=report_only; finetune=True
+[05:54:40] GPU: NVIDIA A100-SXM4-40GB
+[05:54:40] PYTHON: Framework ready.
+[05:54:40] Action schema: interior_rank_partition_leverage_gate_v5 | gross=1.500 | net=1.000 | max_long=0.600 | max_short=0.200
+[05:54:40] Risk/training: entropy_coef=0.005 | leverage_target=0.800 | leverage_penalty=0.25 | direction_bound=5.000 | AMP=False
+[05:54:40] ============================================================
+[05:54:40] STAGE 1: PRE-TRAINING
+[05:54:40] ============================================================
+[05:54:41] ============================================================
+[05:54:41] TRAIN STAGE STARTED: stage=pretrain, episodes=1000, batch_size=128, updates_per_step=1
+[05:54:41] ============================================================
+[05:54:41] Episode 1  Reward:  -0.280282  Wealth:     85072.74  Turnover: 1.0794  Gross: 1.2703  Gate: 0.5407
+[05:54:41] Episode 2  Reward:  -0.120161  Wealth:     98036.02  Turnover: 0.9832  Gross: 1.2285  Gate: 0.4570
+[05:54:41] Episode 3  Reward:   0.053941  Wealth:    117291.80  Turnover: 0.9964  Gross: 1.2208  Gate: 0.4416
+[05:54:41] Episode 4  Reward:  -0.048270  Wealth:    104457.16  Turnover: 1.0571  Gross: 1.2475  Gate: 0.4951
+[05:54:42] Episode 5  Reward:  -0.218943  Wealth:     88919.30  Turnover: 1.0283  Gross: 1.1917  Gate: 0.3834
+[05:54:42] Episode 6  Reward:  -0.221695  Wealth:     88992.81  Turnover: 1.0063  Gross: 1.2549  Gate: 0.5097
+[05:54:43] Episode 7  Reward:   0.090658  Wealth:    122899.81  Turnover: 1.1042  Gross: 1.2495  Gate: 0.4991
+[05:54:44] Episode 8  Reward:  -0.102643  Wealth:     99774.59  Turnover: 1.0928  Gross: 1.2254  Gate: 0.4508
+[05:54:44] Episode 9  Reward:  -0.019992  Wealth:    108775.08  Turnover: 1.1102  Gross: 1.2728  Gate: 0.5456
+[05:54:45] Episode 10  Reward:   0.063393  Wealth:    118189.59  Turnover: 1.0567  Gross: 1.2473  Gate: 0.4947
+[05:54:45] Episode     10  AvgReward:  -0.080399  Noise: 0.1473
+[05:54:46] Episode 11  Reward:   0.236010  Wealth:    150463.43  Turnover: 1.0465  Gross: 1.2222  Gate: 0.4443
+[05:54:46] Episode 12  Reward:   0.015370  Wealth:    112452.44  Turnover: 1.0372  Gross: 1.2346  Gate: 0.4693
+[05:54:47] Episode 13  Reward:  -0.132594  Wealth:     96935.14  Turnover: 1.1103  Gross: 1.2514  Gate: 0.5027
+[05:54:48] Episode 14  Reward:   0.157731  Wealth:    134105.49  Turnover: 1.0105  Gross: 1.2466  Gate: 0.4932
+[05:54:48] Episode 15  Reward:   0.070452  Wealth:    119882.82  Turnover: 1.0689  Gross: 1.2606  Gate: 0.5211
+[05:54:49] Episode 16  Reward:   0.094064  Wealth:    123986.43  Turnover: 1.0483  Gross: 1.2503  Gate: 0.5005
+[05:54:50] Episode 17  Reward:  -0.040017  Wealth:    105498.82  Turnover: 1.0038  Gross: 1.1978  Gate: 0.3957
+[05:54:50] Episode 18  Reward:   0.002452  Wealth:    110375.01  Turnover: 1.0700  Gross: 1.2239  Gate: 0.4477
+[05:54:51] Episode 19  Reward:   0.000843  Wealth:    111444.22  Turnover: 1.0784  Gross: 1.2277  Gate: 0.4553
+[05:54:52] Episode 20  Reward:  -0.021705  Wealth:    107504.44  Turnover: 1.1011  Gross: 1.2754  Gate: 0.5507
+[05:54:52] Episode     20  AvgReward:   0.038261  Noise: 0.1444
+[05:54:52] Episode 21  Reward:  -0.203213  Wealth:     90112.68  Turnover: 0.9887  Gross: 1.2512  Gate: 0.5024
+[05:54:53] Episode 22  Reward:  -0.294902  Wealth:     83673.51  Turnover: 1.1801  Gross: 1.2593  Gate: 0.5186
+[05:54:54] Episode 23  Reward:  -0.046759  Wealth:    105082.38  Turnover: 0.9950  Gross: 1.2605  Gate: 0.5210
+[05:54:54] Episode 24  Reward:  -0.068652  Wealth:    103916.63  Turnover: 1.0827  Gross: 1.2448  Gate: 0.4895
+[05:54:55] Episode 25  Reward:  -0.404685  Wealth:     76793.79  Turnover: 1.0822  Gross: 1.2624  Gate: 0.5249
+[05:54:56] Episode 26  Reward:   0.008941  Wealth:    112515.04  Turnover: 1.1526  Gross: 1.2457  Gate: 0.4914
+[05:54:57] Episode 27  Reward:   0.164140  Wealth:    136709.11  Turnover: 1.1196  Gross: 1.2429  Gate: 0.4859
+[05:54:57] Episode 28  Reward:  -0.077829  Wealth:    102114.14  Turnover: 1.1561  Gross: 1.2406  Gate: 0.4811
+[05:54:58] Episode 29  Reward:  -0.136263  Wealth:     96444.11  Turnover: 1.0801  Gross: 1.2485  Gate: 0.4970
+[05:54:59] Episode 30  Reward:   0.081025  Wealth:    122409.25  Turnover: 1.1691  Gross: 1.2744  Gate: 0.5488
+[05:54:59] Episode     30  AvgReward:  -0.097820  Noise: 0.1415
+[05:54:59] Episode 31  Reward:   0.009416  Wealth:    112233.72  Turnover: 1.0713  Gross: 1.2445  Gate: 0.4890
+[05:55:00] Episode 32  Reward:  -0.014621  Wealth:    109407.01  Turnover: 1.0315  Gross: 1.2094  Gate: 0.4189
+[05:55:01] Episode 33  Reward:   0.026262  Wealth:    113918.15  Turnover: 1.0013  Gross: 1.2022  Gate: 0.4045
+[05:55:01] Episode 34  Reward:  -0.065600  Wealth:    102509.46  Turnover: 1.0647  Gross: 1.2394  Gate: 0.4788
+[05:55:02] Episode 35  Reward:   0.132402  Wealth:    129558.36  Turnover: 1.1041  Gross: 1.2481  Gate: 0.4962
+[05:55:03] Episode 36  Reward:   0.176749  Wealth:    137860.08  Turnover: 1.0927  Gross: 1.2263  Gate: 0.4525
+[05:55:03] Episode 37  Reward:   0.085717  Wealth:    123681.61  Turnover: 1.1294  Gross: 1.2389  Gate: 0.4778
+[05:55:04] Episode 38  Reward:   0.122445  Wealth:    128950.89  Turnover: 0.9946  Gross: 1.2442  Gate: 0.4885
+[05:55:05] Episode 39  Reward:   0.195321  Wealth:    140802.60  Turnover: 1.0356  Gross: 1.2442  Gate: 0.4884
+[05:55:05] Episode 40  Reward:   0.335066  Wealth:    176541.21  Turnover: 1.0675  Gross: 1.2146  Gate: 0.4291
+[05:55:05] Episode     40  AvgReward:   0.100316  Noise: 0.1387
+[05:55:06] Episode 41  Reward:   0.177777  Wealth:    138829.89  Turnover: 1.0635  Gross: 1.2579  Gate: 0.5159
+[05:55:07] Episode 42  Reward:  -0.029918  Wealth:    106307.94  Turnover: 0.7861  Gross: 1.1937  Gate: 0.3874
+[05:55:07] Episode 43  Reward:   0.081858  Wealth:    117390.21  Turnover: 0.2027  Gross: 1.1143  Gate: 0.2285
+[05:55:08] Episode 44  Reward:   0.150568  Wealth:    127833.10  Turnover: 0.2675  Gross: 1.1151  Gate: 0.2301
+[05:55:09] Episode 45  Reward:   0.000052  Wealth:    107310.92  Turnover: 0.2211  Gross: 1.1270  Gate: 0.2540
+[05:55:09] Episode 46  Reward:   0.220921  Wealth:    141152.68  Turnover: 0.1933  Gross: 1.1290  Gate: 0.2580
+[05:55:10] Episode 47  Reward:   0.247091  Wealth:    146891.21  Turnover: 0.2346  Gross: 1.1350  Gate: 0.2700
+[05:55:11] Episode 48  Reward:   0.033356  Wealth:    111798.84  Turnover: 0.1907  Gross: 1.1337  Gate: 0.2673
+[05:55:11] Episode 49  Reward:   0.167295  Wealth:    131653.45  Turnover: 0.2405  Gross: 1.1462  Gate: 0.2924
+[05:55:12] Episode 50  Reward:  -0.005600  Wealth:    107083.03  Turnover: 0.2137  Gross: 1.1583  Gate: 0.3165
+[05:55:12] Episode     50  AvgReward:   0.104340  Noise: 0.1360
+[05:55:13] Episode 51  Reward:  -0.027873  Wealth:    104636.05  Turnover: 0.2456  Gross: 1.1565  Gate: 0.3129
+[05:55:13] Episode 52  Reward:   0.113769  Wealth:    122839.94  Turnover: 0.2379  Gross: 1.1613  Gate: 0.3225
+[05:55:14] Episode 53  Reward:   0.072625  Wealth:    117447.84  Turnover: 0.2399  Gross: 1.1663  Gate: 0.3326
+[05:55:15] Episode 54  Reward:   0.092116  Wealth:    120676.41  Turnover: 0.2523  Gross: 1.1668  Gate: 0.3335
+[05:55:16] Episode 55  Reward:   0.159064  Wealth:    130833.87  Turnover: 0.2468  Gross: 1.1784  Gate: 0.3569
+[05:55:16] Episode 56  Reward:  -0.069010  Wealth:    101392.85  Turnover: 0.3645  Gross: 1.1845  Gate: 0.3689
+[05:55:17] Episode 57  Reward:   0.172814  Wealth:    134584.94  Turnover: 0.3362  Gross: 1.1925  Gate: 0.3850
+[05:55:18] Episode 58  Reward:   0.199333  Wealth:    138970.40  Turnover: 0.3253  Gross: 1.1996  Gate: 0.3991
+[05:55:18] Episode 59  Reward:   0.034147  Wealth:    113946.26  Turnover: 0.2597  Gross: 1.2074  Gate: 0.4148
+[05:55:19] Episode 60  Reward:   0.190221  Wealth:    137878.98  Turnover: 0.3667  Gross: 1.2074  Gate: 0.4147
+[05:55:19] Episode     60  AvgReward:   0.093721  Noise: 0.1333
+[05:55:20] Episode 61  Reward:  -0.205262  Wealth:     89523.61  Turnover: 0.3083  Gross: 1.2148  Gate: 0.4295
+[05:55:20] Episode 62  Reward:   0.021622  Wealth:    112391.98  Turnover: 0.3957  Gross: 1.2297  Gate: 0.4595
+[05:55:21] Episode 63  Reward:   0.138725  Wealth:    129547.26  Turnover: 0.3606  Gross: 1.2250  Gate: 0.4500
+[05:55:22] Episode 64  Reward:  -0.125255  Wealth:     96435.50  Turnover: 0.3011  Gross: 1.2405  Gate: 0.4810
+[05:55:22] Episode 65  Reward:   0.137390  Wealth:    129403.23  Turnover: 0.2891  Gross: 1.2433  Gate: 0.4866
+[05:55:23] Episode 66  Reward:   0.079986  Wealth:    121020.52  Turnover: 0.3244  Gross: 1.2520  Gate: 0.5041
+[05:55:24] Episode 67  Reward:   0.255754  Wealth:    153566.31  Turnover: 0.3209  Gross: 1.2667  Gate: 0.5334
+[05:55:24] Episode 68  Reward:   0.134167  Wealth:    129451.39  Turnover: 0.3234  Gross: 1.2644  Gate: 0.5288
+[05:55:25] Episode 69  Reward:   0.223786  Wealth:    147315.22  Turnover: 0.3029  Gross: 1.2695  Gate: 0.5390
+[05:55:26] Episode 70  Reward:   0.107623  Wealth:    124834.64  Turnover: 0.3334  Gross: 1.2855  Gate: 0.5710
+[05:55:26] Episode     70  AvgReward:   0.076854  Noise: 0.1306
+[05:55:27] Episode 71  Reward:   0.065498  Wealth:    119391.78  Turnover: 0.3490  Gross: 1.2915  Gate: 0.5830
+[05:55:27] Episode 72  Reward:   0.131100  Wealth:    129991.72  Turnover: 0.3880  Gross: 1.3055  Gate: 0.6110
+[05:55:28] Episode 73  Reward:   0.140815  Wealth:    130964.77  Turnover: 0.3732  Gross: 1.3030  Gate: 0.6060
+[05:55:29] Episode 74  Reward:   0.167417  Wealth:    136365.75  Turnover: 0.3347  Gross: 1.3187  Gate: 0.6375
+[05:55:29] Episode 75  Reward:   0.011635  Wealth:    112294.08  Turnover: 0.3707  Gross: 1.3348  Gate: 0.6696
+[05:55:30] Episode 76  Reward:   0.108529  Wealth:    126127.36  Turnover: 0.3342  Gross: 1.3331  Gate: 0.6662
+[05:55:31] Episode 77  Reward:   0.116804  Wealth:    128236.34  Turnover: 0.3850  Gross: 1.3436  Gate: 0.6872
+[05:55:31] Episode 78  Reward:   0.088779  Wealth:    122749.29  Turnover: 0.3706  Gross: 1.3514  Gate: 0.7028
+[05:55:32] Episode 79  Reward:   0.183146  Wealth:    140571.83  Turnover: 0.3578  Gross: 1.3478  Gate: 0.6956
+[05:55:33] Episode 80  Reward:   0.160026  Wealth:    135741.17  Turnover: 0.2759  Gross: 1.3710  Gate: 0.7420
+[05:55:33] Episode     80  AvgReward:   0.117375  Noise: 0.1281
+[05:55:33] Episode 81  Reward:   0.083880  Wealth:    122675.37  Turnover: 0.3255  Gross: 1.3706  Gate: 0.7412
+[05:55:34] Episode 82  Reward:   0.071614  Wealth:    120994.82  Turnover: 0.3382  Gross: 1.3802  Gate: 0.7605
+[05:55:35] Episode 83  Reward:  -0.075992  Wealth:    103459.98  Turnover: 0.3708  Gross: 1.3888  Gate: 0.7777
+[05:55:35] Episode 84  Reward:   0.145599  Wealth:    132486.44  Turnover: 0.3803  Gross: 1.3879  Gate: 0.7758
+[05:55:36] Episode 85  Reward:   0.078090  Wealth:    122272.55  Turnover: 0.4105  Gross: 1.3981  Gate: 0.7962
+[05:55:37] Episode 86  Reward:   0.271153  Wealth:    159478.30  Turnover: 0.4033  Gross: 1.3975  Gate: 0.7950
+[05:55:38] Episode 87  Reward:  -0.050168  Wealth:    105945.38  Turnover: 0.3572  Gross: 1.4044  Gate: 0.8088
+[05:55:38] Episode 88  Reward:  -0.012968  Wealth:    110712.45  Turnover: 0.4138  Gross: 1.4038  Gate: 0.8077
+[05:55:39] Episode 89  Reward:   0.081188  Wealth:    121991.07  Turnover: 0.4378  Gross: 1.3974  Gate: 0.7947
+[05:55:40] Episode 90  Reward:   0.031284  Wealth:    115562.48  Turnover: 0.3929  Gross: 1.4011  Gate: 0.8022
+[05:55:40] Episode     90  AvgReward:   0.062368  Noise: 0.1255
+[05:55:40] Episode 91  Reward:   0.191945  Wealth:    142178.91  Turnover: 0.4323  Gross: 1.4060  Gate: 0.8120
+[05:55:41] Episode 92  Reward:   0.093278  Wealth:    123414.93  Turnover: 0.4018  Gross: 1.3905  Gate: 0.7811
+[05:55:42] Episode 93  Reward:   0.067389  Wealth:    120630.94  Turnover: 0.3596  Gross: 1.4015  Gate: 0.8029
+[05:55:42] Episode 94  Reward:   0.020813  Wealth:    113092.08  Turnover: 0.3026  Gross: 1.3951  Gate: 0.7901
+[05:55:43] Episode 95  Reward:   0.097350  Wealth:    124817.82  Turnover: 0.3231  Gross: 1.4069  Gate: 0.8138
+[05:55:44] Episode 96  Reward:   0.252253  Wealth:    154626.05  Turnover: 0.4031  Gross: 1.4041  Gate: 0.8081
+[05:55:44] Episode 97  Reward:  -0.000109  Wealth:    110582.88  Turnover: 0.3993  Gross: 1.3942  Gate: 0.7885
+[05:55:45] Episode 98  Reward:  -0.067784  Wealth:    103658.11  Turnover: 0.3077  Gross: 1.4044  Gate: 0.8088
+[05:55:46] Episode 99  Reward:   0.007790  Wealth:    111724.43  Turnover: 0.4103  Gross: 1.3925  Gate: 0.7850
+[05:55:46] Episode 100  Reward:   0.038111  Wealth:    117022.40  Turnover: 0.2933  Gross: 1.4088  Gate: 0.8176
+[05:55:46] Episode    100  AvgReward:   0.070103  Noise: 0.1230
+[05:55:47] Episode 101  Reward:   0.033400  Wealth:    116054.98  Turnover: 0.3578  Gross: 1.3936  Gate: 0.7871
+[05:55:48] Episode 102  Reward:  -0.059153  Wealth:    104264.07  Turnover: 0.3132  Gross: 1.3912  Gate: 0.7824
+[05:55:49] Episode 103  Reward:   0.221630  Wealth:    147426.90  Turnover: 0.3063  Gross: 1.3926  Gate: 0.7851
+[05:55:49] Episode 104  Reward:   0.075702  Wealth:    121603.71  Turnover: 0.3377  Gross: 1.3962  Gate: 0.7923
+[05:55:50] Episode 105  Reward:   0.000099  Wealth:    111016.00  Turnover: 0.3140  Gross: 1.3879  Gate: 0.7758
+[05:55:51] Episode 106  Reward:   0.077141  Wealth:    121492.38  Turnover: 0.2690  Gross: 1.4003  Gate: 0.8005
+[05:55:51] Episode 107  Reward:  -0.008612  Wealth:    109924.54  Turnover: 0.1594  Gross: 1.3892  Gate: 0.7783
+[05:55:52] Episode 108  Reward:   0.003594  Wealth:    112235.92  Turnover: 0.1888  Gross: 1.3944  Gate: 0.7888
+[05:55:53] Episode 109  Reward:  -0.220208  Wealth:     88864.85  Turnover: 0.2581  Gross: 1.3919  Gate: 0.7839
+[05:55:53] Episode 110  Reward:  -0.081051  Wealth:    101550.12  Turnover: 0.2593  Gross: 1.3816  Gate: 0.7632
+[05:55:53] Episode    110  AvgReward:   0.004254  Noise: 0.1206
+[05:55:54] Episode 111  Reward:  -0.150870  Wealth:     93950.35  Turnover: 0.1836  Gross: 1.3509  Gate: 0.7017
+[05:55:55] Episode 112  Reward:   0.099881  Wealth:    124849.64  Turnover: 0.2760  Gross: 1.3895  Gate: 0.7789
+[05:55:55] Episode 113  Reward:  -0.033652  Wealth:    106778.32  Turnover: 0.2910  Gross: 1.3789  Gate: 0.7578
+[05:55:56] Episode 114  Reward:   0.105403  Wealth:    124849.64  Turnover: 0.2599  Gross: 1.3952  Gate: 0.7904
+[05:55:57] Episode 115  Reward:  -0.038570  Wealth:    106204.38  Turnover: 0.3253  Gross: 1.3822  Gate: 0.7643
+[05:55:57] Episode 116  Reward:   0.114675  Wealth:    125257.83  Turnover: 0.2872  Gross: 1.3839  Gate: 0.7677
+[05:55:58] Episode 117  Reward:  -0.132238  Wealth:     96972.41  Turnover: 0.1597  Gross: 1.3776  Gate: 0.7552
+[05:55:59] Episode 118  Reward:  -0.073672  Wealth:    102873.08  Turnover: 0.3245  Gross: 1.3778  Gate: 0.7557
+[05:56:00] Episode 119  Reward:   0.167637  Wealth:    136315.21  Turnover: 0.2091  Gross: 1.4059  Gate: 0.8119
+[05:56:00] Episode 120  Reward:  -0.000223  Wealth:    109933.47  Turnover: 0.2679  Gross: 1.3945  Gate: 0.7890
+[05:56:00] Episode    120  AvgReward:   0.005837  Noise: 0.1182
+[05:56:01] Episode 121  Reward:  -0.135900  Wealth:     96750.72  Turnover: 0.2866  Gross: 1.3737  Gate: 0.7475
+[05:56:02] Episode 122  Reward:   0.187072  Wealth:    139342.96  Turnover: 0.1776  Gross: 1.4020  Gate: 0.8039
+[05:56:02] Episode 123  Reward:  -0.156271  Wealth:     94873.93  Turnover: 0.2989  Gross: 1.3791  Gate: 0.7582
+[05:56:03] Episode 124  Reward:   0.117294  Wealth:    127144.72  Turnover: 0.1922  Gross: 1.3966  Gate: 0.7932
+[05:56:04] Episode 125  Reward:  -0.064499  Wealth:    103402.54  Turnover: 0.1777  Gross: 1.4054  Gate: 0.8107
+[05:56:04] Episode 126  Reward:  -0.107366  Wealth:     99407.06  Turnover: 0.3022  Gross: 1.3860  Gate: 0.7721
+[05:56:05] Episode 127  Reward:   0.115118  Wealth:    126102.72  Turnover: 0.2477  Gross: 1.4116  Gate: 0.8231
+[05:56:06] Episode 128  Reward:   0.273037  Wealth:    157513.11  Turnover: 0.2976  Gross: 1.3932  Gate: 0.7865
+[05:56:06] Episode 129  Reward:  -0.086651  Wealth:    101360.73  Turnover: 0.2535  Gross: 1.3968  Gate: 0.7936
+[05:56:07] Episode 130  Reward:   0.024422  Wealth:    114299.77  Turnover: 0.2780  Gross: 1.3892  Gate: 0.7784
+[05:56:07] Episode    130  AvgReward:   0.016625  Noise: 0.1159
+[05:56:08] Episode 131  Reward:  -0.103713  Wealth:    100059.61  Turnover: 0.2475  Gross: 1.3890  Gate: 0.7780
+[05:56:08] Episode 132  Reward:   0.177080  Wealth:    137651.44  Turnover: 0.2349  Gross: 1.4177  Gate: 0.8355
+[05:56:09] Episode 133  Reward:  -0.155145  Wealth:     94380.83  Turnover: 0.3249  Gross: 1.3993  Gate: 0.7986
+[05:56:10] Episode 134  Reward:  -0.113582  Wealth:     99717.30  Turnover: 0.2499  Gross: 1.3848  Gate: 0.7696
+[05:56:11] Episode 135  Reward:   0.204945  Wealth:    141312.04  Turnover: 0.2759  Gross: 1.3911  Gate: 0.7822
+[05:56:11] Episode 136  Reward:  -0.214139  Wealth:     90665.54  Turnover: 0.3243  Gross: 1.3879  Gate: 0.7759
+[05:56:12] Episode 137  Reward:   0.128918  Wealth:    126407.32  Turnover: 0.2310  Gross: 1.3957  Gate: 0.7915
+[05:56:13] Episode 138  Reward:  -0.069990  Wealth:    102015.19  Turnover: 0.2230  Gross: 1.3790  Gate: 0.7580
+[05:56:13] Episode 139  Reward:  -0.135600  Wealth:     97513.26  Turnover: 0.2436  Gross: 1.3826  Gate: 0.7651
+[05:56:14] Episode 140  Reward:   0.009343  Wealth:    112022.55  Turnover: 0.2020  Gross: 1.4022  Gate: 0.8043
+[05:56:14] Episode    140  AvgReward:  -0.027188  Noise: 0.1136
+[05:56:15] Episode 141  Reward:  -0.191095  Wealth:     90173.38  Turnover: 0.2368  Gross: 1.3475  Gate: 0.6951
+[05:56:15] Episode 142  Reward:  -0.153046  Wealth:     96144.32  Turnover: 0.2090  Gross: 1.3868  Gate: 0.7735
+[05:56:16] Episode 143  Reward:  -0.061146  Wealth:    103387.29  Turnover: 0.2979  Gross: 1.4043  Gate: 0.8086
+[05:56:17] Episode 144  Reward:  -0.088085  Wealth:    102934.79  Turnover: 0.1669  Gross: 1.3853  Gate: 0.7706
+[05:56:17] Episode 145  Reward:   0.178090  Wealth:    138291.81  Turnover: 0.2625  Gross: 1.4002  Gate: 0.8004
+[05:56:18] Episode 146  Reward:   0.042243  Wealth:    114791.29  Turnover: 0.2966  Gross: 1.3851  Gate: 0.7702
+[05:56:19] Episode 147  Reward:  -0.027855  Wealth:    109565.76  Turnover: 0.1743  Gross: 1.3803  Gate: 0.7606
+[05:56:20] Episode 148  Reward:   0.184447  Wealth:    141028.91  Turnover: 0.2946  Gross: 1.3969  Gate: 0.7939
+[05:56:20] Episode 149  Reward:  -0.067818  Wealth:    103905.36  Turnover: 0.2480  Gross: 1.3976  Gate: 0.7953
+[05:56:21] Episode 150  Reward:  -0.036619  Wealth:    108810.39  Turnover: 0.1746  Gross: 1.3804  Gate: 0.7609
+[05:56:21] Episode    150  AvgReward:  -0.022088  Noise: 0.1113
+[05:56:22] Episode 151  Reward:  -0.213722  Wealth:     90083.36  Turnover: 0.3116  Gross: 1.3960  Gate: 0.7921
+[05:56:22] Episode 152  Reward:   0.004812  Wealth:    113630.71  Turnover: 0.1771  Gross: 1.3844  Gate: 0.7688
+[05:56:23] Episode 153  Reward:  -0.364227  Wealth:     78985.59  Turnover: 0.2875  Gross: 1.3994  Gate: 0.7989
+[05:56:24] Episode 154  Reward:   0.003479  Wealth:    110687.74  Turnover: 0.2581  Gross: 1.3938  Gate: 0.7876
+[05:56:24] Episode 155  Reward:   0.038918  Wealth:    118222.96  Turnover: 0.1909  Gross: 1.3888  Gate: 0.7777
+[05:56:25] Episode 156  Reward:   0.073350  Wealth:    121876.09  Turnover: 0.3597  Gross: 1.3981  Gate: 0.7961
+[05:56:26] Episode 157  Reward:   0.231680  Wealth:    144581.64  Turnover: 0.2280  Gross: 1.3431  Gate: 0.6861
+[05:56:26] Episode 158  Reward:   0.097850  Wealth:    127375.52  Turnover: 0.2032  Gross: 1.3886  Gate: 0.7772
+[05:56:27] Episode 159  Reward:  -0.152967  Wealth:     92624.06  Turnover: 0.3115  Gross: 1.3386  Gate: 0.6772
+[05:56:28] Episode 160  Reward:   0.068302  Wealth:    122364.94  Turnover: 0.2120  Gross: 1.3841  Gate: 0.7683
+[05:56:28] Episode    160  AvgReward:  -0.021252  Noise: 0.1091
+[05:56:28] Episode 161  Reward:   0.091166  Wealth:    120575.15  Turnover: 0.3910  Gross: 1.3782  Gate: 0.7564
+[05:56:29] Episode 162  Reward:   0.133725  Wealth:    128218.71  Turnover: 0.3360  Gross: 1.3894  Gate: 0.7787
+[05:56:30] Episode 163  Reward:   0.093119  Wealth:    119044.04  Turnover: 0.1766  Gross: 1.2800  Gate: 0.5599
+[05:56:31] Episode 164  Reward:   0.147978  Wealth:    129939.09  Turnover: 0.4077  Gross: 1.4112  Gate: 0.8224
+[05:56:31] Episode 165  Reward:   0.125455  Wealth:    123423.30  Turnover: 0.1769  Gross: 1.2886  Gate: 0.5773
+[05:56:32] Episode 166  Reward:  -0.014515  Wealth:    108610.38  Turnover: 0.3128  Gross: 1.4032  Gate: 0.8063
+[05:56:33] Episode 167  Reward:   0.038971  Wealth:    117684.68  Turnover: 0.3314  Gross: 1.3687  Gate: 0.7374
+[05:56:33] Episode 168  Reward:   0.111587  Wealth:    121483.57  Turnover: 0.1938  Gross: 1.3051  Gate: 0.6101
+[05:56:34] Episode 169  Reward:  -0.024218  Wealth:    105966.96  Turnover: 0.3058  Gross: 1.3289  Gate: 0.6579
+[05:56:35] Episode 170  Reward:  -0.079884  Wealth:     99978.09  Turnover: 0.3164  Gross: 1.3544  Gate: 0.7089
+[05:56:35] Episode    170  AvgReward:   0.062338  Noise: 0.1069
+[05:56:35] Episode 171  Reward:   0.098726  Wealth:    119699.26  Turnover: 0.2147  Gross: 1.3115  Gate: 0.6230
+[05:56:36] Episode 172  Reward:   0.250711  Wealth:    151298.99  Turnover: 0.4257  Gross: 1.3800  Gate: 0.7601
+[05:56:37] Episode 173  Reward:   0.103831  Wealth:    120385.62  Turnover: 0.2111  Gross: 1.3210  Gate: 0.6420
+[05:56:37] Episode 174  Reward:   0.021723  Wealth:    112961.27  Turnover: 0.4268  Gross: 1.3914  Gate: 0.7828
+[05:56:38] Episode 175  Reward:   0.029265  Wealth:    113343.22  Turnover: 0.4024  Gross: 1.3688  Gate: 0.7375
+[05:56:39] Episode 176  Reward:   0.123501  Wealth:    122992.54  Turnover: 0.2460  Gross: 1.3376  Gate: 0.6753
+[05:56:40] Episode 177  Reward:   0.075401  Wealth:    121867.70  Turnover: 0.4500  Gross: 1.4007  Gate: 0.8014
+[05:56:40] Episode 178  Reward:   0.189630  Wealth:    136582.56  Turnover: 0.3099  Gross: 1.3681  Gate: 0.7362
+[05:56:41] Episode 179  Reward:   0.131802  Wealth:    124802.73  Turnover: 0.2378  Gross: 1.3477  Gate: 0.6955
+[05:56:42] Episode 180  Reward:   0.107010  Wealth:    126919.03  Turnover: 0.4642  Gross: 1.3933  Gate: 0.7865
+[05:56:42] Episode    180  AvgReward:   0.113160  Noise: 0.1048
+[05:56:42] Episode 181  Reward:   0.134456  Wealth:    125266.74  Turnover: 0.2745  Gross: 1.3638  Gate: 0.7276
+[05:56:43] Episode 182  Reward:   0.061501  Wealth:    119747.02  Turnover: 0.3736  Gross: 1.3894  Gate: 0.7787
+[05:56:44] Episode 183  Reward:  -0.275193  Wealth:     86147.88  Turnover: 0.2399  Gross: 1.3558  Gate: 0.7116
+[05:56:44] Episode 184  Reward:   0.054664  Wealth:    114277.92  Turnover: 0.3247  Gross: 1.3697  Gate: 0.7394
+[05:56:45] Episode 185  Reward:  -0.071455  Wealth:    103003.53  Turnover: 0.5032  Gross: 1.3895  Gate: 0.7790
+[05:56:46] Episode 186  Reward:  -0.264417  Wealth:     84885.91  Turnover: 0.4093  Gross: 1.3705  Gate: 0.7409
+[05:56:47] Episode 187  Reward:   0.115523  Wealth:    122675.02  Turnover: 0.3579  Gross: 1.3784  Gate: 0.7568
+[05:56:47] Episode 188  Reward:   0.144002  Wealth:    132097.56  Turnover: 0.5871  Gross: 1.4014  Gate: 0.8028
+[05:56:48] Episode 189  Reward:   0.131696  Wealth:    125464.56  Turnover: 0.4191  Gross: 1.3861  Gate: 0.7722
+[05:56:49] Episode 190  Reward:  -0.347912  Wealth:     81388.06  Turnover: 0.3043  Gross: 1.3586  Gate: 0.7173
+[05:56:49] Episode    190  AvgReward:  -0.031713  Noise: 0.1027
+[05:56:49] Episode 191  Reward:   0.144379  Wealth:    129074.19  Turnover: 0.4492  Gross: 1.3970  Gate: 0.7941
+[05:56:50] Episode 192  Reward:   0.156721  Wealth:    129874.92  Turnover: 0.4383  Gross: 1.3873  Gate: 0.7745
+[05:56:51] Episode 193  Reward:   0.168047  Wealth:    140362.60  Turnover: 0.4847  Gross: 1.3669  Gate: 0.7338
+[05:56:51] Episode 194  Reward:   0.042616  Wealth:    114949.09  Turnover: 0.6013  Gross: 1.3935  Gate: 0.7871
+[05:56:52] Episode 195  Reward:   0.088362  Wealth:    120577.65  Turnover: 0.3594  Gross: 1.3777  Gate: 0.7555
+[05:56:53] Episode 196  Reward:   0.088092  Wealth:    125680.41  Turnover: 0.2783  Gross: 1.3723  Gate: 0.7445
+[05:56:53] Episode 197  Reward:   0.102303  Wealth:    123085.66  Turnover: 0.5986  Gross: 1.3970  Gate: 0.7940
+[05:56:54] Episode 198  Reward:   0.191977  Wealth:    143210.37  Turnover: 0.6043  Gross: 1.3912  Gate: 0.7825
+[05:56:55] Episode 199  Reward:   0.023144  Wealth:    115454.95  Turnover: 0.5371  Gross: 1.3975  Gate: 0.7951
+[05:56:56] Episode 200  Reward:   0.055262  Wealth:    117329.31  Turnover: 0.6170  Gross: 1.3959  Gate: 0.7919
+[05:56:56] Episode    200  AvgReward:   0.106090  Noise: 0.1007
+[05:56:56] Episode 201  Reward:   0.279869  Wealth:    163351.36  Turnover: 0.5981  Gross: 1.3887  Gate: 0.7774
+[05:56:57] Episode 202  Reward:   0.054342  Wealth:    116771.19  Turnover: 0.5776  Gross: 1.4010  Gate: 0.8020
+[05:56:58] Episode 203  Reward:   0.041059  Wealth:    118170.92  Turnover: 0.6949  Gross: 1.4021  Gate: 0.8043
+[05:56:58] Episode 204  Reward:   0.114208  Wealth:    129100.00  Turnover: 0.7320  Gross: 1.3863  Gate: 0.7725
+[05:56:59] Episode 205  Reward:   0.166348  Wealth:    134157.78  Turnover: 0.6548  Gross: 1.4071  Gate: 0.8142
+[05:57:00] Episode 206  Reward:   0.150984  Wealth:    135782.33  Turnover: 0.4943  Gross: 1.3936  Gate: 0.7872
+[05:57:00] Episode 207  Reward:   0.128695  Wealth:    134001.68  Turnover: 0.2325  Gross: 1.3690  Gate: 0.7379
+[05:57:01] Episode 208  Reward:   0.246094  Wealth:    151009.52  Turnover: 0.5255  Gross: 1.3995  Gate: 0.7991
+[05:57:02] Episode 209  Reward:  -0.221024  Wealth:     91395.55  Turnover: 0.2948  Gross: 1.3927  Gate: 0.7853
+[05:57:02] Episode 210  Reward:   0.199630  Wealth:    140034.42  Turnover: 0.4850  Gross: 1.3992  Gate: 0.7985
+[05:57:02] Episode    210  AvgReward:   0.116021  Noise: 0.0987
+[05:57:03] Episode 211  Reward:  -0.008186  Wealth:    111939.10  Turnover: 0.4725  Gross: 1.4047  Gate: 0.8095
+[05:57:04] Episode 212  Reward:  -0.098804  Wealth:    102330.49  Turnover: 0.3486  Gross: 1.3713  Gate: 0.7426
+[05:57:04] Episode 213  Reward:   0.197886  Wealth:    139116.56  Turnover: 0.4785  Gross: 1.3983  Gate: 0.7965
+[05:57:05] Episode 214  Reward:  -0.040963  Wealth:    107400.53  Turnover: 0.4165  Gross: 1.4109  Gate: 0.8219
+[05:57:06] Episode 215  Reward:  -0.200585  Wealth:     92435.65  Turnover: 0.3408  Gross: 1.3510  Gate: 0.7021
+[05:57:06] Episode 216  Reward:   0.202889  Wealth:    140244.80  Turnover: 0.4711  Gross: 1.3990  Gate: 0.7981
+[05:57:07] Episode 217  Reward:  -0.200216  Wealth:     92620.78  Turnover: 0.5977  Gross: 1.4041  Gate: 0.8082
+[05:57:08] Episode 218  Reward:   0.232718  Wealth:    147176.90  Turnover: 0.4857  Gross: 1.3977  Gate: 0.7955
+[05:57:08] Episode 219  Reward:   0.151597  Wealth:    128496.24  Turnover: 0.1656  Gross: 1.3836  Gate: 0.7672
+[05:57:09] Episode 220  Reward:   0.064260  Wealth:    116994.11  Turnover: 0.2803  Gross: 1.3928  Gate: 0.7856
+[05:57:09] Episode    220  AvgReward:   0.030060  Noise: 0.0968
+[05:57:10] Episode 221  Reward:   0.267966  Wealth:    153811.00  Turnover: 0.4088  Gross: 1.3940  Gate: 0.7881
+[05:57:11] Episode 222  Reward:  -0.018197  Wealth:    107901.70  Turnover: 0.5180  Gross: 1.3872  Gate: 0.7743
+[05:57:11] Episode 223  Reward:   0.103899  Wealth:    123543.38  Turnover: 0.6599  Gross: 1.4105  Gate: 0.8210
+[05:57:12] Episode 224  Reward:   0.227717  Wealth:    145356.82  Turnover: 0.4066  Gross: 1.3946  Gate: 0.7893
+[05:57:13] Episode 225  Reward:   0.083165  Wealth:    122998.26  Turnover: 0.5187  Gross: 1.3865  Gate: 0.7729
+[05:57:13] Episode 226  Reward:   0.221419  Wealth:    143169.85  Turnover: 0.4486  Gross: 1.4003  Gate: 0.8006
+[05:57:14] Episode 227  Reward:   0.064844  Wealth:    120949.80  Turnover: 0.3475  Gross: 1.3915  Gate: 0.7831
+[05:57:15] Episode 228  Reward:   0.295457  Wealth:    159219.52  Turnover: 0.3455  Gross: 1.3995  Gate: 0.7989
+[05:57:15] Episode 229  Reward:   0.221688  Wealth:    143927.23  Turnover: 0.4607  Gross: 1.3968  Gate: 0.7936
+[05:57:16] Episode 230  Reward:   0.177768  Wealth:    135859.85  Turnover: 0.2089  Gross: 1.3166  Gate: 0.6331
+[05:57:16] Episode    230  AvgReward:   0.164572  Noise: 0.0948
+[05:57:17] Episode 231  Reward:   0.207312  Wealth:    141806.71  Turnover: 0.5246  Gross: 1.4020  Gate: 0.8039
+[05:57:17] Episode 232  Reward:   0.104896  Wealth:    122028.66  Turnover: 0.4960  Gross: 1.4051  Gate: 0.8102
+[05:57:18] Episode 233  Reward:   0.107112  Wealth:    121812.81  Turnover: 0.2204  Gross: 1.3936  Gate: 0.7872
+[05:57:19] Episode 234  Reward:   0.226463  Wealth:    146367.26  Turnover: 0.4837  Gross: 1.4021  Gate: 0.8041
+[05:57:19] Episode 235  Reward:   0.109236  Wealth:    125192.51  Turnover: 0.5252  Gross: 1.3611  Gate: 0.7222
+[05:57:20] Episode 236  Reward:   0.023781  Wealth:    109857.33  Turnover: 0.2867  Gross: 1.3987  Gate: 0.7974
+[05:57:21] Episode 237  Reward:   0.227310  Wealth:    147086.70  Turnover: 0.5405  Gross: 1.3990  Gate: 0.7980
+[05:57:21] Episode 238  Reward:   0.047226  Wealth:    116482.33  Turnover: 0.5218  Gross: 1.4087  Gate: 0.8173
+[05:57:22] Episode 239  Reward:   0.203921  Wealth:    142801.79  Turnover: 0.5371  Gross: 1.4017  Gate: 0.8033
+[05:57:23] Episode 240  Reward:   0.016213  Wealth:    116103.44  Turnover: 0.4139  Gross: 1.3663  Gate: 0.7325
+[05:57:23] Episode    240  AvgReward:   0.127347  Noise: 0.0930
+[05:57:23] Episode 241  Reward:   0.124731  Wealth:    128158.95  Turnover: 0.5839  Gross: 1.4014  Gate: 0.8029
+[05:57:24] Episode 242  Reward:   0.087859  Wealth:    123031.30  Turnover: 0.5388  Gross: 1.4026  Gate: 0.8051
+[05:57:25] Episode 243  Reward:   0.124787  Wealth:    125418.57  Turnover: 0.3481  Gross: 1.4053  Gate: 0.8106
+[05:57:25] Episode 244  Reward:  -0.249311  Wealth:     87659.47  Turnover: 0.6666  Gross: 1.4081  Gate: 0.8163
+[05:57:26] Episode 245  Reward:   0.111863  Wealth:    126224.44  Turnover: 0.4983  Gross: 1.4026  Gate: 0.8051
+[05:57:27] Episode 246  Reward:   0.095957  Wealth:    122820.71  Turnover: 0.5208  Gross: 1.4051  Gate: 0.8102
+[05:57:27] Episode 247  Reward:   0.189449  Wealth:    140711.00  Turnover: 0.5306  Gross: 1.4065  Gate: 0.8130
+[05:57:28] Episode 248  Reward:  -0.034225  Wealth:    103909.34  Turnover: 0.2676  Gross: 1.4116  Gate: 0.8232
+[05:57:29] Episode 249  Reward:  -0.096251  Wealth:     99886.38  Turnover: 0.5545  Gross: 1.3962  Gate: 0.7923
+[05:57:29] Episode 250  Reward:   0.044589  Wealth:    116948.31  Turnover: 0.5747  Gross: 1.4043  Gate: 0.8086
+[05:57:29] Episode    250  AvgReward:   0.039945  Noise: 0.0911
+[05:57:30] Episode 251  Reward:   0.307360  Wealth:    163212.46  Turnover: 0.6129  Gross: 1.3885  Gate: 0.7769
+[05:57:31] Episode 252  Reward:   0.272408  Wealth:    152530.13  Turnover: 0.2604  Gross: 1.3997  Gate: 0.7995
+[05:57:31] Episode 253  Reward:  -0.029948  Wealth:    107395.39  Turnover: 0.5318  Gross: 1.4065  Gate: 0.8129
+[05:57:32] Episode 254  Reward:   0.114719  Wealth:    123852.20  Turnover: 0.4742  Gross: 1.3803  Gate: 0.7607
+[05:57:33] Episode 255  Reward:  -0.027821  Wealth:    108090.41  Turnover: 0.5489  Gross: 1.4057  Gate: 0.8115
+[05:57:33] Episode 256  Reward:   0.041660  Wealth:    113245.55  Turnover: 0.3099  Gross: 1.4025  Gate: 0.8051
+[05:57:34] Episode 257  Reward:   0.217261  Wealth:    140875.06  Turnover: 0.4068  Gross: 1.3808  Gate: 0.7616
+[05:57:35] Episode 258  Reward:  -0.054591  Wealth:    105030.80  Turnover: 0.5951  Gross: 1.4021  Gate: 0.8041
+[05:57:35] Episode 259  Reward:  -0.154384  Wealth:     92351.63  Turnover: 0.2121  Gross: 1.4024  Gate: 0.8047
+[05:57:36] Episode 260  Reward:  -0.108321  Wealth:    100043.19  Turnover: 0.5897  Gross: 1.3991  Gate: 0.7982
+[05:57:36] Episode    260  AvgReward:   0.057834  Noise: 0.0893
+[05:57:37] Episode 261  Reward:   0.050480  Wealth:    114982.23  Turnover: 0.3673  Gross: 1.3943  Gate: 0.7887
+[05:57:38] Episode 262  Reward:   0.128262  Wealth:    127643.03  Turnover: 0.7574  Gross: 1.3963  Gate: 0.7927
+[05:57:38] Episode 263  Reward:  -0.212487  Wealth:     90691.09  Turnover: 0.6060  Gross: 1.4019  Gate: 0.8038
+[05:57:39] Episode 264  Reward:   0.065775  Wealth:    117606.43  Turnover: 0.4511  Gross: 1.3975  Gate: 0.7951
+[05:57:40] Episode 265  Reward:   0.143902  Wealth:    132560.67  Turnover: 0.8503  Gross: 1.4003  Gate: 0.8006
+[05:57:40] Episode 266  Reward:  -0.102015  Wealth:    101183.06  Turnover: 0.6809  Gross: 1.4003  Gate: 0.8006
+[05:57:41] Episode 267  Reward:   0.164853  Wealth:    131519.15  Turnover: 0.3362  Gross: 1.4131  Gate: 0.8261
+[05:57:42] Episode 268  Reward:  -0.071080  Wealth:    104183.16  Turnover: 0.7016  Gross: 1.3998  Gate: 0.7997
+[05:57:42] Episode 269  Reward:  -0.053537  Wealth:    103806.98  Turnover: 0.4568  Gross: 1.3981  Gate: 0.7963
+[05:57:43] Episode 270  Reward:  -0.172486  Wealth:     90915.68  Turnover: 0.2985  Gross: 1.4011  Gate: 0.8023
+[05:57:43] Episode    270  AvgReward:  -0.005833  Noise: 0.0875
+[05:57:44] Episode 271  Reward:  -0.240421  Wealth:     88475.79  Turnover: 0.5884  Gross: 1.3894  Gate: 0.7787
+[05:57:44] Episode 272  Reward:  -0.186583  Wealth:     89988.35  Turnover: 0.2530  Gross: 1.3991  Gate: 0.7983
+[05:57:45] Episode 273  Reward:   0.131625  Wealth:    129773.34  Turnover: 0.6725  Gross: 1.3969  Gate: 0.7938
+[05:57:46] Episode 274  Reward:  -0.108612  Wealth:    100575.80  Turnover: 0.7431  Gross: 1.3976  Gate: 0.7953
+[05:57:46] Episode 275  Reward:   0.164671  Wealth:    132351.79  Turnover: 0.6029  Gross: 1.4078  Gate: 0.8156
+[05:57:47] Episode 276  Reward:  -0.123400  Wealth:     99080.55  Turnover: 0.7668  Gross: 1.3977  Gate: 0.7954
+[05:57:48] Episode 277  Reward:   0.137924  Wealth:    126597.58  Turnover: 0.3617  Gross: 1.3953  Gate: 0.7905
+[05:57:48] Episode 278  Reward:  -0.066025  Wealth:    104920.96  Turnover: 0.6387  Gross: 1.3797  Gate: 0.7594
+[05:57:49] Episode 279  Reward:  -0.199357  Wealth:     92415.96  Turnover: 0.7845  Gross: 1.3964  Gate: 0.7928
+[05:57:50] Episode 280  Reward:   0.200223  Wealth:    137948.61  Turnover: 0.3480  Gross: 1.4015  Gate: 0.8030
+[05:57:50] Episode    280  AvgReward:  -0.028995  Noise: 0.0858
+[05:57:50] Episode 281  Reward:  -0.001378  Wealth:    110388.32  Turnover: 0.3978  Gross: 1.3883  Gate: 0.7766
+[05:57:51] Episode 282  Reward:  -0.159795  Wealth:     95369.02  Turnover: 0.7527  Gross: 1.3952  Gate: 0.7905
+[05:57:52] Episode 283  Reward:   0.139709  Wealth:    128154.57  Turnover: 0.4594  Gross: 1.3950  Gate: 0.7899
+[05:57:52] Episode 284  Reward:  -0.199807  Wealth:     92293.80  Turnover: 0.7462  Gross: 1.3982  Gate: 0.7964
+[05:57:53] Episode 285  Reward:   0.141387  Wealth:    130886.49  Turnover: 0.3820  Gross: 1.3907  Gate: 0.7815
+[05:57:54] Episode 286  Reward:   0.033289  Wealth:    111973.17  Turnover: 0.4434  Gross: 1.3912  Gate: 0.7825
+[05:57:54] Episode 287  Reward:  -0.129950  Wealth:     98144.25  Turnover: 0.8607  Gross: 1.3964  Gate: 0.7927
+[05:57:55] Episode 288  Reward:   0.098428  Wealth:    121020.82  Turnover: 0.3020  Gross: 1.4139  Gate: 0.8277
+[05:57:56] Episode 289  Reward:   0.270116  Wealth:    156658.32  Turnover: 0.4428  Gross: 1.3963  Gate: 0.7925
+[05:57:56] Episode 290  Reward:  -0.132719  Wealth:     97726.56  Turnover: 0.8352  Gross: 1.3975  Gate: 0.7950
+[05:57:56] Episode    290  AvgReward:   0.005928  Noise: 0.0841
+[05:57:57] Episode 291  Reward:   0.138989  Wealth:    129407.95  Turnover: 0.3310  Gross: 1.3981  Gate: 0.7963
+[05:57:58] Episode 292  Reward:  -0.211930  Wealth:     91215.77  Turnover: 0.7633  Gross: 1.3949  Gate: 0.7897
+[05:57:58] Episode 293  Reward:   0.099806  Wealth:    123993.87  Turnover: 0.2943  Gross: 1.4129  Gate: 0.8257
+[05:57:59] Episode 294  Reward:   0.052337  Wealth:    115670.02  Turnover: 0.5602  Gross: 1.4027  Gate: 0.8054
+[05:58:00] Episode 295  Reward:  -0.189653  Wealth:     92792.27  Turnover: 0.8056  Gross: 1.3929  Gate: 0.7858
+[05:58:00] Episode 296  Reward:   0.219688  Wealth:    144149.16  Turnover: 0.4783  Gross: 1.3820  Gate: 0.7639
+[05:58:01] Episode 297  Reward:  -0.286883  Wealth:     85160.03  Turnover: 0.7697  Gross: 1.3923  Gate: 0.7845
+[05:58:02] Episode 298  Reward:   0.073211  Wealth:    119776.62  Turnover: 0.3531  Gross: 1.4123  Gate: 0.8246
+[05:58:03] Episode 299  Reward:  -0.091328  Wealth:    100470.50  Turnover: 0.3418  Gross: 1.4090  Gate: 0.8180
+[05:58:03] Episode 300  Reward:  -0.212205  Wealth:     90706.47  Turnover: 0.7432  Gross: 1.3919  Gate: 0.7838
+[05:58:03] Episode    300  AvgReward:  -0.040797  Noise: 0.0824
+[05:58:04] Episode 301  Reward:   0.016382  Wealth:    112902.19  Turnover: 0.2792  Gross: 1.3872  Gate: 0.7745
+[05:58:05] Episode 302  Reward:  -0.173733  Wealth:     91335.69  Turnover: 0.2667  Gross: 1.3854  Gate: 0.7708
+[05:58:05] Episode 303  Reward:  -0.206403  Wealth:     91272.33  Turnover: 0.7489  Gross: 1.3916  Gate: 0.7831
+[05:58:06] Episode 304  Reward:   0.004131  Wealth:    109652.58  Turnover: 0.4064  Gross: 1.3837  Gate: 0.7674
+[05:58:07] Episode 305  Reward:  -0.108710  Wealth:     99846.82  Turnover: 0.6440  Gross: 1.3799  Gate: 0.7597
+[05:58:07] Episode 306  Reward:   0.233060  Wealth:    146590.01  Turnover: 0.3375  Gross: 1.3953  Gate: 0.7905
+[05:58:08] Episode 307  Reward:   0.062919  Wealth:    117864.87  Turnover: 0.3927  Gross: 1.4053  Gate: 0.8106
+[05:58:09] Episode 308  Reward:  -0.010633  Wealth:    110468.37  Turnover: 0.6927  Gross: 1.3833  Gate: 0.7666
+[05:58:09] Episode 309  Reward:   0.150885  Wealth:    133909.64  Turnover: 0.3622  Gross: 1.3871  Gate: 0.7743
+[05:58:10] Episode 310  Reward:  -0.014475  Wealth:    109887.40  Turnover: 0.3761  Gross: 1.4062  Gate: 0.8124
+[05:58:10] Episode    310  AvgReward:  -0.004658  Noise: 0.0808
+[05:58:11] Episode 311  Reward:  -0.008464  Wealth:    110591.59  Turnover: 0.6140  Gross: 1.3791  Gate: 0.7582
+[05:58:11] Episode 312  Reward:  -0.188554  Wealth:     90988.94  Turnover: 0.5649  Gross: 1.3909  Gate: 0.7817
+[05:58:12] Episode 313  Reward:   0.040461  Wealth:    115597.98  Turnover: 0.6113  Gross: 1.3684  Gate: 0.7368
+[05:58:13] Episode 314  Reward:  -0.380408  Wealth:     77663.17  Turnover: 0.4505  Gross: 1.4194  Gate: 0.8389
+[05:58:13] Episode 315  Reward:  -0.020917  Wealth:    106565.89  Turnover: 0.4652  Gross: 1.4117  Gate: 0.8234
+[05:58:14] Episode 316  Reward:   0.128786  Wealth:    128656.33  Turnover: 0.7095  Gross: 1.3719  Gate: 0.7438
+[05:58:15] Episode 317  Reward:   0.083007  Wealth:    121760.04  Turnover: 0.4522  Gross: 1.4007  Gate: 0.8013
+[05:58:15] Episode 318  Reward:   0.212516  Wealth:    143359.26  Turnover: 0.2980  Gross: 1.3885  Gate: 0.7770
+[05:58:16] Episode 319  Reward:   0.113144  Wealth:    125665.76  Turnover: 0.6117  Gross: 1.3783  Gate: 0.7565
+[05:58:17] Episode 320  Reward:  -0.183279  Wealth:     90253.90  Turnover: 0.2963  Gross: 1.4028  Gate: 0.8055
+[05:58:17] Episode    320  AvgReward:  -0.020371  Noise: 0.0792
+[05:58:17] Episode 321  Reward:   0.139456  Wealth:    130486.01  Turnover: 0.5035  Gross: 1.3831  Gate: 0.7662
+[05:58:18] Episode 322  Reward:   0.176487  Wealth:    137323.84  Turnover: 0.4491  Gross: 1.3912  Gate: 0.7824
+[05:58:19] Episode 323  Reward:   0.261229  Wealth:    156271.92  Turnover: 0.3527  Gross: 1.4065  Gate: 0.8130
+[05:58:19] Episode 324  Reward:   0.107939  Wealth:    123590.84  Turnover: 0.2393  Gross: 1.3920  Gate: 0.7841
+[05:58:20] Episode 325  Reward:   0.111487  Wealth:    123683.49  Turnover: 0.3879  Gross: 1.4041  Gate: 0.8082
+[05:58:21] Episode 326  Reward:   0.129270  Wealth:    126392.90  Turnover: 0.2223  Gross: 1.3918  Gate: 0.7837
+[05:58:21] Episode 327  Reward:  -0.068119  Wealth:    103691.75  Turnover: 0.2807  Gross: 1.4007  Gate: 0.8014
+[05:58:22] Episode 328  Reward:   0.022808  Wealth:    113920.37  Turnover: 0.4460  Gross: 1.4039  Gate: 0.8078
+[05:58:23] Episode 329  Reward:   0.118208  Wealth:    124968.49  Turnover: 0.2411  Gross: 1.3962  Gate: 0.7923
+[05:58:23] Episode 330  Reward:   0.052482  Wealth:    117395.56  Turnover: 0.3747  Gross: 1.4008  Gate: 0.8015
+[05:58:23] Episode    330  AvgReward:   0.105125  Noise: 0.0776
+[05:58:24] Episode 331  Reward:  -0.116949  Wealth:     96826.05  Turnover: 0.3341  Gross: 1.3958  Gate: 0.7915
+[05:58:25] Episode 332  Reward:   0.097299  Wealth:    122248.09  Turnover: 0.2404  Gross: 1.3972  Gate: 0.7944
+[05:58:25] Episode 333  Reward:   0.268927  Wealth:    158682.07  Turnover: 0.3582  Gross: 1.3974  Gate: 0.7947
+[05:58:26] Episode 334  Reward:   0.097659  Wealth:    121888.13  Turnover: 0.2508  Gross: 1.3988  Gate: 0.7975
+[05:58:27] Episode 335  Reward:   0.017033  Wealth:    112058.58  Turnover: 0.4351  Gross: 1.4003  Gate: 0.8005
+[05:58:28] Episode 336  Reward:  -0.002954  Wealth:    107362.21  Turnover: 0.3479  Gross: 1.3873  Gate: 0.7746
+[05:58:28] Episode 337  Reward:   0.121336  Wealth:    124950.43  Turnover: 0.2854  Gross: 1.3995  Gate: 0.7990
+[05:58:29] Episode 338  Reward:   0.048959  Wealth:    119077.18  Turnover: 0.3273  Gross: 1.3911  Gate: 0.7822
+[05:58:30] Episode 339  Reward:   0.114477  Wealth:    126236.32  Turnover: 0.3746  Gross: 1.4057  Gate: 0.8114
+[05:58:30] Episode 340  Reward:   0.108052  Wealth:    123833.57  Turnover: 0.2938  Gross: 1.4015  Gate: 0.8030
+[05:58:30] Episode    340  AvgReward:   0.075384  Noise: 0.0761
+[05:58:31] Episode 341  Reward:   0.125980  Wealth:    129880.10  Turnover: 0.6107  Gross: 1.3884  Gate: 0.7768
+[05:58:32] Episode 342  Reward:   0.114679  Wealth:    123810.84  Turnover: 0.3247  Gross: 1.4025  Gate: 0.8050
+[05:58:32] Episode 343  Reward:  -0.003556  Wealth:    110360.22  Turnover: 0.4655  Gross: 1.4124  Gate: 0.8248
+[05:58:33] Episode 344  Reward:   0.015847  Wealth:    112823.09  Turnover: 0.3434  Gross: 1.4089  Gate: 0.8177
+[05:58:34] Episode 345  Reward:   0.062545  Wealth:    116856.71  Turnover: 0.3591  Gross: 1.4040  Gate: 0.8080
+[05:58:34] Episode 346  Reward:   0.069194  Wealth:    117675.40  Turnover: 0.3764  Gross: 1.3949  Gate: 0.7898
+[05:58:35] Episode 347  Reward:  -0.272093  Wealth:     85143.65  Turnover: 0.3551  Gross: 1.3918  Gate: 0.7837
+[05:58:36] Episode 348  Reward:   0.122290  Wealth:    125181.86  Turnover: 0.4268  Gross: 1.4036  Gate: 0.8073
+[05:58:36] Episode 349  Reward:   0.160164  Wealth:    133389.00  Turnover: 0.5912  Gross: 1.3813  Gate: 0.7626
+[05:58:37] Episode 350  Reward:   0.145572  Wealth:    129036.68  Turnover: 0.4681  Gross: 1.4022  Gate: 0.8045
+[05:58:37] Episode    350  AvgReward:   0.054062  Noise: 0.0746
+[05:58:38] Episode 351  Reward:  -0.176347  Wealth:     93324.79  Turnover: 0.2633  Gross: 1.3773  Gate: 0.7546
+[05:58:38] Episode 352  Reward:   0.148767  Wealth:    130785.63  Turnover: 0.4016  Gross: 1.4052  Gate: 0.8105
+[05:58:39] Episode 353  Reward:   0.162166  Wealth:    131661.12  Turnover: 0.4506  Gross: 1.4059  Gate: 0.8118
+[05:58:40] Episode 354  Reward:   0.159783  Wealth:    135731.52  Turnover: 0.5876  Gross: 1.3986  Gate: 0.7971
+[05:58:40] Episode 355  Reward:   0.187221  Wealth:    136824.26  Turnover: 0.5754  Gross: 1.4031  Gate: 0.8062
+[05:58:41] Episode 356  Reward:   0.148595  Wealth:    131380.39  Turnover: 0.3757  Gross: 1.3974  Gate: 0.7948
+[05:58:42] Episode 357  Reward:   0.107701  Wealth:    124237.73  Turnover: 0.5049  Gross: 1.3989  Gate: 0.7978
+[05:58:42] Episode 358  Reward:   0.209507  Wealth:    141499.22  Turnover: 0.6053  Gross: 1.4069  Gate: 0.8138
+[05:58:43] Episode 359  Reward:   0.215178  Wealth:    146569.06  Turnover: 0.3621  Gross: 1.4036  Gate: 0.8072
+[05:58:44] Episode 360  Reward:  -0.026190  Wealth:    107893.28  Turnover: 0.4896  Gross: 1.4022  Gate: 0.8045
+[05:58:44] Episode    360  AvgReward:   0.113638  Noise: 0.0731
+[05:58:44] Episode 361  Reward:   0.158661  Wealth:    132383.11  Turnover: 0.6085  Gross: 1.4021  Gate: 0.8042
+[05:58:45] Episode 362  Reward:   0.189791  Wealth:    140181.56  Turnover: 0.4603  Gross: 1.4025  Gate: 0.8049
+[05:58:46] Episode 363  Reward:   0.194868  Wealth:    138543.24  Turnover: 0.6078  Gross: 1.4044  Gate: 0.8087
+[05:58:46] Episode 364  Reward:  -0.100353  Wealth:     99433.16  Turnover: 0.6274  Gross: 1.3980  Gate: 0.7960
+[05:58:47] Episode 365  Reward:   0.077483  Wealth:    118063.97  Turnover: 0.4720  Gross: 1.4035  Gate: 0.8070
+[05:58:48] Episode 366  Reward:   0.268393  Wealth:    153966.26  Turnover: 0.5706  Gross: 1.4046  Gate: 0.8092
+[05:58:49] Episode 367  Reward:   0.075935  Wealth:    121448.05  Turnover: 0.3911  Gross: 1.3888  Gate: 0.7777
+[05:58:49] Episode 368  Reward:   0.130320  Wealth:    125398.29  Turnover: 0.4741  Gross: 1.3859  Gate: 0.7717
+[05:58:50] Episode 369  Reward:   0.290375  Wealth:    161312.05  Turnover: 0.4493  Gross: 1.4074  Gate: 0.8147
+[05:58:51] Episode 370  Reward:  -0.159086  Wealth:     93073.96  Turnover: 0.4200  Gross: 1.3764  Gate: 0.7529
+[05:58:51] Episode    370  AvgReward:   0.112639  Noise: 0.0717
+[05:58:51] Episode 371  Reward:   0.239324  Wealth:    148330.29  Turnover: 0.4185  Gross: 1.4066  Gate: 0.8132
+[05:58:52] Episode 372  Reward:   0.070456  Wealth:    117140.80  Turnover: 0.4406  Gross: 1.4085  Gate: 0.8171
+[05:58:53] Episode 373  Reward:   0.192161  Wealth:    134697.87  Turnover: 0.5846  Gross: 1.4008  Gate: 0.8015
+[05:58:53] Episode 374  Reward:   0.222509  Wealth:    143978.82  Turnover: 0.4399  Gross: 1.4083  Gate: 0.8165
+[05:58:54] Episode 375  Reward:   0.089054  Wealth:    122256.92  Turnover: 0.4558  Gross: 1.4103  Gate: 0.8206
+[05:58:55] Episode 376  Reward:   0.010207  Wealth:    108665.75  Turnover: 0.3355  Gross: 1.3862  Gate: 0.7723
+[05:58:55] Episode 377  Reward:   0.242366  Wealth:    148660.42  Turnover: 0.4462  Gross: 1.4024  Gate: 0.8048
+[05:58:56] Episode 378  Reward:  -0.097356  Wealth:    102160.51  Turnover: 0.4338  Gross: 1.3874  Gate: 0.7749
+[05:58:57] Episode 379  Reward:   0.253121  Wealth:    151728.51  Turnover: 0.4902  Gross: 1.4029  Gate: 0.8057
+[05:58:57] Episode 380  Reward:   0.109155  Wealth:    122503.02  Turnover: 0.2116  Gross: 1.3936  Gate: 0.7872
+[05:58:57] Episode    380  AvgReward:   0.133100  Noise: 0.0702
+[05:58:58] Episode 381  Reward:   0.051801  Wealth:    117002.26  Turnover: 0.3384  Gross: 1.3981  Gate: 0.7962
+[05:58:59] Episode 382  Reward:   0.304374  Wealth:    164609.97  Turnover: 0.4930  Gross: 1.4016  Gate: 0.8031
+[05:58:59] Episode 383  Reward:   0.018375  Wealth:    109248.77  Turnover: 0.5141  Gross: 1.3911  Gate: 0.7823
+[05:59:00] Episode 384  Reward:   0.057812  Wealth:    113715.64  Turnover: 0.4246  Gross: 1.4017  Gate: 0.8035
+[05:59:01] Episode 385  Reward:   0.199732  Wealth:    140762.96  Turnover: 0.4710  Gross: 1.3990  Gate: 0.7980
+[05:59:01] Episode 386  Reward:   0.002010  Wealth:    109778.69  Turnover: 0.5538  Gross: 1.4114  Gate: 0.8228
+[05:59:02] Episode 387  Reward:   0.266525  Wealth:    153740.34  Turnover: 0.4740  Gross: 1.4029  Gate: 0.8057
+[05:59:03] Episode 388  Reward:   0.112463  Wealth:    123354.94  Turnover: 0.3492  Gross: 1.3870  Gate: 0.7740
+[05:59:03] Episode 389  Reward:   0.320530  Wealth:    170616.85  Turnover: 0.3735  Gross: 1.3985  Gate: 0.7970
+[05:59:04] Episode 390  Reward:   0.259002  Wealth:    151751.08  Turnover: 0.4657  Gross: 1.3998  Gate: 0.7997
+[05:59:04] Episode    390  AvgReward:   0.159262  Noise: 0.0688
+[05:59:05] Episode 391  Reward:   0.209674  Wealth:    138427.61  Turnover: 0.2398  Gross: 1.3835  Gate: 0.7670
+[05:59:05] Episode 392  Reward:   0.215224  Wealth:    142713.48  Turnover: 0.5048  Gross: 1.4001  Gate: 0.8001
+[05:59:06] Episode 393  Reward:   0.220756  Wealth:    142058.86  Turnover: 0.6054  Gross: 1.4016  Gate: 0.8031
+[05:59:07] Episode 394  Reward:   0.198827  Wealth:    140987.27  Turnover: 0.2885  Gross: 1.4017  Gate: 0.8035
+[05:59:08] Episode 395  Reward:   0.263292  Wealth:    154048.98  Turnover: 0.5140  Gross: 1.4006  Gate: 0.8011
+[05:59:08] Episode 396  Reward:   0.093016  Wealth:    118916.52  Turnover: 0.3567  Gross: 1.3936  Gate: 0.7872
+[05:59:09] Episode 397  Reward:   0.044108  Wealth:    113033.21  Turnover: 0.2398  Gross: 1.3888  Gate: 0.7776
+[05:59:10] Episode 398  Reward:   0.235235  Wealth:    146770.48  Turnover: 0.5930  Gross: 1.4029  Gate: 0.8059
+[05:59:10] Episode 399  Reward:   0.131699  Wealth:    129456.34  Turnover: 0.6687  Gross: 1.4140  Gate: 0.8280
+[05:59:11] Episode 400  Reward:   0.231978  Wealth:    146291.42  Turnover: 0.6178  Gross: 1.3986  Gate: 0.7971
+[05:59:11] Episode    400  AvgReward:   0.184381  Noise: 0.0675
+[05:59:12] Episode 401  Reward:   0.115649  Wealth:    127325.35  Turnover: 0.8455  Gross: 1.3857  Gate: 0.7715
+[05:59:12] Episode 402  Reward:   0.271448  Wealth:    153942.99  Turnover: 0.6335  Gross: 1.3967  Gate: 0.7934
+[05:59:13] Episode 403  Reward:   0.193768  Wealth:    138563.65  Turnover: 0.6118  Gross: 1.3995  Gate: 0.7989
+[05:59:14] Episode 404  Reward:   0.162226  Wealth:    134928.57  Turnover: 0.4559  Gross: 1.3974  Gate: 0.7947
+[05:59:14] Episode 405  Reward:   0.110593  Wealth:    122566.45  Turnover: 0.7387  Gross: 1.4004  Gate: 0.8008
+[05:59:15] Episode 406  Reward:   0.198047  Wealth:    139511.35  Turnover: 0.6460  Gross: 1.4027  Gate: 0.8054
+[05:59:16] Episode 407  Reward:   0.107340  Wealth:    124309.04  Turnover: 0.7093  Gross: 1.4009  Gate: 0.8018
+[05:59:16] Episode 408  Reward:   0.256569  Wealth:    152308.30  Turnover: 0.6230  Gross: 1.4013  Gate: 0.8027
+[05:59:17] Episode 409  Reward:  -0.037841  Wealth:    104133.66  Turnover: 0.4139  Gross: 1.4014  Gate: 0.8029
+[05:59:18] Episode 410  Reward:  -0.135281  Wealth:     96342.54  Turnover: 0.6423  Gross: 1.4071  Gate: 0.8141
+[05:59:18] Episode    410  AvgReward:   0.124252  Noise: 0.0661
+[05:59:18] Episode 411  Reward:   0.158799  Wealth:    131424.90  Turnover: 0.5500  Gross: 1.4010  Gate: 0.8020
+[05:59:19] Episode 412  Reward:   0.298063  Wealth:    158250.27  Turnover: 0.5728  Gross: 1.4029  Gate: 0.8057
+[05:59:20] Episode 413  Reward:   0.277459  Wealth:    156337.30  Turnover: 0.3487  Gross: 1.3990  Gate: 0.7981
+[05:59:20] Episode 414  Reward:   0.122542  Wealth:    125362.18  Turnover: 0.5420  Gross: 1.4029  Gate: 0.8058
+[05:59:21] Episode 415  Reward:   0.148187  Wealth:    128161.26  Turnover: 0.4138  Gross: 1.4049  Gate: 0.8098
+[05:59:22] Episode 416  Reward:   0.109673  Wealth:    123712.87  Turnover: 0.5765  Gross: 1.4067  Gate: 0.8134
+[05:59:22] Episode 417  Reward:   0.095389  Wealth:    123134.96  Turnover: 0.4894  Gross: 1.4008  Gate: 0.8015
+[05:59:23] Episode 418  Reward:   0.209490  Wealth:    137404.90  Turnover: 0.3441  Gross: 1.3895  Gate: 0.7790
+[05:59:24] Episode 419  Reward:   0.052008  Wealth:    115325.46  Turnover: 0.5593  Gross: 1.4030  Gate: 0.8061
+[05:59:24] Episode 420  Reward:  -0.011810  Wealth:    107443.70  Turnover: 0.3371  Gross: 1.4002  Gate: 0.8003
+[05:59:24] Episode    420  AvgReward:   0.145980  Noise: 0.0648
+[05:59:25] Episode 421  Reward:   0.010803  Wealth:    110555.86  Turnover: 0.6722  Gross: 1.4045  Gate: 0.8091
+[05:59:26] Episode 422  Reward:   0.008239  Wealth:    111407.92  Turnover: 0.5169  Gross: 1.4023  Gate: 0.8047
+[05:59:26] Episode 423  Reward:   0.223996  Wealth:    143390.92  Turnover: 0.6368  Gross: 1.3949  Gate: 0.7899
+[05:59:27] Episode 424  Reward:  -0.001692  Wealth:    109319.54  Turnover: 0.6385  Gross: 1.4020  Gate: 0.8039
+[05:59:28] Episode 425  Reward:   0.147947  Wealth:    129074.02  Turnover: 0.5267  Gross: 1.4030  Gate: 0.8059
+[05:59:29] Episode 426  Reward:   0.147686  Wealth:    128010.12  Turnover: 0.6787  Gross: 1.4103  Gate: 0.8206
+[05:59:29] Episode 427  Reward:   0.059145  Wealth:    117526.10  Turnover: 0.7337  Gross: 1.4015  Gate: 0.8029
+[05:59:30] Episode 428  Reward:   0.205906  Wealth:    141655.11  Turnover: 0.4839  Gross: 1.3989  Gate: 0.7978
+[05:59:31] Episode 429  Reward:   0.040677  Wealth:    114792.03  Turnover: 0.7772  Gross: 1.4028  Gate: 0.8057
+[05:59:31] Episode 430  Reward:  -0.082697  Wealth:    101110.39  Turnover: 0.5601  Gross: 1.4025  Gate: 0.8050
+[05:59:31] Episode    430  AvgReward:   0.076001  Noise: 0.0635
+[05:59:32] Episode 431  Reward:  -0.156755  Wealth:     92613.91  Turnover: 0.3816  Gross: 1.4034  Gate: 0.8068
+[05:59:33] Episode 432  Reward:   0.010568  Wealth:    110880.03  Turnover: 0.7770  Gross: 1.3993  Gate: 0.7986
+[05:59:33] Episode 433  Reward:  -0.115825  Wealth:     99100.83  Turnover: 0.3651  Gross: 1.3991  Gate: 0.7981
+[05:59:34] Episode 434  Reward:   0.244599  Wealth:    149127.15  Turnover: 0.7366  Gross: 1.3999  Gate: 0.7998
+[05:59:35] Episode 435  Reward:   0.030581  Wealth:    113397.76  Turnover: 0.7878  Gross: 1.4003  Gate: 0.8006
+[05:59:35] Episode 436  Reward:   0.203584  Wealth:    138897.82  Turnover: 0.6882  Gross: 1.4059  Gate: 0.8117
+[05:59:36] Episode 437  Reward:   0.048789  Wealth:    115632.26  Turnover: 0.6900  Gross: 1.3999  Gate: 0.7997
+[05:59:37] Episode 438  Reward:   0.138841  Wealth:    128241.57  Turnover: 0.4222  Gross: 1.3962  Gate: 0.7923
+[05:59:37] Episode 439  Reward:  -0.073501  Wealth:    102178.03  Turnover: 0.5138  Gross: 1.3864  Gate: 0.7727
+[05:59:38] Episode 440  Reward:   0.035371  Wealth:    114274.47  Turnover: 0.8295  Gross: 1.4009  Gate: 0.8017
+[05:59:38] Episode    440  AvgReward:   0.036625  Noise: 0.0623
+[05:59:39] Episode 441  Reward:   0.101106  Wealth:    120398.92  Turnover: 0.4911  Gross: 1.3921  Gate: 0.7843
+[05:59:39] Episode 442  Reward:   0.000747  Wealth:    112828.56  Turnover: 0.4506  Gross: 1.3903  Gate: 0.7807
+[05:59:40] Episode 443  Reward:  -0.013266  Wealth:    107749.99  Turnover: 0.7840  Gross: 1.3970  Gate: 0.7940
+[05:59:41] Episode 444  Reward:   0.152036  Wealth:    128688.70  Turnover: 0.5092  Gross: 1.3991  Gate: 0.7983
+[05:59:41] Episode 445  Reward:  -0.050185  Wealth:    103500.33  Turnover: 0.8360  Gross: 1.4048  Gate: 0.8097
+[05:59:42] Episode 446  Reward:   0.159391  Wealth:    135528.84  Turnover: 0.4486  Gross: 1.3803  Gate: 0.7606
+[05:59:43] Episode 447  Reward:   0.050931  Wealth:    113499.83  Turnover: 0.5849  Gross: 1.3904  Gate: 0.7808
+[05:59:43] Episode 448  Reward:  -0.067902  Wealth:    102068.91  Turnover: 0.8247  Gross: 1.4051  Gate: 0.8102
+[05:59:44] Episode 449  Reward:   0.106062  Wealth:    124027.14  Turnover: 0.2943  Gross: 1.4049  Gate: 0.8099
+[05:59:45] Episode 450  Reward:   0.245878  Wealth:    150934.12  Turnover: 0.5539  Gross: 1.3983  Gate: 0.7967
+[05:59:45] Episode    450  AvgReward:   0.068480  Noise: 0.0611
+[05:59:46] Episode 451  Reward:  -0.094176  Wealth:     99328.65  Turnover: 0.8341  Gross: 1.3989  Gate: 0.7978
+[05:59:46] Episode 452  Reward:   0.118282  Wealth:    123560.33  Turnover: 0.4434  Gross: 1.3993  Gate: 0.7985
+[05:59:47] Episode 453  Reward:  -0.111824  Wealth:     98019.65  Turnover: 0.8038  Gross: 1.3964  Gate: 0.7928
+[05:59:48] Episode 454  Reward:   0.068204  Wealth:    120900.24  Turnover: 0.3420  Gross: 1.4033  Gate: 0.8067
+[05:59:48] Episode 455  Reward:   0.128102  Wealth:    125655.58  Turnover: 0.5611  Gross: 1.4027  Gate: 0.8054
+[05:59:49] Episode 456  Reward:  -0.070212  Wealth:    102064.93  Turnover: 0.8647  Gross: 1.4030  Gate: 0.8061
+[05:59:50] Episode 457  Reward:   0.245966  Wealth:    151310.79  Turnover: 0.5190  Gross: 1.3863  Gate: 0.7725
+[05:59:50] Episode 458  Reward:  -0.193699  Wealth:     90660.95  Turnover: 0.7978  Gross: 1.4024  Gate: 0.8048
+[05:59:51] Episode 459  Reward:   0.083181  Wealth:    121783.26  Turnover: 0.4777  Gross: 1.4062  Gate: 0.8123
+[05:59:52] Episode 460  Reward:  -0.206081  Wealth:     90925.12  Turnover: 0.3072  Gross: 1.4022  Gate: 0.8045
+[05:59:52] Episode    460  AvgReward:  -0.003226  Noise: 0.0598
+[05:59:52] Episode 461  Reward:  -0.193681  Wealth:     90387.25  Turnover: 0.8529  Gross: 1.4073  Gate: 0.8146
+[05:59:53] Episode 462  Reward:  -0.079551  Wealth:    102332.60  Turnover: 0.4157  Gross: 1.3907  Gate: 0.7815
+[05:59:54] Episode 463  Reward:  -0.142021  Wealth:     94134.19  Turnover: 0.3206  Gross: 1.4014  Gate: 0.8029
+[05:59:54] Episode 464  Reward:  -0.242026  Wealth:     86907.85  Turnover: 0.8120  Gross: 1.4041  Gate: 0.8082
+[05:59:55] Episode 465  Reward:   0.004735  Wealth:    110635.89  Turnover: 0.4631  Gross: 1.4019  Gate: 0.8038
+[05:59:56] Episode 466  Reward:  -0.188239  Wealth:     91223.31  Turnover: 0.7567  Gross: 1.4013  Gate: 0.8025
+[05:59:56] Episode 467  Reward:   0.211422  Wealth:    140908.69  Turnover: 0.5117  Gross: 1.3988  Gate: 0.7977
+[05:59:57] Episode 468  Reward:   0.081841  Wealth:    121439.38  Turnover: 0.4763  Gross: 1.4009  Gate: 0.8018
+[05:59:58] Episode 469  Reward:  -0.057702  Wealth:    102752.02  Turnover: 0.8132  Gross: 1.4018  Gate: 0.8037
+[05:59:58] Episode 470  Reward:   0.064663  Wealth:    121035.07  Turnover: 0.3246  Gross: 1.3935  Gate: 0.7870
+[05:59:58] Episode    470  AvgReward:  -0.054056  Noise: 0.0587
+[05:59:59] Episode 471  Reward:   0.020704  Wealth:    114119.76  Turnover: 0.4497  Gross: 1.3918  Gate: 0.7837
+[06:00:00] Episode 472  Reward:  -0.027537  Wealth:    106419.28  Turnover: 0.8810  Gross: 1.4041  Gate: 0.8082
+[06:00:00] Episode 473  Reward:  -0.240951  Wealth:     87226.61  Turnover: 0.6867  Gross: 1.4078  Gate: 0.8157
+[06:00:01] Episode 474  Reward:   0.006151  Wealth:    110001.99  Turnover: 0.9505  Gross: 1.4018  Gate: 0.8035
+[06:00:02] Episode 475  Reward:  -0.244674  Wealth:     86625.44  Turnover: 0.5657  Gross: 1.4001  Gate: 0.8001
+[06:00:03] Episode 476  Reward:   0.005856  Wealth:    111770.97  Turnover: 0.5757  Gross: 1.4021  Gate: 0.8043
+[06:00:03] Episode 477  Reward:   0.048347  Wealth:    115463.01  Turnover: 0.9430  Gross: 1.4001  Gate: 0.8002
+[06:00:04] Episode 478  Reward:   0.032833  Wealth:    115910.51  Turnover: 0.7247  Gross: 1.3984  Gate: 0.7968
+[06:00:05] Episode 479  Reward:   0.310277  Wealth:    172546.41  Turnover: 0.3766  Gross: 1.3867  Gate: 0.7733
+[06:00:05] Episode 480  Reward:   0.063755  Wealth:    118186.67  Turnover: 0.9367  Gross: 1.4003  Gate: 0.8006
+[06:00:05] Episode    480  AvgReward:  -0.002524  Noise: 0.0575
+[06:00:06] Episode 481  Reward:  -0.122142  Wealth:     96174.08  Turnover: 0.3745  Gross: 1.3976  Gate: 0.7952
+[06:00:07] Episode 482  Reward:   0.092320  Wealth:    122359.12  Turnover: 0.9648  Gross: 1.3968  Gate: 0.7937
+[06:00:07] Episode 483  Reward:   0.170566  Wealth:    138258.65  Turnover: 0.5584  Gross: 1.4038  Gate: 0.8075
+[06:00:08] Episode 484  Reward:   0.243758  Wealth:    152780.61  Turnover: 0.4582  Gross: 1.4072  Gate: 0.8144
+[06:00:09] Episode 485  Reward:   0.121218  Wealth:    125563.54  Turnover: 0.3928  Gross: 1.4048  Gate: 0.8097
+[06:00:09] Episode 486  Reward:   0.114459  Wealth:    125470.33  Turnover: 0.5623  Gross: 1.4043  Gate: 0.8086
+[06:00:10] Episode 487  Reward:   0.151741  Wealth:    129967.95  Turnover: 0.3490  Gross: 1.4039  Gate: 0.8079
+[06:00:11] Episode 488  Reward:  -0.101662  Wealth:    101337.90  Turnover: 0.3111  Gross: 1.3927  Gate: 0.7854
+[06:00:11] Episode 489  Reward:  -0.006239  Wealth:    109291.92  Turnover: 0.5370  Gross: 1.3915  Gate: 0.7829
+[06:00:12] Episode 490  Reward:   0.141569  Wealth:    128795.99  Turnover: 0.3922  Gross: 1.4052  Gate: 0.8105
+[06:00:12] Episode    490  AvgReward:   0.080559  Noise: 0.0564
+[06:00:13] Episode 491  Reward:   0.059736  Wealth:    118293.61  Turnover: 0.5147  Gross: 1.4070  Gate: 0.8140
+[06:00:13] Episode 492  Reward:  -0.155002  Wealth:     94558.59  Turnover: 0.4005  Gross: 1.3918  Gate: 0.7836
+[06:00:14] Episode 493  Reward:   0.132891  Wealth:    127604.73  Turnover: 0.4342  Gross: 1.4060  Gate: 0.8120
+[06:00:15] Episode 494  Reward:   0.329882  Wealth:    178761.43  Turnover: 0.4801  Gross: 1.3923  Gate: 0.7846
+[06:00:16] Episode 495  Reward:   0.137609  Wealth:    127829.76  Turnover: 0.4129  Gross: 1.4077  Gate: 0.8154
+[06:00:16] Episode 496  Reward:   0.043620  Wealth:    115683.58  Turnover: 0.5470  Gross: 1.4017  Gate: 0.8034
+[06:00:17] Episode 497  Reward:   0.023620  Wealth:    112059.04  Turnover: 0.3459  Gross: 1.3935  Gate: 0.7871
+[06:00:18] Episode 498  Reward:   0.161528  Wealth:    130690.20  Turnover: 0.4075  Gross: 1.4063  Gate: 0.8126
+[06:00:18] Episode 499  Reward:   0.026332  Wealth:    117228.45  Turnover: 0.3267  Gross: 1.3712  Gate: 0.7424
+[06:00:19] Episode 500  Reward:   0.128233  Wealth:    129232.11  Turnover: 0.5342  Gross: 1.4063  Gate: 0.8127
+[06:00:19] Episode    500  AvgReward:   0.088845  Noise: 0.0552
+[06:00:20] Episode 501  Reward:   0.166877  Wealth:    132286.70  Turnover: 0.4318  Gross: 1.4063  Gate: 0.8127
+[06:00:20] Episode 502  Reward:   0.239127  Wealth:    151291.05  Turnover: 0.6779  Gross: 1.3879  Gate: 0.7758
+[06:00:21] Episode 503  Reward:   0.196367  Wealth:    136691.71  Turnover: 0.4813  Gross: 1.4078  Gate: 0.8155
+[06:00:22] Episode 504  Reward:  -0.055127  Wealth:    103915.52  Turnover: 0.6179  Gross: 1.3982  Gate: 0.7964
+[06:00:22] Episode 505  Reward:  -0.128099  Wealth:     96289.79  Turnover: 0.4218  Gross: 1.3866  Gate: 0.7731
+[06:00:23] Episode 506  Reward:   0.148612  Wealth:    128925.65  Turnover: 0.5411  Gross: 1.4060  Gate: 0.8119
+[06:00:24] Episode 507  Reward:   0.130771  Wealth:    128634.00  Turnover: 0.5051  Gross: 1.3879  Gate: 0.7757
+[06:00:24] Episode 508  Reward:  -0.371159  Wealth:     78861.90  Turnover: 0.4094  Gross: 1.3947  Gate: 0.7894
+[06:00:25] Episode 509  Reward:   0.214489  Wealth:    140641.68  Turnover: 0.5644  Gross: 1.4052  Gate: 0.8105
+[06:00:26] Episode 510  Reward:   0.162408  Wealth:    135068.81  Turnover: 0.6877  Gross: 1.3951  Gate: 0.7901
+[06:00:26] Episode    510  AvgReward:   0.070427  Noise: 0.0541
+[06:00:26] Episode 511  Reward:   0.216389  Wealth:    141378.68  Turnover: 0.6236  Gross: 1.4058  Gate: 0.8117
+[06:00:27] Episode 512  Reward:  -0.217199  Wealth:     89769.66  Turnover: 0.4652  Gross: 1.3920  Gate: 0.7840
+[06:00:28] Episode 513  Reward:   0.155497  Wealth:    134263.08  Turnover: 0.4592  Gross: 1.4006  Gate: 0.8013
+[06:00:28] Episode 514  Reward:   0.252642  Wealth:    149246.03  Turnover: 0.6289  Gross: 1.4076  Gate: 0.8153
+[06:00:29] Episode 515  Reward:   0.076056  Wealth:    121202.94  Turnover: 0.7715  Gross: 1.3919  Gate: 0.7838
+[06:00:30] Episode 516  Reward:   0.300788  Wealth:    162328.62  Turnover: 0.6853  Gross: 1.4071  Gate: 0.8141
+[06:00:30] Episode 517  Reward:   0.166723  Wealth:    133048.88  Turnover: 0.5863  Gross: 1.3917  Gate: 0.7835
+[06:00:31] Episode 518  Reward:   0.080677  Wealth:    120648.74  Turnover: 0.7205  Gross: 1.3960  Gate: 0.7921
+[06:00:32] Episode 519  Reward:   0.304047  Wealth:    164573.93  Turnover: 0.7093  Gross: 1.4049  Gate: 0.8097
+[06:00:32] Episode 520  Reward:   0.219753  Wealth:    148260.46  Turnover: 0.4842  Gross: 1.3963  Gate: 0.7926
+[06:00:32] Episode    520  AvgReward:   0.155537  Noise: 0.0531
+[06:00:33] Episode 521  Reward:  -0.025241  Wealth:    108657.80  Turnover: 0.4995  Gross: 1.4021  Gate: 0.8041
+[06:00:34] Episode 522  Reward:   0.284939  Wealth:    159804.81  Turnover: 0.6795  Gross: 1.4036  Gate: 0.8072
+[06:00:34] Episode 523  Reward:   0.189430  Wealth:    140027.24  Turnover: 0.5468  Gross: 1.4015  Gate: 0.8030
+[06:00:35] Episode 524  Reward:   0.297578  Wealth:    164306.54  Turnover: 0.6690  Gross: 1.4045  Gate: 0.8091
+[06:00:36] Episode 525  Reward:  -0.051579  Wealth:    105722.57  Turnover: 0.5775  Gross: 1.4035  Gate: 0.8069
+[06:00:37] Episode 526  Reward:   0.067349  Wealth:    117536.64  Turnover: 0.8280  Gross: 1.3990  Gate: 0.7980
+[06:00:37] Episode 527  Reward:   0.359576  Wealth:    182077.66  Turnover: 0.5982  Gross: 1.4040  Gate: 0.8079
+[06:00:38] Episode 528  Reward:   0.090318  Wealth:    124136.66  Turnover: 0.4965  Gross: 1.3951  Gate: 0.7902
+[06:00:39] Episode 529  Reward:   0.184122  Wealth:    136169.57  Turnover: 0.5563  Gross: 1.3974  Gate: 0.7948
+[06:00:39] Episode 530  Reward:   0.394531  Wealth:    199299.51  Turnover: 0.6121  Gross: 1.4009  Gate: 0.8017
+[06:00:39] Episode    530  AvgReward:   0.179102  Noise: 0.0520
+[06:00:40] Episode 531  Reward:  -0.141566  Wealth:     95236.65  Turnover: 0.5224  Gross: 1.3707  Gate: 0.7413
+[06:00:41] Episode 532  Reward:   0.356531  Wealth:    184038.94  Turnover: 0.5505  Gross: 1.4011  Gate: 0.8021
+[06:00:41] Episode 533  Reward:   0.051082  Wealth:    116795.45  Turnover: 0.5132  Gross: 1.4045  Gate: 0.8090
+[06:00:42] Episode 534  Reward:   0.122684  Wealth:    123892.27  Turnover: 0.5910  Gross: 1.3994  Gate: 0.7988
+[06:00:43] Episode 535  Reward:   0.321074  Wealth:    171776.36  Turnover: 0.5357  Gross: 1.4031  Gate: 0.8063
+[06:00:43] Episode 536  Reward:   0.096940  Wealth:    123513.17  Turnover: 0.5842  Gross: 1.4045  Gate: 0.8090
+[06:00:44] Episode 537  Reward:  -0.174615  Wealth:     92350.16  Turnover: 0.4294  Gross: 1.3792  Gate: 0.7584
+[06:00:45] Episode 538  Reward:   0.304429  Wealth:    168097.27  Turnover: 0.5732  Gross: 1.4024  Gate: 0.8049
+[06:00:45] Episode 539  Reward:  -0.131422  Wealth:     98527.77  Turnover: 0.5515  Gross: 1.3968  Gate: 0.7936
+[06:00:46] Episode 540  Reward:   0.339701  Wealth:    179929.19  Turnover: 0.5819  Gross: 1.4039  Gate: 0.8078
+[06:00:46] Episode    540  AvgReward:   0.114484  Noise: 0.0510
+[06:00:47] Episode 541  Reward:   0.110172  Wealth:    123753.86  Turnover: 0.2990  Gross: 1.3913  Gate: 0.7827
+[06:00:47] Episode 542  Reward:   0.071316  Wealth:    119225.67  Turnover: 0.3548  Gross: 1.3954  Gate: 0.7909
+[06:00:48] Episode 543  Reward:   0.388001  Wealth:    194075.62  Turnover: 0.6165  Gross: 1.4047  Gate: 0.8095
+[06:00:49] Episode 544  Reward:   0.114795  Wealth:    121949.98  Turnover: 0.4144  Gross: 1.3915  Gate: 0.7830
+[06:00:49] Episode 545  Reward:   0.010529  Wealth:    109981.70  Turnover: 0.5127  Gross: 1.3922  Gate: 0.7845
+[06:00:50] Episode 546  Reward:   0.346470  Wealth:    181293.56  Turnover: 0.5439  Gross: 1.4007  Gate: 0.8014
+[06:00:51] Episode 547  Reward:   0.105378  Wealth:    124670.46  Turnover: 0.6576  Gross: 1.4023  Gate: 0.8047
+[06:00:51] Episode 548  Reward:   0.352575  Wealth:    182896.04  Turnover: 0.5690  Gross: 1.4009  Gate: 0.8018
+[06:00:52] Episode 549  Reward:   0.085666  Wealth:    119162.14  Turnover: 0.4404  Gross: 1.3885  Gate: 0.7770
+[06:00:53] Episode 550  Reward:   0.320015  Wealth:    171592.67  Turnover: 0.4010  Gross: 1.3928  Gate: 0.7857
+[06:00:53] Episode    550  AvgReward:   0.190492  Noise: 0.0500
+[06:00:54] Episode 551  Reward:   0.356813  Wealth:    183609.52  Turnover: 0.5491  Gross: 1.3985  Gate: 0.7971
+[06:00:54] Episode 552  Reward:   0.185177  Wealth:    136753.47  Turnover: 0.3324  Gross: 1.3795  Gate: 0.7590
+[06:00:55] Episode 553  Reward:   0.323664  Wealth:    173109.21  Turnover: 0.5671  Gross: 1.3957  Gate: 0.7915
+[06:00:56] Episode 554  Reward:   0.171579  Wealth:    132442.14  Turnover: 0.6240  Gross: 1.4066  Gate: 0.8133
+[06:00:56] Episode 555  Reward:   0.213149  Wealth:    143218.48  Turnover: 0.3641  Gross: 1.3997  Gate: 0.7994
+[06:00:57] Episode 556  Reward:   0.358151  Wealth:    183587.14  Turnover: 0.6134  Gross: 1.3990  Gate: 0.7979
+[06:00:58] Episode 557  Reward:   0.102880  Wealth:    120270.36  Turnover: 0.3858  Gross: 1.3976  Gate: 0.7951
+[06:00:58] Episode 558  Reward:   0.098140  Wealth:    120573.52  Turnover: 0.4049  Gross: 1.3950  Gate: 0.7900
+[06:00:59] Episode 559  Reward:   0.345454  Wealth:    178365.22  Turnover: 0.6133  Gross: 1.3971  Gate: 0.7941
+[06:01:00] Episode 560  Reward:   0.142046  Wealth:    129109.86  Turnover: 0.5649  Gross: 1.4015  Gate: 0.8030
+[06:01:00] Episode    560  AvgReward:   0.229705  Noise: 0.0490
+[06:01:00] Episode 561  Reward:   0.322722  Wealth:    170940.41  Turnover: 0.5900  Gross: 1.3990  Gate: 0.7979
+[06:01:01] Episode 562  Reward:   0.113797  Wealth:    123804.10  Turnover: 0.6544  Gross: 1.3892  Gate: 0.7785
+[06:01:02] Episode 563  Reward:   0.218045  Wealth:    141508.21  Turnover: 0.5007  Gross: 1.4047  Gate: 0.8094
+[06:01:02] Episode 564  Reward:   0.285612  Wealth:    160222.97  Turnover: 0.6457  Gross: 1.3962  Gate: 0.7924
+[06:01:03] Episode 565  Reward:   0.175329  Wealth:    136354.94  Turnover: 0.4868  Gross: 1.3979  Gate: 0.7957
+[06:01:04] Episode 566  Reward:   0.083412  Wealth:    119075.71  Turnover: 0.7693  Gross: 1.4018  Gate: 0.8037
+[06:01:05] Episode 567  Reward:   0.243996  Wealth:    150734.83  Turnover: 0.6310  Gross: 1.3968  Gate: 0.7936
+[06:01:05] Episode 568  Reward:   0.117171  Wealth:    124481.89  Turnover: 0.6523  Gross: 1.4021  Gate: 0.8042
+[06:01:06] Episode 569  Reward:   0.297698  Wealth:    164502.60  Turnover: 0.6143  Gross: 1.3970  Gate: 0.7940
+[06:01:07] Episode 570  Reward:  -0.080698  Wealth:    100017.02  Turnover: 0.5183  Gross: 1.4089  Gate: 0.8178
+[06:01:07] Episode    570  AvgReward:   0.177708  Noise: 0.0480
+[06:01:07] Episode 571  Reward:   0.091390  Wealth:    120947.30  Turnover: 0.6283  Gross: 1.4032  Gate: 0.8065
+[06:01:08] Episode 572  Reward:   0.217027  Wealth:    143729.97  Turnover: 0.6156  Gross: 1.3974  Gate: 0.7948
+[06:01:09] Episode 573  Reward:   0.364005  Wealth:    178274.03  Turnover: 0.6103  Gross: 1.3958  Gate: 0.7916
+[06:01:09] Episode 574  Reward:   0.258594  Wealth:    152699.74  Turnover: 0.4180  Gross: 1.4017  Gate: 0.8033
+[06:01:10] Episode 575  Reward:   0.179208  Wealth:    136289.90  Turnover: 0.6008  Gross: 1.3989  Gate: 0.7978
+[06:01:11] Episode 576  Reward:   0.138546  Wealth:    126275.12  Turnover: 0.3919  Gross: 1.4051  Gate: 0.8102
+[06:01:11] Episode 577  Reward:   0.131551  Wealth:    127639.37  Turnover: 0.6533  Gross: 1.4004  Gate: 0.8007
+[06:01:12] Episode 578  Reward:   0.113692  Wealth:    125041.72  Turnover: 0.4065  Gross: 1.4072  Gate: 0.8144
+[06:01:13] Episode 579  Reward:   0.247907  Wealth:    149924.92  Turnover: 0.5692  Gross: 1.3995  Gate: 0.7989
+[06:01:13] Episode 580  Reward:   0.029581  Wealth:    112928.25  Turnover: 0.6335  Gross: 1.4006  Gate: 0.8012
+[06:01:13] Episode    580  AvgReward:   0.177150  Noise: 0.0471
+[06:01:14] Episode 581  Reward:   0.008025  Wealth:    109141.07  Turnover: 0.4244  Gross: 1.3934  Gate: 0.7868
+[06:01:15] Episode 582  Reward:   0.002188  Wealth:    109461.38  Turnover: 0.6972  Gross: 1.4016  Gate: 0.8031
+[06:01:15] Episode 583  Reward:   0.085443  Wealth:    121595.87  Turnover: 0.5234  Gross: 1.4055  Gate: 0.8110
+[06:01:16] Episode 584  Reward:   0.166944  Wealth:    132478.81  Turnover: 0.6182  Gross: 1.3957  Gate: 0.7914
+[06:01:17] Episode 585  Reward:  -0.002906  Wealth:    108610.18  Turnover: 0.7242  Gross: 1.4013  Gate: 0.8026
+[06:01:18] Episode 586  Reward:   0.148186  Wealth:    128575.90  Turnover: 0.5760  Gross: 1.3980  Gate: 0.7961
+[06:01:18] Episode 587  Reward:   0.135205  Wealth:    128088.67  Turnover: 0.7377  Gross: 1.4077  Gate: 0.8154
+[06:01:19] Episode 588  Reward:   0.043422  Wealth:    114371.65  Turnover: 0.7097  Gross: 1.4035  Gate: 0.8071
+[06:01:20] Episode 589  Reward:   0.239201  Wealth:    148959.86  Turnover: 0.5573  Gross: 1.4055  Gate: 0.8109
+[06:01:20] Episode 590  Reward:   0.037110  Wealth:    113050.36  Turnover: 0.6936  Gross: 1.4003  Gate: 0.8007
+[06:01:20] Episode    590  AvgReward:   0.086282  Noise: 0.0461
+[06:01:21] Episode 591  Reward:  -0.040560  Wealth:    104785.66  Turnover: 0.6357  Gross: 1.4012  Gate: 0.8024
+[06:01:22] Episode 592  Reward:  -0.215692  Wealth:     87858.88  Turnover: 0.3183  Gross: 1.4005  Gate: 0.8009
+[06:01:22] Episode 593  Reward:  -0.033605  Wealth:    104769.16  Turnover: 0.6650  Gross: 1.3999  Gate: 0.7998
+[06:01:23] Episode 594  Reward:  -0.131480  Wealth:     96640.66  Turnover: 0.2989  Gross: 1.3974  Gate: 0.7948
+[06:01:24] Episode 595  Reward:   0.203892  Wealth:    139102.17  Turnover: 0.6508  Gross: 1.4042  Gate: 0.8084
+[06:01:24] Episode 596  Reward:   0.023204  Wealth:    111533.05  Turnover: 0.7158  Gross: 1.4015  Gate: 0.8030
+[06:01:25] Episode 597  Reward:   0.219109  Wealth:    142531.30  Turnover: 0.7348  Gross: 1.4024  Gate: 0.8047
+[06:01:26] Episode 598  Reward:   0.024929  Wealth:    111614.32  Turnover: 0.6716  Gross: 1.4003  Gate: 0.8006
+[06:01:26] Episode 599  Reward:   0.123995  Wealth:    125126.35  Turnover: 0.5389  Gross: 1.4095  Gate: 0.8189
+[06:01:27] Episode 600  Reward:  -0.035415  Wealth:    106034.63  Turnover: 0.5327  Gross: 1.3827  Gate: 0.7655
+[06:01:27] Episode    600  AvgReward:   0.013838  Noise: 0.0452
+[06:01:28] Episode 601  Reward:   0.045181  Wealth:    114249.37  Turnover: 0.7661  Gross: 1.4016  Gate: 0.8032
+[06:01:28] Episode 602  Reward:  -0.244132  Wealth:     85252.28  Turnover: 0.6945  Gross: 1.3796  Gate: 0.7592
+[06:01:29] Episode 603  Reward:   0.068475  Wealth:    121591.23  Turnover: 0.4890  Gross: 1.3921  Gate: 0.7841
+[06:01:30] Episode 604  Reward:  -0.015964  Wealth:    106721.48  Turnover: 0.7551  Gross: 1.3997  Gate: 0.7994
+[06:01:31] Episode 605  Reward:   0.192789  Wealth:    135573.82  Turnover: 0.4792  Gross: 1.3878  Gate: 0.7756
+[06:01:31] Episode 606  Reward:  -0.081435  Wealth:     99722.27  Turnover: 0.7632  Gross: 1.3994  Gate: 0.7988
+[06:01:32] Episode 607  Reward:   0.154372  Wealth:    134410.18  Turnover: 0.4628  Gross: 1.3936  Gate: 0.7871
+[06:01:33] Episode 608  Reward:   0.001827  Wealth:    108215.29  Turnover: 0.7455  Gross: 1.3757  Gate: 0.7515
+[06:01:33] Episode 609  Reward:   0.005695  Wealth:    109288.72  Turnover: 0.7948  Gross: 1.4015  Gate: 0.8029
+[06:01:34] Episode 610  Reward:   0.097661  Wealth:    122499.41  Turnover: 0.3355  Gross: 1.4088  Gate: 0.8176
+[06:01:34] Episode    610  AvgReward:   0.022447  Noise: 0.0443
+[06:01:35] Episode 611  Reward:   0.211710  Wealth:    142950.46  Turnover: 0.6346  Gross: 1.3971  Gate: 0.7941
+[06:01:35] Episode 612  Reward:   0.004345  Wealth:    109297.35  Turnover: 0.8270  Gross: 1.4024  Gate: 0.8048
+[06:01:36] Episode 613  Reward:   0.137315  Wealth:    129075.61  Turnover: 0.5877  Gross: 1.3980  Gate: 0.7960
+[06:01:37] Episode 614  Reward:  -0.055493  Wealth:    102845.56  Turnover: 0.8676  Gross: 1.4005  Gate: 0.8010
+[06:01:37] Episode 615  Reward:   0.094905  Wealth:    124622.20  Turnover: 0.3089  Gross: 1.4058  Gate: 0.8115
+[06:01:38] Episode 616  Reward:   0.053480  Wealth:    117389.80  Turnover: 0.7197  Gross: 1.3985  Gate: 0.7970
+[06:01:39] Episode 617  Reward:  -0.044313  Wealth:    103886.88  Turnover: 0.9450  Gross: 1.3999  Gate: 0.7999
+[06:01:39] Episode 618  Reward:   0.145801  Wealth:    130179.35  Turnover: 0.5027  Gross: 1.3966  Gate: 0.7932
+[06:01:40] Episode 619  Reward:  -0.113898  Wealth:     96789.33  Turnover: 0.9338  Gross: 1.3990  Gate: 0.7979
+[06:01:41] Episode 620  Reward:   0.140951  Wealth:    129244.55  Turnover: 0.4291  Gross: 1.4036  Gate: 0.8073
+[06:01:41] Episode    620  AvgReward:   0.057480  Noise: 0.0434
+[06:01:41] Episode 621  Reward:  -0.128922  Wealth:     97392.04  Turnover: 0.2952  Gross: 1.3953  Gate: 0.7906
+[06:01:42] Episode 622  Reward:  -0.081747  Wealth:     99836.29  Turnover: 0.9472  Gross: 1.4009  Gate: 0.8019
+[06:01:43] Episode 623  Reward:  -0.021635  Wealth:    109260.49  Turnover: 0.3883  Gross: 1.3863  Gate: 0.7727
+[06:01:44] Episode 624  Reward:  -0.160104  Wealth:     91837.84  Turnover: 0.3432  Gross: 1.3929  Gate: 0.7858
+[06:01:44] Episode 625  Reward:  -0.106882  Wealth:     97777.33  Turnover: 0.9070  Gross: 1.4001  Gate: 0.8003
+[06:01:45] Episode 626  Reward:  -0.020652  Wealth:    108343.96  Turnover: 0.6439  Gross: 1.3950  Gate: 0.7900
+[06:01:46] Episode 627  Reward:  -0.056405  Wealth:    103170.91  Turnover: 0.9162  Gross: 1.4022  Gate: 0.8045
+[06:01:46] Episode 628  Reward:   0.173627  Wealth:    134354.26  Turnover: 0.4784  Gross: 1.4065  Gate: 0.8131
+[06:01:47] Episode 629  Reward:   0.139388  Wealth:    130048.99  Turnover: 0.6463  Gross: 1.3886  Gate: 0.7772
+[06:01:48] Episode 630  Reward:  -0.006958  Wealth:    108687.67  Turnover: 0.8495  Gross: 1.3981  Gate: 0.7962
+[06:01:48] Episode    630  AvgReward:  -0.027029  Noise: 0.0426
+[06:01:48] Episode 631  Reward:   0.035352  Wealth:    116405.16  Turnover: 0.5566  Gross: 1.3950  Gate: 0.7901
+[06:01:49] Episode 632  Reward:   0.086353  Wealth:    122927.36  Turnover: 0.4162  Gross: 1.3942  Gate: 0.7884
+[06:01:50] Episode 633  Reward:   0.026673  Wealth:    112902.91  Turnover: 0.7862  Gross: 1.4007  Gate: 0.8014
+[06:01:50] Episode 634  Reward:  -0.147903  Wealth:     94747.47  Turnover: 0.7492  Gross: 1.4029  Gate: 0.8058
+[06:01:51] Episode 635  Reward:   0.059852  Wealth:    116618.57  Turnover: 0.7957  Gross: 1.3981  Gate: 0.7963
+[06:01:52] Episode 636  Reward:  -0.225232  Wealth:     87165.97  Turnover: 0.5185  Gross: 1.4066  Gate: 0.8131
+[06:01:52] Episode 637  Reward:  -0.001247  Wealth:    111456.11  Turnover: 0.4085  Gross: 1.3887  Gate: 0.7773
+[06:01:53] Episode 638  Reward:   0.092701  Wealth:    121581.95  Turnover: 0.8621  Gross: 1.3981  Gate: 0.7962
+[06:01:54] Episode 639  Reward:   0.073652  Wealth:    120796.06  Turnover: 0.6819  Gross: 1.4037  Gate: 0.8075
+[06:01:54] Episode 640  Reward:   0.227340  Wealth:    148963.63  Turnover: 0.4782  Gross: 1.3913  Gate: 0.7825
+[06:01:54] Episode    640  AvgReward:   0.022754  Noise: 0.0417
+[06:01:55] Episode 641  Reward:   0.097242  Wealth:    122598.41  Turnover: 0.8535  Gross: 1.3965  Gate: 0.7929
+[06:01:56] Episode 642  Reward:  -0.091770  Wealth:     98739.07  Turnover: 0.4990  Gross: 1.3944  Gate: 0.7888
+[06:01:57] Episode 643  Reward:   0.172410  Wealth:    134846.96  Turnover: 0.8295  Gross: 1.3973  Gate: 0.7945
+[06:01:57] Episode 644  Reward:   0.146489  Wealth:    132311.02  Turnover: 0.6372  Gross: 1.3998  Gate: 0.7996
+[06:01:58] Episode 645  Reward:   0.267478  Wealth:    154158.43  Turnover: 0.5175  Gross: 1.4055  Gate: 0.8110
+[06:01:59] Episode 646  Reward:   0.142657  Wealth:    127499.15  Turnover: 0.2783  Gross: 1.4011  Gate: 0.8022
+[06:01:59] Episode 647  Reward:   0.085238  Wealth:    121105.76  Turnover: 0.5803  Gross: 1.4001  Gate: 0.8002
+[06:02:00] Episode 648  Reward:   0.185731  Wealth:    134449.59  Turnover: 0.2846  Gross: 1.4036  Gate: 0.8072
+[06:02:01] Episode 649  Reward:  -0.023627  Wealth:    108544.34  Turnover: 0.4455  Gross: 1.3983  Gate: 0.7966
+[06:02:01] Episode 650  Reward:   0.003998  Wealth:    110150.12  Turnover: 0.4993  Gross: 1.3931  Gate: 0.7863
+[06:02:01] Episode    650  AvgReward:   0.098585  Noise: 0.0409
+[06:02:02] Episode 651  Reward:   0.174154  Wealth:    132812.26  Turnover: 0.3222  Gross: 1.4049  Gate: 0.8099
+[06:02:03] Episode 652  Reward:   0.134543  Wealth:    127880.09  Turnover: 0.4405  Gross: 1.3974  Gate: 0.7947
+[06:02:03] Episode 653  Reward:  -0.072830  Wealth:    101348.65  Turnover: 0.4453  Gross: 1.3997  Gate: 0.7994
+[06:02:04] Episode 654  Reward:   0.161483  Wealth:    131702.03  Turnover: 0.3644  Gross: 1.4054  Gate: 0.8108
+[06:02:05] Episode 655  Reward:   0.265764  Wealth:    157430.36  Turnover: 0.6231  Gross: 1.3971  Gate: 0.7943
+[06:02:05] Episode 656  Reward:   0.163280  Wealth:    131550.15  Turnover: 0.3877  Gross: 1.4060  Gate: 0.8121
+[06:02:06] Episode 657  Reward:   0.039566  Wealth:    113751.72  Turnover: 0.6466  Gross: 1.4054  Gate: 0.8108
+[06:02:07] Episode 658  Reward:   0.013782  Wealth:    112020.68  Turnover: 0.4991  Gross: 1.3893  Gate: 0.7786
+[06:02:07] Episode 659  Reward:   0.189409  Wealth:    134659.02  Turnover: 0.4148  Gross: 1.4073  Gate: 0.8145
+[06:02:08] Episode 660  Reward:   0.030072  Wealth:    115815.32  Turnover: 0.4920  Gross: 1.3799  Gate: 0.7599
+[06:02:08] Episode    660  AvgReward:   0.109922  Noise: 0.0401
+[06:02:09] Episode 661  Reward:   0.191791  Wealth:    139449.65  Turnover: 0.5003  Gross: 1.4020  Gate: 0.8041
+[06:02:10] Episode 662  Reward:   0.173627  Wealth:    133056.29  Turnover: 0.4617  Gross: 1.4075  Gate: 0.8149
+[06:02:10] Episode 663  Reward:   0.257817  Wealth:    153772.79  Turnover: 0.6481  Gross: 1.3899  Gate: 0.7797
+[06:02:11] Episode 664  Reward:   0.248555  Wealth:    147083.44  Turnover: 0.5912  Gross: 1.3999  Gate: 0.7997
+[06:02:12] Episode 665  Reward:  -0.268214  Wealth:     84908.79  Turnover: 0.6049  Gross: 1.4003  Gate: 0.8005
+[06:02:12] Episode 666  Reward:  -0.184179  Wealth:     91003.14  Turnover: 0.3517  Gross: 1.3907  Gate: 0.7814
+[06:02:13] Episode 667  Reward:   0.196090  Wealth:    137414.16  Turnover: 0.5987  Gross: 1.4007  Gate: 0.8015
+[06:02:14] Episode 668  Reward:   0.142930  Wealth:    130753.44  Turnover: 0.5954  Gross: 1.3914  Gate: 0.7829
+[06:02:14] Episode 669  Reward:  -0.229432  Wealth:     88027.37  Turnover: 0.4553  Gross: 1.3976  Gate: 0.7951
+[06:02:15] Episode 670  Reward:   0.284779  Wealth:    156437.52  Turnover: 0.6699  Gross: 1.4005  Gate: 0.8011
+[06:02:15] Episode    670  AvgReward:   0.081376  Noise: 0.0393
+[06:02:16] Episode 671  Reward:   0.096649  Wealth:    122685.67  Turnover: 0.6302  Gross: 1.3917  Gate: 0.7834
+[06:02:16] Episode 672  Reward:   0.275968  Wealth:    154146.37  Turnover: 0.7421  Gross: 1.3982  Gate: 0.7964
+[06:02:17] Episode 673  Reward:  -0.129178  Wealth:     96327.01  Turnover: 0.5514  Gross: 1.3984  Gate: 0.7968
+[06:02:18] Episode 674  Reward:   0.198660  Wealth:    142155.43  Turnover: 0.5834  Gross: 1.3962  Gate: 0.7925
+[06:02:18] Episode 675  Reward:   0.321946  Wealth:    167240.86  Turnover: 0.7629  Gross: 1.3992  Gate: 0.7983
+[06:02:19] Episode 676  Reward:   0.135864  Wealth:    129664.71  Turnover: 0.8058  Gross: 1.3950  Gate: 0.7901
+[06:02:20] Episode 677  Reward:   0.362629  Wealth:    184308.57  Turnover: 0.7573  Gross: 1.3990  Gate: 0.7980
+[06:02:20] Episode 678  Reward:   0.215261  Wealth:    141350.11  Turnover: 0.5337  Gross: 1.3890  Gate: 0.7779
+[06:02:21] Episode 679  Reward:   0.146695  Wealth:    127905.20  Turnover: 0.5950  Gross: 1.3944  Gate: 0.7888
+[06:02:22] Episode 680  Reward:   0.358794  Wealth:    183692.71  Turnover: 0.7476  Gross: 1.3917  Gate: 0.7833
+[06:02:22] Episode    680  AvgReward:   0.198329  Noise: 0.0385
+[06:02:23] Episode 681  Reward:   0.183312  Wealth:    138173.99  Turnover: 0.5054  Gross: 1.4036  Gate: 0.8072
+[06:02:23] Episode 682  Reward:  -0.030505  Wealth:    107097.14  Turnover: 0.5216  Gross: 1.4005  Gate: 0.8010
+[06:02:24] Episode 683  Reward:   0.322951  Wealth:    174262.41  Turnover: 0.6621  Gross: 1.3928  Gate: 0.7856
+[06:02:25] Episode 684  Reward:   0.116506  Wealth:    125405.79  Turnover: 0.5658  Gross: 1.4028  Gate: 0.8055
+[06:02:25] Episode 685  Reward:   0.338379  Wealth:    181108.79  Turnover: 0.6440  Gross: 1.3899  Gate: 0.7799
+[06:02:26] Episode 686  Reward:  -0.061487  Wealth:    103542.60  Turnover: 0.6158  Gross: 1.4004  Gate: 0.8008
+[06:02:27] Episode 687  Reward:   0.048423  Wealth:    114738.97  Turnover: 0.9134  Gross: 1.4063  Gate: 0.8125
+[06:02:27] Episode 688  Reward:   0.369146  Wealth:    189997.09  Turnover: 0.6345  Gross: 1.3933  Gate: 0.7866
+[06:02:28] Episode 689  Reward:  -0.009039  Wealth:    108502.98  Turnover: 0.4598  Gross: 1.4025  Gate: 0.8049
+[06:02:29] Episode 690  Reward:   0.243614  Wealth:    148166.12  Turnover: 0.5341  Gross: 1.3828  Gate: 0.7657
+[06:02:29] Episode    690  AvgReward:   0.152130  Noise: 0.0378
+[06:02:29] Episode 691  Reward:   0.421544  Wealth:    216475.11  Turnover: 0.6370  Gross: 1.3883  Gate: 0.7765
+[06:02:30] Episode 692  Reward:  -0.024583  Wealth:    106145.99  Turnover: 0.6525  Gross: 1.3581  Gate: 0.7161
+[06:02:31] Episode 693  Reward:   0.373847  Wealth:    195795.36  Turnover: 0.5623  Gross: 1.3844  Gate: 0.7688
+[06:02:32] Episode 694  Reward:   0.034989  Wealth:    114921.40  Turnover: 0.6304  Gross: 1.4038  Gate: 0.8076
+[06:02:32] Episode 695  Reward:   0.017875  Wealth:    110593.77  Turnover: 0.5683  Gross: 1.4019  Gate: 0.8038
+[06:02:33] Episode 696  Reward:   0.306838  Wealth:    172944.37  Turnover: 0.5592  Gross: 1.3883  Gate: 0.7766
+[06:02:34] Episode 697  Reward:   0.132241  Wealth:    128438.73  Turnover: 0.5812  Gross: 1.4013  Gate: 0.8027
+[06:02:34] Episode 698  Reward:  -0.127428  Wealth:     97170.65  Turnover: 0.6120  Gross: 1.3862  Gate: 0.7723
+[06:02:35] Episode 699  Reward:   0.306287  Wealth:    172139.88  Turnover: 0.5702  Gross: 1.3919  Gate: 0.7838
+[06:02:36] Episode 700  Reward:  -0.080328  Wealth:    102279.43  Turnover: 0.6749  Gross: 1.4060  Gate: 0.8120
+[06:02:36] Episode    700  AvgReward:   0.136128  Noise: 0.0370
+[06:02:36] Episode 701  Reward:   0.341450  Wealth:    184475.19  Turnover: 0.5850  Gross: 1.3941  Gate: 0.7883
+[06:02:37] Episode 702  Reward:   0.064305  Wealth:    117172.35  Turnover: 0.5054  Gross: 1.3981  Gate: 0.7962
+[06:02:38] Episode 703  Reward:   0.043180  Wealth:    114902.72  Turnover: 0.4140  Gross: 1.3927  Gate: 0.7854
+[06:02:38] Episode 704  Reward:   0.396134  Wealth:    201286.51  Turnover: 0.6357  Gross: 1.3975  Gate: 0.7950
+[06:02:39] Episode 705  Reward:   0.169692  Wealth:    130627.06  Turnover: 0.4813  Gross: 1.3891  Gate: 0.7781
+[06:02:40] Episode 706  Reward:  -0.082386  Wealth:    101967.29  Turnover: 0.6916  Gross: 1.3875  Gate: 0.7749
+[06:02:40] Episode 707  Reward:   0.361364  Wealth:    189384.32  Turnover: 0.5881  Gross: 1.3935  Gate: 0.7870
+[06:02:41] Episode 708  Reward:   0.043443  Wealth:    113978.49  Turnover: 0.6476  Gross: 1.4053  Gate: 0.8105
+[06:02:42] Episode 709  Reward:   0.351054  Wealth:    185638.81  Turnover: 0.5913  Gross: 1.3911  Gate: 0.7821
+[06:02:43] Episode 710  Reward:   0.070870  Wealth:    116370.44  Turnover: 0.3785  Gross: 1.3955  Gate: 0.7909
+[06:02:43] Episode    710  AvgReward:   0.175911  Noise: 0.0363
+[06:02:43] Episode 711  Reward:   0.319666  Wealth:    172746.32  Turnover: 0.4366  Gross: 1.3988  Gate: 0.7976
+[06:02:44] Episode 712  Reward:   0.355861  Wealth:    186853.23  Turnover: 0.6127  Gross: 1.3909  Gate: 0.7818
+[06:02:45] Episode 713  Reward:   0.246965  Wealth:    147729.11  Turnover: 0.3708  Gross: 1.3797  Gate: 0.7594
+[06:02:45] Episode 714  Reward:   0.325190  Wealth:    175402.56  Turnover: 0.5953  Gross: 1.3950  Gate: 0.7901
+[06:02:46] Episode 715  Reward:   0.139945  Wealth:    128729.52  Turnover: 0.6149  Gross: 1.3998  Gate: 0.7996
+[06:02:47] Episode 716  Reward:   0.186391  Wealth:    136900.47  Turnover: 0.3640  Gross: 1.4063  Gate: 0.8126
+[06:02:47] Episode 717  Reward:   0.379864  Wealth:    192690.36  Turnover: 0.6163  Gross: 1.4013  Gate: 0.8026
+[06:02:48] Episode 718  Reward:   0.174034  Wealth:    132017.86  Turnover: 0.4601  Gross: 1.4006  Gate: 0.8012
+[06:02:49] Episode 719  Reward:   0.045884  Wealth:    114336.74  Turnover: 0.4504  Gross: 1.4008  Gate: 0.8015
+[06:02:49] Episode 720  Reward:   0.354983  Wealth:    183943.19  Turnover: 0.5968  Gross: 1.3948  Gate: 0.7896
+[06:02:49] Episode    720  AvgReward:   0.252878  Noise: 0.0356
+[06:02:50] Episode 721  Reward:   0.146676  Wealth:    129797.58  Turnover: 0.6368  Gross: 1.4055  Gate: 0.8110
+[06:02:51] Episode 722  Reward:   0.357999  Wealth:    183468.11  Turnover: 0.6290  Gross: 1.3992  Gate: 0.7983
+[06:02:51] Episode 723  Reward:   0.214458  Wealth:    140962.72  Turnover: 0.6433  Gross: 1.3880  Gate: 0.7759
+[06:02:52] Episode 724  Reward:   0.151618  Wealth:    131263.07  Turnover: 0.5406  Gross: 1.4038  Gate: 0.8076
+[06:02:53] Episode 725  Reward:   0.326649  Wealth:    172661.33  Turnover: 0.5920  Gross: 1.3973  Gate: 0.7946
+[06:02:54] Episode 726  Reward:   0.107081  Wealth:    126914.88  Turnover: 0.4143  Gross: 1.3977  Gate: 0.7954
+[06:02:54] Episode 727  Reward:   0.060884  Wealth:    115817.61  Turnover: 0.6636  Gross: 1.4071  Gate: 0.8141
+[06:02:55] Episode 728  Reward:   0.251649  Wealth:    153283.49  Turnover: 0.5741  Gross: 1.3962  Gate: 0.7924
+[06:02:56] Episode 729  Reward:   0.138396  Wealth:    128922.34  Turnover: 0.5532  Gross: 1.4044  Gate: 0.8089
+[06:02:56] Episode 730  Reward:   0.306384  Wealth:    168193.06  Turnover: 0.5576  Gross: 1.4002  Gate: 0.8004
+[06:02:56] Episode    730  AvgReward:   0.206180  Noise: 0.0349
+[06:02:57] Episode 731  Reward:  -0.097226  Wealth:     99951.24  Turnover: 0.5347  Gross: 1.4008  Gate: 0.8016
+[06:02:58] Episode 732  Reward:   0.106803  Wealth:    125357.50  Turnover: 0.6721  Gross: 1.4061  Gate: 0.8122
+[06:02:58] Episode 733  Reward:   0.256193  Wealth:    152909.80  Turnover: 0.5448  Gross: 1.4033  Gate: 0.8066
+[06:02:59] Episode 734  Reward:   0.401856  Wealth:    194448.39  Turnover: 0.6867  Gross: 1.4028  Gate: 0.8056
+[06:03:00] Episode 735  Reward:   0.228616  Wealth:    148250.51  Turnover: 0.4260  Gross: 1.3965  Gate: 0.7930
+[06:03:00] Episode 736  Reward:   0.225779  Wealth:    145789.92  Turnover: 0.5694  Gross: 1.4018  Gate: 0.8037
+[06:03:01] Episode 737  Reward:   0.046088  Wealth:    114072.28  Turnover: 0.4696  Gross: 1.3999  Gate: 0.7999
+[06:03:02] Episode 738  Reward:   0.178023  Wealth:    135934.11  Turnover: 0.5287  Gross: 1.3996  Gate: 0.7992
+[06:03:03] Episode 739  Reward:   0.135418  Wealth:    130851.12  Turnover: 0.4522  Gross: 1.4078  Gate: 0.8156
+[06:03:03] Episode 740  Reward:   0.258276  Wealth:    154102.77  Turnover: 0.5307  Gross: 1.4085  Gate: 0.8169
+[06:03:03] Episode    740  AvgReward:   0.173983  Noise: 0.0342
+[06:03:04] Episode 741  Reward:   0.061261  Wealth:    116936.21  Turnover: 0.5546  Gross: 1.4020  Gate: 0.8040
+[06:03:05] Episode 742  Reward:  -0.022030  Wealth:    106761.23  Turnover: 0.3610  Gross: 1.4016  Gate: 0.8031
+[06:03:05] Episode 743  Reward:   0.081505  Wealth:    119170.66  Turnover: 0.5448  Gross: 1.4044  Gate: 0.8088
+[06:03:06] Episode 744  Reward:   0.056853  Wealth:    120020.92  Turnover: 0.5855  Gross: 1.3982  Gate: 0.7964
+[06:03:07] Episode 745  Reward:   0.193115  Wealth:    136468.34  Turnover: 0.5578  Gross: 1.4010  Gate: 0.8021
+[06:03:07] Episode 746  Reward:   0.087589  Wealth:    119478.01  Turnover: 0.6058  Gross: 1.4021  Gate: 0.8042
+[06:03:08] Episode 747  Reward:   0.225895  Wealth:    143334.39  Turnover: 0.6279  Gross: 1.3956  Gate: 0.7911
+[06:03:09] Episode 748  Reward:   0.086391  Wealth:    120294.72  Turnover: 0.4972  Gross: 1.4008  Gate: 0.8017
+[06:03:09] Episode 749  Reward:   0.125699  Wealth:    124961.13  Turnover: 0.5882  Gross: 1.4058  Gate: 0.8116
+[06:03:10] Episode 750  Reward:   0.216849  Wealth:    143349.97  Turnover: 0.5868  Gross: 1.4063  Gate: 0.8125
+[06:03:10] Episode    750  AvgReward:   0.111313  Noise: 0.0335
+[06:03:11] Episode 751  Reward:   0.118070  Wealth:    123384.30  Turnover: 0.5865  Gross: 1.4038  Gate: 0.8077
+[06:03:12] Episode 752  Reward:   0.027207  Wealth:    113263.11  Turnover: 0.7022  Gross: 1.4070  Gate: 0.8140
+[06:03:12] Episode 753  Reward:  -0.264563  Wealth:     84966.56  Turnover: 0.3946  Gross: 1.4048  Gate: 0.8096
+[06:03:13] Episode 754  Reward:   0.057505  Wealth:    114881.20  Turnover: 0.5590  Gross: 1.4037  Gate: 0.8074
+[06:03:14] Episode 755  Reward:  -0.107485  Wealth:     99348.78  Turnover: 0.3825  Gross: 1.3990  Gate: 0.7980
+[06:03:14] Episode 756  Reward:   0.200309  Wealth:    138177.93  Turnover: 0.5993  Gross: 1.4006  Gate: 0.8012
+[06:03:15] Episode 757  Reward:   0.106755  Wealth:    121726.34  Turnover: 0.5496  Gross: 1.4047  Gate: 0.8094
+[06:03:16] Episode 758  Reward:   0.185936  Wealth:    136368.62  Turnover: 0.7111  Gross: 1.4049  Gate: 0.8098
+[06:03:16] Episode 759  Reward:   0.092493  Wealth:    119892.82  Turnover: 0.6157  Gross: 1.4049  Gate: 0.8099
+[06:03:17] Episode 760  Reward:   0.077675  Wealth:    117641.22  Turnover: 0.4824  Gross: 1.4091  Gate: 0.8182
+[06:03:17] Episode    760  AvgReward:   0.049390  Noise: 0.0328
+[06:03:18] Episode 761  Reward:  -0.077590  Wealth:    101585.95  Turnover: 0.4909  Gross: 1.3844  Gate: 0.7687
+[06:03:19] Episode 762  Reward:   0.127711  Wealth:    124902.28  Turnover: 0.6112  Gross: 1.4028  Gate: 0.8056
+[06:03:19] Episode 763  Reward:  -0.007114  Wealth:    106833.12  Turnover: 0.6435  Gross: 1.3824  Gate: 0.7647
+[06:03:20] Episode 764  Reward:   0.101338  Wealth:    127774.06  Turnover: 0.4925  Gross: 1.3969  Gate: 0.7938
+[06:03:21] Episode 765  Reward:   0.090387  Wealth:    119065.69  Turnover: 0.6453  Gross: 1.4039  Gate: 0.8078
+[06:03:21] Episode 766  Reward:   0.205102  Wealth:    138757.50  Turnover: 0.4835  Gross: 1.3951  Gate: 0.7902
+[06:03:22] Episode 767  Reward:   0.072891  Wealth:    116735.16  Turnover: 0.6574  Gross: 1.4032  Gate: 0.8065
+[06:03:23] Episode 768  Reward:   0.153430  Wealth:    132984.49  Turnover: 0.4717  Gross: 1.3948  Gate: 0.7896
+[06:03:23] Episode 769  Reward:  -0.131120  Wealth:     97087.04  Turnover: 0.7095  Gross: 1.3765  Gate: 0.7531
+[06:03:24] Episode 770  Reward:   0.110749  Wealth:    122115.50  Turnover: 0.6319  Gross: 1.4054  Gate: 0.8107
+[06:03:24] Episode    770  AvgReward:   0.064578  Noise: 0.0322
+[06:03:25] Episode 771  Reward:   0.102872  Wealth:    123704.75  Turnover: 0.3852  Gross: 1.4050  Gate: 0.8100
+[06:03:25] Episode 772  Reward:   0.186080  Wealth:    135928.07  Turnover: 0.5371  Gross: 1.3881  Gate: 0.7763
+[06:03:26] Episode 773  Reward:   0.097553  Wealth:    120330.37  Turnover: 0.6622  Gross: 1.4067  Gate: 0.8134
+[06:03:27] Episode 774  Reward:   0.161837  Wealth:    130697.95  Turnover: 0.4522  Gross: 1.4018  Gate: 0.8037
+[06:03:28] Episode 775  Reward:   0.096737  Wealth:    120132.99  Turnover: 0.6849  Gross: 1.4049  Gate: 0.8098
+[06:03:28] Episode 776  Reward:   0.098613  Wealth:    124222.90  Turnover: 0.3211  Gross: 1.3977  Gate: 0.7955
+[06:03:29] Episode 777  Reward:   0.112049  Wealth:    122756.86  Turnover: 0.5041  Gross: 1.4035  Gate: 0.8069
+[06:03:30] Episode 778  Reward:   0.102985  Wealth:    120482.23  Turnover: 0.7195  Gross: 1.4018  Gate: 0.8036
+[06:03:30] Episode 779  Reward:   0.127124  Wealth:    126671.79  Turnover: 0.5345  Gross: 1.3907  Gate: 0.7815
+[06:03:31] Episode 780  Reward:   0.055394  Wealth:    114105.06  Turnover: 0.6410  Gross: 1.4037  Gate: 0.8075
+[06:03:31] Episode    780  AvgReward:   0.114124  Noise: 0.0315
+[06:03:32] Episode 781  Reward:   0.158790  Wealth:    131818.76  Turnover: 0.4973  Gross: 1.4010  Gate: 0.8020
+[06:03:32] Episode 782  Reward:  -0.069920  Wealth:    102948.75  Turnover: 0.3506  Gross: 1.3930  Gate: 0.7859
+[06:03:33] Episode 783  Reward:   0.081942  Wealth:    117452.08  Turnover: 0.7420  Gross: 1.4038  Gate: 0.8075
+[06:03:34] Episode 784  Reward:   0.048189  Wealth:    116641.09  Turnover: 0.4125  Gross: 1.3914  Gate: 0.7827
+[06:03:35] Episode 785  Reward:  -0.222582  Wealth:     87216.53  Turnover: 0.3200  Gross: 1.3980  Gate: 0.7959
+[06:03:35] Episode 786  Reward:   0.047740  Wealth:    113128.31  Turnover: 0.7427  Gross: 1.4052  Gate: 0.8103
+[06:03:36] Episode 787  Reward:   0.062940  Wealth:    116837.54  Turnover: 0.4231  Gross: 1.3984  Gate: 0.7968
+[06:03:37] Episode 788  Reward:   0.079512  Wealth:    117435.06  Turnover: 0.6644  Gross: 1.4044  Gate: 0.8089
+[06:03:37] Episode 789  Reward:   0.172478  Wealth:    133159.12  Turnover: 0.4406  Gross: 1.4065  Gate: 0.8129
+[06:03:38] Episode 790  Reward:   0.084561  Wealth:    123824.66  Turnover: 0.4429  Gross: 1.3869  Gate: 0.7737
+[06:03:38] Episode    790  AvgReward:   0.044365  Noise: 0.0309
+[06:03:39] Episode 791  Reward:   0.109451  Wealth:    121502.58  Turnover: 0.7671  Gross: 1.4035  Gate: 0.8069
+[06:03:39] Episode 792  Reward:  -0.045831  Wealth:    105864.31  Turnover: 0.5400  Gross: 1.3894  Gate: 0.7788
+[06:03:40] Episode 793  Reward:   0.114214  Wealth:    126340.19  Turnover: 0.4219  Gross: 1.3925  Gate: 0.7851
+[06:03:41] Episode 794  Reward:   0.130421  Wealth:    124970.17  Turnover: 0.7498  Gross: 1.4029  Gate: 0.8057
+[06:03:41] Episode 795  Reward:  -0.055508  Wealth:    102731.02  Turnover: 0.4804  Gross: 1.4066  Gate: 0.8132
+[06:03:42] Episode 796  Reward:   0.138187  Wealth:    125887.93  Turnover: 0.7025  Gross: 1.4032  Gate: 0.8064
+[06:03:43] Episode 797  Reward:  -0.169485  Wealth:     92314.38  Turnover: 0.5171  Gross: 1.4077  Gate: 0.8154
+[06:03:43] Episode 798  Reward:   0.023779  Wealth:    112854.49  Turnover: 0.4324  Gross: 1.3946  Gate: 0.7892
+[06:03:44] Episode 799  Reward:   0.168429  Wealth:    131000.64  Turnover: 0.7035  Gross: 1.4037  Gate: 0.8075
+[06:03:45] Episode 800  Reward:   0.150264  Wealth:    131569.09  Turnover: 0.4917  Gross: 1.3990  Gate: 0.7980
+[06:03:45] Episode    800  AvgReward:   0.056392  Noise: 0.0303
+[06:03:46] Episode 801  Reward:   0.236512  Wealth:    151334.71  Turnover: 0.5820  Gross: 1.3899  Gate: 0.7799
+[06:03:46] Episode 802  Reward:   0.168341  Wealth:    130916.56  Turnover: 0.6907  Gross: 1.4005  Gate: 0.8010
+[06:03:47] Episode 803  Reward:  -0.165085  Wealth:     92942.55  Turnover: 0.4858  Gross: 1.3997  Gate: 0.7993
+[06:03:48] Episode 804  Reward:   0.191533  Wealth:    134831.89  Turnover: 0.6478  Gross: 1.4006  Gate: 0.8011
+[06:03:48] Episode 805  Reward:   0.143978  Wealth:    132289.64  Turnover: 0.6319  Gross: 1.4004  Gate: 0.8009
+[06:03:49] Episode 806  Reward:   0.269149  Wealth:    155332.61  Turnover: 0.5443  Gross: 1.3999  Gate: 0.7997
+[06:03:50] Episode 807  Reward:   0.176295  Wealth:    135397.06  Turnover: 0.4337  Gross: 1.4060  Gate: 0.8121
+[06:03:50] Episode 808  Reward:   0.105205  Wealth:    124652.93  Turnover: 0.5391  Gross: 1.4026  Gate: 0.8052
+[06:03:51] Episode 809  Reward:   0.197641  Wealth:    139125.05  Turnover: 0.4188  Gross: 1.3995  Gate: 0.7989
+[06:03:52] Episode 810  Reward:  -0.025424  Wealth:    108090.40  Turnover: 0.4900  Gross: 1.4008  Gate: 0.8017
+[06:03:52] Episode    810  AvgReward:   0.129814  Noise: 0.0297
+[06:03:52] Episode 811  Reward:   0.107392  Wealth:    123608.05  Turnover: 0.4187  Gross: 1.3918  Gate: 0.7835
+[06:03:53] Episode 812  Reward:   0.183596  Wealth:    137883.97  Turnover: 0.4365  Gross: 1.4046  Gate: 0.8091
+[06:03:54] Episode 813  Reward:   0.146628  Wealth:    131682.81  Turnover: 0.4673  Gross: 1.4029  Gate: 0.8059
+[06:03:54] Episode 814  Reward:  -0.194360  Wealth:     90880.25  Turnover: 0.4089  Gross: 1.3942  Gate: 0.7883
+[06:03:55] Episode 815  Reward:   0.190920  Wealth:    140846.76  Turnover: 0.4810  Gross: 1.4079  Gate: 0.8158
+[06:03:56] Episode 816  Reward:   0.299649  Wealth:    166228.46  Turnover: 0.5954  Gross: 1.3965  Gate: 0.7930
+[06:03:57] Episode 817  Reward:   0.220674  Wealth:    145892.43  Turnover: 0.5316  Gross: 1.4083  Gate: 0.8166
+[06:03:57] Episode 818  Reward:   0.008145  Wealth:    110126.60  Turnover: 0.5891  Gross: 1.4030  Gate: 0.8059
+[06:03:58] Episode 819  Reward:   0.060641  Wealth:    118698.21  Turnover: 0.4518  Gross: 1.3952  Gate: 0.7903
+[06:03:59] Episode 820  Reward:   0.241410  Wealth:    148941.86  Turnover: 0.6339  Gross: 1.4075  Gate: 0.8150
+[06:03:59] Episode    820  AvgReward:   0.126469  Noise: 0.0291
+[06:03:59] Episode 821  Reward:   0.033136  Wealth:    116022.51  Turnover: 0.5224  Gross: 1.3907  Gate: 0.7814
+[06:04:00] Episode 822  Reward:   0.186030  Wealth:    139860.84  Turnover: 0.4603  Gross: 1.4039  Gate: 0.8078
+[06:04:01] Episode 823  Reward:   0.209077  Wealth:    142636.59  Turnover: 0.6542  Gross: 1.4044  Gate: 0.8088
+[06:04:01] Episode 824  Reward:   0.233634  Wealth:    148942.95  Turnover: 0.5418  Gross: 1.3949  Gate: 0.7899
+[06:04:02] Episode 825  Reward:   0.240696  Wealth:    148355.88  Turnover: 0.7097  Gross: 1.3971  Gate: 0.7941
+[06:04:03] Episode 826  Reward:  -0.180933  Wealth:     92039.73  Turnover: 0.5539  Gross: 1.3988  Gate: 0.7977
+[06:04:03] Episode 827  Reward:  -0.148050  Wealth:     93675.01  Turnover: 0.3903  Gross: 1.4021  Gate: 0.8042
+[06:04:04] Episode 828  Reward:   0.218316  Wealth:    143463.44  Turnover: 0.7293  Gross: 1.3971  Gate: 0.7941
+[06:04:05] Episode 829  Reward:   0.163017  Wealth:    132992.66  Turnover: 0.5362  Gross: 1.4023  Gate: 0.8045
+[06:04:05] Episode 830  Reward:  -0.220925  Wealth:     88827.41  Turnover: 0.4505  Gross: 1.3951  Gate: 0.7902
+[06:04:05] Episode    830  AvgReward:   0.073400  Noise: 0.0285
+[06:04:06] Episode 831  Reward:   0.299201  Wealth:    163545.46  Turnover: 0.7778  Gross: 1.4029  Gate: 0.8058
+[06:04:07] Episode 832  Reward:   0.092355  Wealth:    121725.02  Turnover: 0.5851  Gross: 1.3931  Gate: 0.7863
+[06:04:08] Episode 833  Reward:   0.302691  Wealth:    166420.77  Turnover: 0.8600  Gross: 1.3998  Gate: 0.7996
+[06:04:08] Episode 834  Reward:  -0.099966  Wealth:     98113.63  Turnover: 0.5243  Gross: 1.3966  Gate: 0.7931
+[06:04:09] Episode 835  Reward:   0.167725  Wealth:    136321.76  Turnover: 0.5556  Gross: 1.3981  Gate: 0.7961
+[06:04:10] Episode 836  Reward:   0.359594  Wealth:    183985.02  Turnover: 0.9000  Gross: 1.3990  Gate: 0.7979
+[06:04:10] Episode 837  Reward:   0.194705  Wealth:    140004.87  Turnover: 0.7378  Gross: 1.3985  Gate: 0.7970
+[06:04:11] Episode 838  Reward:   0.397302  Wealth:    199512.20  Turnover: 0.7797  Gross: 1.4026  Gate: 0.8052
+[06:04:12] Episode 839  Reward:   0.228276  Wealth:    147687.99  Turnover: 0.6543  Gross: 1.3933  Gate: 0.7867
+[06:04:12] Episode 840  Reward:   0.248594  Wealth:    146831.52  Turnover: 0.4901  Gross: 1.4040  Gate: 0.8081
+[06:04:12] Episode    840  AvgReward:   0.219048  Noise: 0.0280
+[06:04:13] Episode 841  Reward:   0.408114  Wealth:    206532.66  Turnover: 0.8222  Gross: 1.3985  Gate: 0.7970
+[06:04:14] Episode 842  Reward:   0.204873  Wealth:    142593.78  Turnover: 0.4947  Gross: 1.4034  Gate: 0.8069
+[06:04:14] Episode 843  Reward:  -0.056383  Wealth:    104863.65  Turnover: 0.5374  Gross: 1.3965  Gate: 0.7931
+[06:04:15] Episode 844  Reward:   0.366300  Wealth:    191729.34  Turnover: 0.6954  Gross: 1.3951  Gate: 0.7903
+[06:04:16] Episode 845  Reward:   0.099049  Wealth:    123107.20  Turnover: 0.5809  Gross: 1.4026  Gate: 0.8053
+[06:04:16] Episode 846  Reward:   0.384282  Wealth:    201438.99  Turnover: 0.6320  Gross: 1.3980  Gate: 0.7960
+[06:04:17] Episode 847  Reward:  -0.072111  Wealth:    102250.68  Turnover: 0.6794  Gross: 1.4039  Gate: 0.8078
+[06:04:18] Episode 848  Reward:   0.061991  Wealth:    116231.56  Turnover: 0.5893  Gross: 1.4037  Gate: 0.8074
+[06:04:18] Episode 849  Reward:   0.416168  Wealth:    214383.59  Turnover: 0.5701  Gross: 1.3984  Gate: 0.7968
+[06:04:19] Episode 850  Reward:   0.077564  Wealth:    121104.06  Turnover: 0.4446  Gross: 1.3979  Gate: 0.7957
+[06:04:19] Episode    850  AvgReward:   0.188985  Noise: 0.0274
+[06:04:20] Episode 851  Reward:   0.262268  Wealth:    153381.89  Turnover: 0.4853  Gross: 1.3883  Gate: 0.7766
+[06:04:21] Episode 852  Reward:   0.466661  Wealth:    244800.45  Turnover: 0.5534  Gross: 1.3961  Gate: 0.7922
+[06:04:21] Episode 853  Reward:  -0.004904  Wealth:    109114.73  Turnover: 0.5531  Gross: 1.3751  Gate: 0.7502
+[06:04:22] Episode 854  Reward:   0.439578  Wealth:    228492.60  Turnover: 0.5262  Gross: 1.3968  Gate: 0.7937
+[06:04:23] Episode 855  Reward:   0.027622  Wealth:    112745.60  Turnover: 0.4659  Gross: 1.4071  Gate: 0.8141
+[06:04:23] Episode 856  Reward:   0.045581  Wealth:    113469.20  Turnover: 0.4478  Gross: 1.4048  Gate: 0.8095
+[06:04:24] Episode 857  Reward:   0.376072  Wealth:    198945.45  Turnover: 0.5696  Gross: 1.3996  Gate: 0.7991
+[06:04:25] Episode 858  Reward:   0.109797  Wealth:    125868.48  Turnover: 0.4897  Gross: 1.4040  Gate: 0.8080
+[06:04:25] Episode 859  Reward:  -0.158732  Wealth:     94623.20  Turnover: 0.6008  Gross: 1.3961  Gate: 0.7921
+[06:04:26] Episode 860  Reward:   0.355612  Wealth:    190509.60  Turnover: 0.5676  Gross: 1.4018  Gate: 0.8037
+[06:04:26] Episode    860  AvgReward:   0.191955  Noise: 0.0269
+[06:04:27] Episode 861  Reward:  -0.123735  Wealth:     98033.67  Turnover: 0.6519  Gross: 1.3966  Gate: 0.7931
+[06:04:27] Episode 862  Reward:   0.403228  Wealth:    212005.88  Turnover: 0.5850  Gross: 1.4040  Gate: 0.8079
+[06:04:28] Episode 863  Reward:   0.065379  Wealth:    118561.12  Turnover: 0.5246  Gross: 1.4034  Gate: 0.8068
+[06:04:29] Episode 864  Reward:   0.013352  Wealth:    112234.39  Turnover: 0.4451  Gross: 1.3882  Gate: 0.7764
+[06:04:30] Episode 865  Reward:   0.436873  Wealth:    223220.20  Turnover: 0.6617  Gross: 1.4023  Gate: 0.8046
+[06:04:30] Episode 866  Reward:   0.054093  Wealth:    114298.93  Turnover: 0.4998  Gross: 1.3927  Gate: 0.7854
+[06:04:31] Episode 867  Reward:   0.038041  Wealth:    114047.46  Turnover: 0.5349  Gross: 1.3924  Gate: 0.7848
+[06:04:32] Episode 868  Reward:   0.402707  Wealth:    207771.30  Turnover: 0.6231  Gross: 1.4011  Gate: 0.8021
+[06:04:32] Episode 869  Reward:   0.001090  Wealth:    108905.69  Turnover: 0.7235  Gross: 1.4106  Gate: 0.8212
+[06:04:33] Episode 870  Reward:   0.394571  Wealth:    204584.06  Turnover: 0.5741  Gross: 1.4017  Gate: 0.8035
+[06:04:33] Episode    870  AvgReward:   0.168560  Noise: 0.0263
+[06:04:34] Episode 871  Reward:   0.122611  Wealth:    124206.70  Turnover: 0.4355  Gross: 1.4017  Gate: 0.8035
+[06:04:34] Episode 872  Reward:   0.334914  Wealth:    176679.33  Turnover: 0.4701  Gross: 1.4060  Gate: 0.8121
+[06:04:35] Episode 873  Reward:   0.391586  Wealth:    202191.81  Turnover: 0.5593  Gross: 1.4003  Gate: 0.8006
+[06:04:36] Episode 874  Reward:   0.234724  Wealth:    144004.26  Turnover: 0.3116  Gross: 1.3879  Gate: 0.7758
+[06:04:36] Episode 875  Reward:   0.354360  Wealth:    187281.38  Turnover: 0.5416  Gross: 1.4018  Gate: 0.8037
+[06:04:37] Episode 876  Reward:   0.114774  Wealth:    124701.52  Turnover: 0.7380  Gross: 1.4003  Gate: 0.8007
+[06:04:38] Episode 877  Reward:   0.215023  Wealth:    143646.59  Turnover: 0.4337  Gross: 1.4048  Gate: 0.8097
+[06:04:38] Episode 878  Reward:   0.379737  Wealth:    195563.27  Turnover: 0.5591  Gross: 1.4032  Gate: 0.8063
+[06:04:39] Episode 879  Reward:   0.105221  Wealth:    122278.49  Turnover: 0.6023  Gross: 1.3966  Gate: 0.7931
+[06:04:40] Episode 880  Reward:   0.094065  Wealth:    122427.48  Turnover: 0.5074  Gross: 1.3985  Gate: 0.7969
+[06:04:40] Episode    880  AvgReward:   0.234702  Noise: 0.0258
+[06:04:41] Episode 881  Reward:   0.396577  Wealth:    201105.56  Turnover: 0.5498  Gross: 1.4018  Gate: 0.8036
+[06:04:41] Episode 882  Reward:   0.178837  Wealth:    136232.01  Turnover: 0.8133  Gross: 1.4007  Gate: 0.8013
+[06:04:42] Episode 883  Reward:   0.372434  Wealth:    190597.10  Turnover: 0.5994  Gross: 1.3992  Gate: 0.7984
+[06:04:43] Episode 884  Reward:   0.180207  Wealth:    135848.09  Turnover: 0.7050  Gross: 1.3951  Gate: 0.7902
+[06:04:43] Episode 885  Reward:   0.155391  Wealth:    133897.21  Turnover: 0.5802  Gross: 1.4009  Gate: 0.8018
+[06:04:44] Episode 886  Reward:   0.334720  Wealth:    177249.80  Turnover: 0.5784  Gross: 1.4015  Gate: 0.8031
+[06:04:45] Episode 887  Reward:   0.120908  Wealth:    129821.07  Turnover: 0.4343  Gross: 1.4009  Gate: 0.8018
+[06:04:45] Episode 888  Reward:   0.054674  Wealth:    115881.75  Turnover: 0.7156  Gross: 1.4070  Gate: 0.8139
+[06:04:46] Episode 889  Reward:   0.263480  Wealth:    158034.39  Turnover: 0.5366  Gross: 1.3989  Gate: 0.7978
+[06:04:47] Episode 890  Reward:   0.140464  Wealth:    130861.43  Turnover: 0.6437  Gross: 1.3945  Gate: 0.7890
+[06:04:47] Episode    890  AvgReward:   0.219769  Noise: 0.0253
+[06:04:47] Episode 891  Reward:   0.329332  Wealth:    176376.74  Turnover: 0.5915  Gross: 1.4022  Gate: 0.8044
+[06:04:48] Episode 892  Reward:  -0.088162  Wealth:    101094.73  Turnover: 0.4944  Gross: 1.4012  Gate: 0.8023
+[06:04:49] Episode 893  Reward:   0.081889  Wealth:    122605.24  Turnover: 0.7251  Gross: 1.4033  Gate: 0.8066
+[06:04:50] Episode 894  Reward:   0.293668  Wealth:    163897.36  Turnover: 0.5662  Gross: 1.4011  Gate: 0.8023
+[06:04:50] Episode 895  Reward:   0.480093  Wealth:    236989.86  Turnover: 0.7187  Gross: 1.3895  Gate: 0.7791
+[06:04:51] Episode 896  Reward:   0.213570  Wealth:    145797.68  Turnover: 0.4800  Gross: 1.3978  Gate: 0.7956
+[06:04:52] Episode 897  Reward:   0.262924  Wealth:    155773.15  Turnover: 0.5730  Gross: 1.4019  Gate: 0.8038
+[06:04:52] Episode 898  Reward:   0.063086  Wealth:    116410.89  Turnover: 0.4787  Gross: 1.3980  Gate: 0.7960
+[06:04:53] Episode 899  Reward:   0.215819  Wealth:    144228.40  Turnover: 0.6174  Gross: 1.3992  Gate: 0.7985
+[06:04:54] Episode 900  Reward:   0.132858  Wealth:    130939.66  Turnover: 0.4698  Gross: 1.4088  Gate: 0.8176
+[06:04:54] Episode    900  AvgReward:   0.198508  Noise: 0.0248
+[06:04:54] Episode 901  Reward:   0.283889  Wealth:    158709.82  Turnover: 0.5876  Gross: 1.4033  Gate: 0.8066
+[06:04:55] Episode 902  Reward:   0.150282  Wealth:    131130.28  Turnover: 0.6295  Gross: 1.4027  Gate: 0.8054
+[06:04:56] Episode 903  Reward:  -0.045999  Wealth:    104558.08  Turnover: 0.3517  Gross: 1.4069  Gate: 0.8137
+[06:04:56] Episode 904  Reward:   0.154144  Wealth:    131208.27  Turnover: 0.7304  Gross: 1.4014  Gate: 0.8028
+[06:04:57] Episode 905  Reward:   0.057735  Wealth:    120644.94  Turnover: 0.5345  Gross: 1.4025  Gate: 0.8050
+[06:04:58] Episode 906  Reward:   0.192702  Wealth:    137800.48  Turnover: 0.6619  Gross: 1.4003  Gate: 0.8007
+[06:04:59] Episode 907  Reward:   0.156593  Wealth:    131384.09  Turnover: 0.7320  Gross: 1.4045  Gate: 0.8091
+[06:04:59] Episode 908  Reward:   0.236425  Wealth:    147703.61  Turnover: 0.6279  Gross: 1.3915  Gate: 0.7830
+[06:05:00] Episode 909  Reward:   0.053343  Wealth:    116002.38  Turnover: 0.5684  Gross: 1.3997  Gate: 0.7994
+[06:05:01] Episode 910  Reward:   0.201761  Wealth:    139172.88  Turnover: 0.7952  Gross: 1.4041  Gate: 0.8082
+[06:05:01] Episode    910  AvgReward:   0.144088  Noise: 0.0243
+[06:05:01] Episode 911  Reward:   0.219077  Wealth:    144868.99  Turnover: 0.6870  Gross: 1.4054  Gate: 0.8109
+[06:05:02] Episode 912  Reward:   0.206560  Wealth:    139573.62  Turnover: 0.7890  Gross: 1.4040  Gate: 0.8080
+[06:05:03] Episode 913  Reward:   0.089529  Wealth:    123054.98  Turnover: 0.7377  Gross: 1.4067  Gate: 0.8133
+[06:05:03] Episode 914  Reward:  -0.340625  Wealth:     80453.69  Turnover: 0.4204  Gross: 1.4008  Gate: 0.8017
+[06:05:04] Episode 915  Reward:   0.155110  Wealth:    130339.76  Turnover: 0.7230  Gross: 1.4036  Gate: 0.8072
+[06:05:05] Episode 916  Reward:  -0.157309  Wealth:     96123.99  Turnover: 0.2758  Gross: 1.4036  Gate: 0.8071
+[06:05:05] Episode 917  Reward:   0.216956  Wealth:    143732.20  Turnover: 0.6617  Gross: 1.3899  Gate: 0.7798
+[06:05:06] Episode 918  Reward:   0.165449  Wealth:    131561.50  Turnover: 0.7917  Gross: 1.4061  Gate: 0.8123
+[06:05:07] Episode 919  Reward:   0.281423  Wealth:    160303.77  Turnover: 0.9220  Gross: 1.3983  Gate: 0.7967
+[06:05:08] Episode 920  Reward:   0.135128  Wealth:    126545.14  Turnover: 0.7535  Gross: 1.4045  Gate: 0.8091
+[06:05:08] Episode    920  AvgReward:   0.097130  Noise: 0.0238
+[06:05:08] Episode 921  Reward:   0.111812  Wealth:    124126.17  Turnover: 0.4345  Gross: 1.4033  Gate: 0.8066
+[06:05:09] Episode 922  Reward:  -0.120152  Wealth:     97394.85  Turnover: 0.5692  Gross: 1.3854  Gate: 0.7708
+[06:05:10] Episode 923  Reward:   0.170168  Wealth:    132268.67  Turnover: 0.8348  Gross: 1.4048  Gate: 0.8095
+[06:05:10] Episode 924  Reward:   0.083505  Wealth:    120314.87  Turnover: 0.7329  Gross: 1.3808  Gate: 0.7615
+[06:05:11] Episode 925  Reward:   0.113359  Wealth:    130335.11  Turnover: 0.4436  Gross: 1.3984  Gate: 0.7968
+[06:05:12] Episode 926  Reward:   0.118326  Wealth:    123488.70  Turnover: 0.7991  Gross: 1.4042  Gate: 0.8085
+[06:05:12] Episode 927  Reward:   0.248871  Wealth:    148407.29  Turnover: 0.6917  Gross: 1.3900  Gate: 0.7801
+[06:05:13] Episode 928  Reward:   0.105259  Wealth:    121488.74  Turnover: 0.8032  Gross: 1.4037  Gate: 0.8074
+[06:05:14] Episode 929  Reward:   0.153484  Wealth:    134136.83  Turnover: 0.5039  Gross: 1.3917  Gate: 0.7834
+[06:05:14] Episode 930  Reward:  -0.092022  Wealth:    101351.74  Turnover: 0.6399  Gross: 1.3807  Gate: 0.7614
+[06:05:14] Episode    930  AvgReward:   0.089261  Noise: 0.0234
+[06:05:15] Episode 931  Reward:   0.136141  Wealth:    126090.35  Turnover: 0.7845  Gross: 1.4040  Gate: 0.8080
+[06:05:16] Episode 932  Reward:   0.104483  Wealth:    123722.67  Turnover: 0.4645  Gross: 1.4059  Gate: 0.8118
+[06:05:16] Episode 933  Reward:   0.190819  Wealth:    137929.75  Turnover: 0.5404  Gross: 1.3910  Gate: 0.7821
+[06:05:17] Episode 934  Reward:   0.132069  Wealth:    125726.66  Turnover: 0.7690  Gross: 1.3984  Gate: 0.7967
+[06:05:18] Episode 935  Reward:   0.136596  Wealth:    127395.01  Turnover: 0.6271  Gross: 1.4024  Gate: 0.8048
+[06:05:19] Episode 936  Reward:   0.151449  Wealth:    128840.06  Turnover: 0.8503  Gross: 1.4048  Gate: 0.8096
+[06:05:19] Episode 937  Reward:   0.110696  Wealth:    126238.62  Turnover: 0.3537  Gross: 1.3970  Gate: 0.7940
+[06:05:20] Episode 938  Reward:   0.103051  Wealth:    123021.96  Turnover: 0.6449  Gross: 1.4019  Gate: 0.8039
+[06:05:21] Episode 939  Reward:   0.172161  Wealth:    131810.57  Turnover: 0.8439  Gross: 1.4047  Gate: 0.8093
+[06:05:21] Episode 940  Reward:   0.110494  Wealth:    123953.91  Turnover: 0.5695  Gross: 1.3849  Gate: 0.7698
+[06:05:21] Episode    940  AvgReward:   0.134796  Noise: 0.0229
+[06:05:22] Episode 941  Reward:   0.134367  Wealth:    126126.11  Turnover: 0.8597  Gross: 1.4025  Gate: 0.8049
+[06:05:23] Episode 942  Reward:   0.185090  Wealth:    137153.54  Turnover: 0.5049  Gross: 1.4082  Gate: 0.8163
+[06:05:23] Episode 943  Reward:  -0.093028  Wealth:    100862.92  Turnover: 0.3752  Gross: 1.3930  Gate: 0.7859
+[06:05:24] Episode 944  Reward:   0.148738  Wealth:    127998.07  Turnover: 0.8721  Gross: 1.4042  Gate: 0.8084
+[06:05:25] Episode 945  Reward:  -0.019247  Wealth:    109533.18  Turnover: 0.4299  Gross: 1.3930  Gate: 0.7860
+[06:05:25] Episode 946  Reward:  -0.248159  Wealth:     85600.02  Turnover: 0.2753  Gross: 1.3978  Gate: 0.7955
+[06:05:26] Episode 947  Reward:   0.106862  Wealth:    121528.02  Turnover: 0.8630  Gross: 1.4042  Gate: 0.8084
+[06:05:27] Episode 948  Reward:   0.065832  Wealth:    118624.30  Turnover: 0.4761  Gross: 1.3941  Gate: 0.7882
+[06:05:27] Episode 949  Reward:   0.148067  Wealth:    128210.56  Turnover: 0.8204  Gross: 1.4035  Gate: 0.8070
+[06:05:28] Episode 950  Reward:   0.212602  Wealth:    142379.49  Turnover: 0.5352  Gross: 1.3974  Gate: 0.7947
+[06:05:28] Episode    950  AvgReward:   0.064112  Noise: 0.0224
+[06:05:29] Episode 951  Reward:   0.053145  Wealth:    119366.32  Turnover: 0.4952  Gross: 1.3936  Gate: 0.7871
+[06:05:29] Episode 952  Reward:   0.169409  Wealth:    131266.61  Turnover: 0.8936  Gross: 1.4016  Gate: 0.8032
+[06:05:30] Episode 953  Reward:  -0.007552  Wealth:    111421.67  Turnover: 0.5975  Gross: 1.3840  Gate: 0.7680
+[06:05:31] Episode 954  Reward:   0.130700  Wealth:    129771.69  Turnover: 0.5058  Gross: 1.3917  Gate: 0.7834
+[06:05:32] Episode 955  Reward:   0.175921  Wealth:    132722.56  Turnover: 0.9151  Gross: 1.4004  Gate: 0.8008
+[06:05:32] Episode 956  Reward:  -0.159348  Wealth:     93561.89  Turnover: 0.5146  Gross: 1.4037  Gate: 0.8073
+[06:05:33] Episode 957  Reward:   0.175737  Wealth:    132336.64  Turnover: 0.8373  Gross: 1.4016  Gate: 0.8031
+[06:05:34] Episode 958  Reward:  -0.168166  Wealth:     92372.05  Turnover: 0.6068  Gross: 1.4040  Gate: 0.8079
+[06:05:34] Episode 959  Reward:  -0.022629  Wealth:    107864.89  Turnover: 0.5421  Gross: 1.3931  Gate: 0.7863
+[06:05:35] Episode 960  Reward:   0.198208  Wealth:    136625.31  Turnover: 0.8251  Gross: 1.3971  Gate: 0.7942
+[06:05:35] Episode    960  AvgReward:   0.054542  Noise: 0.0220
+[06:05:36] Episode 961  Reward:   0.108177  Wealth:    124978.05  Turnover: 0.6187  Gross: 1.3966  Gate: 0.7933
+[06:05:36] Episode 962  Reward:   0.214712  Wealth:    146931.30  Turnover: 0.5823  Gross: 1.3923  Gate: 0.7846
+[06:05:37] Episode 963  Reward:   0.209146  Wealth:    138514.16  Turnover: 0.7759  Gross: 1.3969  Gate: 0.7938
+[06:05:38] Episode 964  Reward:  -0.199232  Wealth:     90514.35  Turnover: 0.5023  Gross: 1.4033  Gate: 0.8067
+[06:05:38] Episode 965  Reward:   0.187629  Wealth:    134062.73  Turnover: 0.6676  Gross: 1.3956  Gate: 0.7913
+[06:05:39] Episode 966  Reward:   0.139531  Wealth:    131881.64  Turnover: 0.6472  Gross: 1.3979  Gate: 0.7958
+[06:05:40] Episode 967  Reward:   0.244376  Wealth:    148956.86  Turnover: 0.6120  Gross: 1.4018  Gate: 0.8036
+[06:05:40] Episode 968  Reward:   0.196804  Wealth:    137312.47  Turnover: 0.4368  Gross: 1.4005  Gate: 0.8010
+[06:05:41] Episode 969  Reward:   0.080108  Wealth:    120738.65  Turnover: 0.5552  Gross: 1.4030  Gate: 0.8061
+[06:05:42] Episode 970  Reward:   0.227783  Wealth:    143469.53  Turnover: 0.4671  Gross: 1.4005  Gate: 0.8011
+[06:05:42] Episode    970  AvgReward:   0.140903  Noise: 0.0216
+[06:05:43] Episode 971  Reward:  -0.032438  Wealth:    107305.50  Turnover: 0.5132  Gross: 1.3987  Gate: 0.7974
+[06:05:43] Episode 972  Reward:   0.108612  Wealth:    123836.01  Turnover: 0.4357  Gross: 1.3920  Gate: 0.7841
+[06:05:44] Episode 973  Reward:   0.229267  Wealth:    144641.12  Turnover: 0.4998  Gross: 1.4027  Gate: 0.8055
+[06:05:45] Episode 974  Reward:   0.114228  Wealth:    125175.24  Turnover: 0.4478  Gross: 1.3992  Gate: 0.7984
+[06:05:45] Episode 975  Reward:  -0.198784  Wealth:     90806.50  Turnover: 0.3973  Gross: 1.3914  Gate: 0.7827
+[06:05:46] Episode 976  Reward:   0.236233  Wealth:    147864.75  Turnover: 0.5855  Gross: 1.4036  Gate: 0.8072
+[06:05:47] Episode 977  Reward:   0.324649  Wealth:    174085.08  Turnover: 0.6346  Gross: 1.3910  Gate: 0.7820
+[06:05:47] Episode 978  Reward:   0.266509  Wealth:    154036.37  Turnover: 0.6411  Gross: 1.4044  Gate: 0.8088
+[06:05:48] Episode 979  Reward:  -0.065553  Wealth:    102058.42  Turnover: 0.5669  Gross: 1.4022  Gate: 0.8043
+[06:05:49] Episode 980  Reward:   0.168738  Wealth:    136777.69  Turnover: 0.5566  Gross: 1.3885  Gate: 0.7769
+[06:05:49] Episode    980  AvgReward:   0.115146  Noise: 0.0211
+[06:05:49] Episode 981  Reward:   0.279786  Wealth:    157599.56  Turnover: 0.6888  Gross: 1.4038  Gate: 0.8075
+[06:05:50] Episode 982  Reward:  -0.001464  Wealth:    112513.41  Turnover: 0.5002  Gross: 1.3935  Gate: 0.7869
+[06:05:51] Episode 983  Reward:   0.193186  Wealth:    139933.52  Turnover: 0.5152  Gross: 1.4035  Gate: 0.8069
+[06:05:51] Episode 984  Reward:   0.267890  Wealth:    155012.44  Turnover: 0.7306  Gross: 1.4018  Gate: 0.8035
+[06:05:52] Episode 985  Reward:   0.204152  Wealth:    142599.10  Turnover: 0.5545  Gross: 1.3997  Gate: 0.7993
+[06:05:53] Episode 986  Reward:   0.271653  Wealth:    155314.28  Turnover: 0.7536  Gross: 1.3981  Gate: 0.7962
+[06:05:54] Episode 987  Reward:  -0.117339  Wealth:     97851.48  Turnover: 0.6351  Gross: 1.3972  Gate: 0.7944
+[06:05:54] Episode 988  Reward:  -0.190661  Wealth:     90236.02  Turnover: 0.4509  Gross: 1.4013  Gate: 0.8025
+[06:05:55] Episode 989  Reward:   0.247144  Wealth:    150186.20  Turnover: 0.7903  Gross: 1.3979  Gate: 0.7959
+[06:05:56] Episode 990  Reward:   0.173888  Wealth:    134111.48  Turnover: 0.5725  Gross: 1.4020  Gate: 0.8040
+[06:05:56] Episode    990  AvgReward:   0.132824  Noise: 0.0207
+[06:05:56] Episode 991  Reward:  -0.199102  Wealth:     90594.21  Turnover: 0.5139  Gross: 1.3899  Gate: 0.7798
+[06:05:57] Episode 992  Reward:   0.325002  Wealth:    170005.34  Turnover: 0.7854  Gross: 1.4070  Gate: 0.8141
+[06:05:58] Episode 993  Reward:   0.150153  Wealth:    131945.12  Turnover: 0.7499  Gross: 1.3949  Gate: 0.7897
+[06:05:58] Episode 994  Reward:   0.330337  Wealth:    174193.91  Turnover: 0.8575  Gross: 1.4029  Gate: 0.8059
+[06:05:59] Episode 995  Reward:   0.050845  Wealth:    115740.57  Turnover: 0.6578  Gross: 1.3898  Gate: 0.7796
+[06:06:00] Episode 996  Reward:   0.152775  Wealth:    133722.06  Turnover: 0.5577  Gross: 1.3966  Gate: 0.7931
+[06:06:00] Episode 997  Reward:   0.373217  Wealth:    189613.91  Turnover: 0.9061  Gross: 1.3998  Gate: 0.7997
+[06:06:01] Episode 998  Reward:   0.155561  Wealth:    134371.84  Turnover: 0.8444  Gross: 1.3992  Gate: 0.7983
+[06:06:02] Episode 999  Reward:   0.405510  Wealth:    209792.86  Turnover: 0.7109  Gross: 1.4057  Gate: 0.8115
+[06:06:03] Episode 1000  Reward:   0.219824  Wealth:    145916.27  Turnover: 0.6180  Gross: 1.3953  Gate: 0.7906
+[06:06:03] Episode   1000  AvgReward:   0.196412  Noise: 0.0203
+[06:06:03] TRAIN STAGE COMPLETE
+[06:06:15] PRE-TRAINING BEHAVIOUR GATE PASSED on deterministic held-in episodes: mean_leverage_gate=0.7980, fraction_at_gross_cap=0.0000, gate_gross_mae=0.0000, mean_turnover=0.6499, max_position_limit_violation=0.0000, mean_normalized_direction_entropy=0.8196, q05_normalized_direction_entropy=0.7455, mean_effective_positions=3.7622
+[06:06:15] Pre-training complete. Agent saved.
+[06:06:15] ============================================================
+[06:06:15] STAGE 2: FINE-TUNING
+[06:06:15] ============================================================
+[06:06:15] ============================================================
+[06:06:15] TRAIN STAGE STARTED: stage=finetune_selection, episodes=37, batch_size=64, updates_per_step=1
+[06:06:15] ============================================================
+[06:06:15] Episode 1  Reward:   0.418570  Wealth:    215779.40  Turnover: 0.6057  Gross: 1.4021  Gate: 0.8042
+[06:06:15] Episode 2  Reward:   0.401811  Wealth:    203039.88  Turnover: 0.6154  Gross: 1.4026  Gate: 0.8053
+[06:06:16] Episode 3  Reward:   0.422231  Wealth:    214231.63  Turnover: 0.5848  Gross: 1.4032  Gate: 0.8064
+[06:06:16] Episode 4  Reward:   0.417722  Wealth:    210505.19  Turnover: 0.6161  Gross: 1.4027  Gate: 0.8054
+[06:06:17] Episode 5  Reward:   0.404221  Wealth:    211163.13  Turnover: 0.5570  Gross: 1.3997  Gate: 0.7993
+[06:06:18] Episode 6  Reward:   0.495376  Wealth:    267105.26  Turnover: 0.6217  Gross: 1.4031  Gate: 0.8062
+[06:06:18] Episode 7  Reward:   0.431936  Wealth:    220785.75  Turnover: 0.6366  Gross: 1.4004  Gate: 0.8007
+[06:06:19] Episode 8  Reward:   0.214947  Wealth:    142394.45  Turnover: 0.5329  Gross: 1.3990  Gate: 0.7979
+[06:06:20] Episode 9  Reward:   0.261655  Wealth:    154354.82  Turnover: 0.7286  Gross: 1.4007  Gate: 0.8014
+[06:06:20] Episode 10  Reward:   0.437584  Wealth:    225206.92  Turnover: 0.6560  Gross: 1.4052  Gate: 0.8103
+[06:06:21] Episode 11  Reward:   0.273814  Wealth:    155899.24  Turnover: 0.6834  Gross: 1.4057  Gate: 0.8114
+[06:06:22] Episode 12  Reward:   0.445835  Wealth:    232329.42  Turnover: 0.6641  Gross: 1.4027  Gate: 0.8055
+[06:06:22] Episode 13  Reward:   0.365906  Wealth:    195591.77  Turnover: 0.7192  Gross: 1.4009  Gate: 0.8018
+[06:06:23] Episode 14  Reward:   0.244042  Wealth:    146469.79  Turnover: 0.5200  Gross: 1.4053  Gate: 0.8106
+[06:06:24] Episode 15  Reward:   0.330743  Wealth:    178419.33  Turnover: 0.7139  Gross: 1.4024  Gate: 0.8049
+[06:06:24] Episode 16  Reward:   0.262622  Wealth:    152922.47  Turnover: 0.7269  Gross: 1.4003  Gate: 0.8006
+[06:06:25] Episode 17  Reward:   0.244419  Wealth:    145648.61  Turnover: 0.4729  Gross: 1.4055  Gate: 0.8111
+[06:06:26] Episode 18  Reward:   0.171763  Wealth:    136116.88  Turnover: 0.8260  Gross: 1.4080  Gate: 0.8160
+[06:06:26] Episode 19  Reward:   0.438653  Wealth:    230270.39  Turnover: 0.6839  Gross: 1.4011  Gate: 0.8022
+[06:06:27] Episode 20  Reward:   0.380917  Wealth:    201881.02  Turnover: 0.6418  Gross: 1.3986  Gate: 0.7972
+[06:06:27] Episode 21  Reward:   0.246946  Wealth:    152129.47  Turnover: 0.8127  Gross: 1.4018  Gate: 0.8036
+[06:06:28] Episode 22  Reward:   0.176150  Wealth:    134405.86  Turnover: 0.6802  Gross: 1.4000  Gate: 0.8001
+[06:06:29] Episode 23  Reward:   0.383414  Wealth:    194364.40  Turnover: 0.7876  Gross: 1.4038  Gate: 0.8076
+[06:06:29] Episode 24  Reward:   0.197846  Wealth:    137123.52  Turnover: 0.5394  Gross: 1.4046  Gate: 0.8091
+[06:06:30] Episode 25  Reward:   0.286778  Wealth:    161172.43  Turnover: 0.7844  Gross: 1.3948  Gate: 0.7895
+[06:06:31] Episode 26  Reward:   0.415872  Wealth:    211701.06  Turnover: 0.7186  Gross: 1.4019  Gate: 0.8039
+[06:06:31] Episode 27  Reward:   0.342259  Wealth:    182481.55  Turnover: 0.7724  Gross: 1.3998  Gate: 0.7995
+[06:06:32] Episode 28  Reward:   0.342366  Wealth:    177248.39  Turnover: 0.7544  Gross: 1.4021  Gate: 0.8041
+[06:06:33] Episode 29  Reward:   0.482090  Wealth:    247927.13  Turnover: 0.8059  Gross: 1.4014  Gate: 0.8028
+[06:06:33] Episode 30  Reward:   0.250101  Wealth:    150584.48  Turnover: 0.6744  Gross: 1.3986  Gate: 0.7972
+[06:06:34] Episode 31  Reward:   0.473724  Wealth:    249195.63  Turnover: 0.6636  Gross: 1.4014  Gate: 0.8029
+[06:06:35] Episode 32  Reward:   0.392519  Wealth:    197263.08  Turnover: 0.7508  Gross: 1.4006  Gate: 0.8012
+[06:06:35] Episode 33  Reward:   0.324406  Wealth:    171269.52  Turnover: 0.6998  Gross: 1.4018  Gate: 0.8036
+[06:06:36] Episode 34  Reward:   0.399024  Wealth:    207027.62  Turnover: 0.7115  Gross: 1.3989  Gate: 0.7978
+[06:06:37] Episode 35  Reward:   0.290353  Wealth:    161150.87  Turnover: 0.6891  Gross: 1.3990  Gate: 0.7980
+[06:06:37] Episode 36  Reward:   0.221325  Wealth:    141725.16  Turnover: 0.4457  Gross: 1.4064  Gate: 0.8129
+[06:06:38] Episode 37  Reward:   0.399522  Wealth:    210487.35  Turnover: 0.6413  Gross: 1.4022  Gate: 0.8044
+[06:06:38] Episode     37  AvgReward:   0.342958  Noise: 0.0417
+[06:06:38] TRAIN STAGE COMPLETE
+[06:06:38] VALIDATION pass=1 reward=0.165299 wealth=129981.87 turnover=0.5712 gross=1.3877
+[06:06:38] ============================================================
+[06:06:38] TRAIN STAGE STARTED: stage=finetune_refit_all, episodes=61, batch_size=64, updates_per_step=1
+[06:06:38] ============================================================
+[06:06:38] Episode 1  Reward:   0.191636  Wealth:    137099.57  Turnover: 0.8686  Gross: 1.4056  Gate: 0.8112
+[06:06:39] Episode 2  Reward:   0.393724  Wealth:    208726.59  Turnover: 0.5917  Gross: 1.4025  Gate: 0.8051
+[06:06:39] Episode 3  Reward:   0.166634  Wealth:    130792.30  Turnover: 0.8469  Gross: 1.4024  Gate: 0.8048
+[06:06:40] Episode 4  Reward:   0.400480  Wealth:    202533.87  Turnover: 0.6195  Gross: 1.3993  Gate: 0.7986
+[06:06:40] Episode 5  Reward:   0.264463  Wealth:    153780.55  Turnover: 0.7250  Gross: 1.4038  Gate: 0.8075
+[06:06:41] Episode 6  Reward:   0.229182  Wealth:    147285.83  Turnover: 0.6679  Gross: 1.4000  Gate: 0.8001
+[06:06:42] Episode 7  Reward:   0.261126  Wealth:    150076.08  Turnover: 0.4965  Gross: 1.3984  Gate: 0.7968
+[06:06:42] Episode 8  Reward:   0.308397  Wealth:    168143.83  Turnover: 0.5915  Gross: 1.4029  Gate: 0.8059
+[06:06:43] Episode 9  Reward:   0.443819  Wealth:    230441.75  Turnover: 0.5862  Gross: 1.4033  Gate: 0.8065
+[06:06:44] Episode 10  Reward:   0.370298  Wealth:    196785.87  Turnover: 0.6510  Gross: 1.4021  Gate: 0.8041
+[06:06:44] Episode 11  Reward:   0.257619  Wealth:    150464.19  Turnover: 0.6362  Gross: 1.4112  Gate: 0.8225
+[06:06:45] Episode 12  Reward:   0.293893  Wealth:    164801.90  Turnover: 0.7895  Gross: 1.3968  Gate: 0.7936
+[06:06:45] Episode 13  Reward:   0.453841  Wealth:    237138.80  Turnover: 0.5705  Gross: 1.3989  Gate: 0.7978
+[06:06:46] Episode 14  Reward:   0.302360  Wealth:    166353.45  Turnover: 0.8391  Gross: 1.4030  Gate: 0.8060
+[06:06:47] Episode 15  Reward:   0.163271  Wealth:    130051.21  Turnover: 0.6677  Gross: 1.3981  Gate: 0.7962
+[06:06:47] Episode 16  Reward:   0.119264  Wealth:    123472.95  Turnover: 0.7123  Gross: 1.4013  Gate: 0.8025
+[06:06:48] Episode 17  Reward:   0.366752  Wealth:    188147.14  Turnover: 0.5254  Gross: 1.4001  Gate: 0.8003
+[06:06:49] Episode 18  Reward:   0.177222  Wealth:    133048.21  Turnover: 0.7155  Gross: 1.4025  Gate: 0.8050
+[06:06:49] Episode 19  Reward:   0.286737  Wealth:    160973.92  Turnover: 0.5010  Gross: 1.4025  Gate: 0.8050
+[06:06:50] Episode 20  Reward:   0.165662  Wealth:    131292.16  Turnover: 0.6548  Gross: 1.4033  Gate: 0.8066
+[06:06:51] Episode 21  Reward:   0.245482  Wealth:    147118.79  Turnover: 0.6924  Gross: 1.4065  Gate: 0.8131
+[06:06:51] Episode 22  Reward:   0.171602  Wealth:    131363.17  Turnover: 0.7222  Gross: 1.4007  Gate: 0.8015
+[06:06:52] Episode 23  Reward:   0.498990  Wealth:    265970.99  Turnover: 0.6126  Gross: 1.4049  Gate: 0.8097
+[06:06:53] Episode 24  Reward:   0.260817  Wealth:    148699.27  Turnover: 0.6472  Gross: 1.3959  Gate: 0.7919
+[06:06:53] Episode 25  Reward:   0.395243  Wealth:    204368.13  Turnover: 0.7426  Gross: 1.4045  Gate: 0.8089
+[06:06:54] Episode 26  Reward:   0.446915  Wealth:    229876.59  Turnover: 0.6022  Gross: 1.4058  Gate: 0.8116
+[06:06:55] Episode 27  Reward:   0.225264  Wealth:    141162.54  Turnover: 0.6788  Gross: 1.4015  Gate: 0.8031
+[06:06:55] Episode 28  Reward:   0.410796  Wealth:    205923.87  Turnover: 0.5574  Gross: 1.4022  Gate: 0.8044
+[06:06:56] Episode 29  Reward:   0.229255  Wealth:    145920.29  Turnover: 0.7476  Gross: 1.3982  Gate: 0.7964
+[06:06:57] Episode 30  Reward:   0.215854  Wealth:    143083.58  Turnover: 0.5891  Gross: 1.4022  Gate: 0.8045
+[06:06:57] Episode 31  Reward:   0.181889  Wealth:    133370.38  Turnover: 0.6968  Gross: 1.4032  Gate: 0.8065
+[06:06:58] Episode 32  Reward:   0.461327  Wealth:    234409.59  Turnover: 0.6522  Gross: 1.4021  Gate: 0.8042
+[06:06:59] Episode 33  Reward:   0.418724  Wealth:    214197.63  Turnover: 0.5894  Gross: 1.4008  Gate: 0.8016
+[06:06:59] Episode 34  Reward:   0.182424  Wealth:    134719.27  Turnover: 0.3782  Gross: 1.4066  Gate: 0.8133
+[06:07:00] Episode 35  Reward:   0.251082  Wealth:    149530.82  Turnover: 0.5009  Gross: 1.4087  Gate: 0.8173
+[06:07:01] Episode 36  Reward:   0.181346  Wealth:    133357.82  Turnover: 0.6771  Gross: 1.4040  Gate: 0.8081
+[06:07:01] Episode 37  Reward:   0.180560  Wealth:    135575.03  Turnover: 0.6062  Gross: 1.4044  Gate: 0.8088
+[06:07:02] Episode 38  Reward:   0.262798  Wealth:    152826.70  Turnover: 0.7292  Gross: 1.4002  Gate: 0.8004
+[06:07:03] Episode 39  Reward:   0.274731  Wealth:    151830.24  Turnover: 0.5899  Gross: 1.4007  Gate: 0.8015
+[06:07:03] Episode 40  Reward:   0.189084  Wealth:    134561.52  Turnover: 0.6455  Gross: 1.4015  Gate: 0.8029
+[06:07:04] Episode 41  Reward:   0.177403  Wealth:    134961.27  Turnover: 0.6412  Gross: 1.4038  Gate: 0.8077
+[06:07:05] Episode 42  Reward:   0.421736  Wealth:    211822.16  Turnover: 0.6706  Gross: 1.4069  Gate: 0.8137
+[06:07:06] Episode 43  Reward:   0.220901  Wealth:    140250.34  Turnover: 0.6531  Gross: 1.4010  Gate: 0.8019
+[06:07:06] Episode 44  Reward:   0.253091  Wealth:    146169.15  Turnover: 0.6399  Gross: 1.4014  Gate: 0.8028
+[06:07:07] Episode 45  Reward:   0.269322  Wealth:    150793.82  Turnover: 0.6657  Gross: 1.4013  Gate: 0.8027
+[06:07:08] Episode 46  Reward:   0.252482  Wealth:    149944.39  Turnover: 0.5062  Gross: 1.4068  Gate: 0.8137
+[06:07:08] Episode 47  Reward:   0.393141  Wealth:    204910.30  Turnover: 0.6421  Gross: 1.4010  Gate: 0.8020
+[06:07:09] Episode 48  Reward:   0.161406  Wealth:    130079.65  Turnover: 0.7291  Gross: 1.4007  Gate: 0.8014
+[06:07:10] Episode 49  Reward:   0.390619  Wealth:    200277.89  Turnover: 0.6090  Gross: 1.4042  Gate: 0.8085
+[06:07:10] Episode 50  Reward:   0.258091  Wealth:    153581.90  Turnover: 0.5642  Gross: 1.4060  Gate: 0.8121
+[06:07:11] Episode 51  Reward:   0.315228  Wealth:    167902.21  Turnover: 0.7773  Gross: 1.4047  Gate: 0.8094
+[06:07:12] Episode 52  Reward:   0.190475  Wealth:    134784.28  Turnover: 0.6247  Gross: 1.4059  Gate: 0.8119
+[06:07:12] Episode 53  Reward:   0.430014  Wealth:    218104.67  Turnover: 0.6598  Gross: 1.4072  Gate: 0.8144
+[06:07:13] Episode 54  Reward:   0.359667  Wealth:    183832.72  Turnover: 0.7204  Gross: 1.4033  Gate: 0.8066
+[06:07:14] Episode 55  Reward:   0.263419  Wealth:    151138.31  Turnover: 0.6502  Gross: 1.4057  Gate: 0.8113
+[06:07:14] Episode 56  Reward:   0.346193  Wealth:    184111.80  Turnover: 0.7657  Gross: 1.4038  Gate: 0.8076
+[06:07:15] Episode 57  Reward:   0.236361  Wealth:    142992.07  Turnover: 0.6837  Gross: 1.4010  Gate: 0.8019
+[06:07:16] Episode 58  Reward:   0.383507  Wealth:    199548.97  Turnover: 0.6503  Gross: 1.4039  Gate: 0.8078
+[06:07:16] Episode 59  Reward:   0.210137  Wealth:    137969.20  Turnover: 0.6246  Gross: 1.4028  Gate: 0.8056
+[06:07:17] Episode 60  Reward:   0.345021  Wealth:    178957.67  Turnover: 0.5999  Gross: 1.4020  Gate: 0.8040
+[06:07:18] Episode 61  Reward:   0.418557  Wealth:    212290.23  Turnover: 0.6337  Gross: 1.4037  Gate: 0.8075
+[06:07:18] Episode     61  AvgReward:   0.288481  Noise: 0.0370
+[06:07:18] TRAIN STAGE COMPLETE
+[06:07:18] Fine-tuning complete. Selected 1 pass(es); final agent saved.

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "experiment_id": "post_holdout_synthetic_dose_response_v1",
+  "evidence_class": "post_holdout_explanatory",
+  "confirmatory_claim_permitted": false,
+  "consumed_holdout_reused": true,
+  "hypothesis": "Reducing validated NN-vine simulator exposure from 1000 to 100 unique episode presentations improves transfer to historical fine-tuning, evaluated separately for the original full observation and the focused-analysis preferred no-policy-visible-dependence observation.",
+  "design_revision_reason": "The completed two-window retrospective analysis found that the no-policy-visible-dependence ensemble ranked first by CRRA certainty equivalent in both windows, whereas the scenario-CVaR-only observation did not improve on it. The unlaunched dose experiment was therefore revised before freezing or training.",
+  "selection_disclosure": "The no-policy-visible-dependence architecture was selected after viewing retrospective w01/w02 results. All dose-response results remain post-holdout explanatory and cannot provide confirmatory model selection evidence.",
+  "parent_pretrain_episodes": 1000,
+  "selected_pretrain_episodes": 100,
+  "finetune_episodes": 61,
+  "episode_length": 24,
+  "selection_protocol": "systematic_midpoint_100_of_1000_v1",
+  "bundle": "data/synthetic_dose_response_v1/vine_synthetic_100.RData",
+  "bundle_manifest": "data/synthetic_dose_response_v1/synthetic_dose_bundle_manifest.csv",
+  "base_model": {
+    "RL_ALGORITHM": "td3",
+    "POLICY_ENCODER": "lstm",
+    "VINE_OBSERVATION_MODE": "full",
+    "VINE_FEATURE_MODE": "full",
+    "CVAR_OBSERVATION_MODE": "full",
+    "CVAR_REWARD_MODE": "full",
+    "PRETRAIN_DATA_MODE": "vine_synthetic",
+    "RUN_FINETUNE": "true",
+    "CHECKPOINT_PREFIX": "td3_lstm_synth100_full",
+    "LR_ACTOR": "0.00003",
+    "LR_CRITIC": "0.0001",
+    "ENTROPY_COEF": "0.005",
+    "PRETRAIN_BEHAVIOR_GATE_MODE": "report_only",
+    "PRETRAIN_EPISODES": "100",
+    "PRETRAIN_RANDOM_EXPLORATION_STEPS": "100",
+    "PRETRAIN_NOISE_DECAY": "0.9801790434",
+    "PRETRAIN_BEHAVIOR_GATE_WINDOW": "100"
+  },
+  "experiments": [
+    {
+      "experiment_id": "synthetic_100_full_vine_state",
+      "scientific_question": "Does lower simulator exposure improve the original full-state TD3-LSTM policy?",
+      "overrides": {}
+    },
+    {
+      "experiment_id": "synthetic_100_no_policy_visible_dependence",
+      "scientific_question": "Does lower simulator exposure improve the focused-analysis preferred TD3-LSTM policy when raw vine features and scenario-CVaR are both hidden from the policy while dependence-informed pretraining and reward remain active?",
+      "overrides": {
+        "VINE_OBSERVATION_MODE": "zero",
+        "VINE_FEATURE_MODE": "zero",
+        "CVAR_OBSERVATION_MODE": "zero",
+        "CHECKPOINT_PREFIX": "td3_lstm_synth100_no_visible_dependence"
+      }
+    }
+  ],
+  "seeds": [20261001, 20261002, 20261003, 20261004, 20261005, 20261006, 20261007, 20261008, 20261009, 20261010],
+  "minimum_successful_seeds_per_experiment": 10,
+  "comparison_targets": [
+    "full_vine_state_and_cvar_observation",
+    "zero_vine_features_and_cvar_observation",
+    "historical_only_no_synthetic_pretraining",
+    "equal_weight",
+    "shrinkage_mean_variance",
+    "dcc_garch",
+    "static_vine",
+    "rolling_vine",
+    "dynamic_nn_vine"
+  ],
+  "primary_contrasts": [
+    {
+      "candidate": "synthetic_100_full_vine_state",
+      "comparator": "full_vine_state_and_cvar_observation",
+      "label": "100 versus 1000 synthetic paths, full state"
+    },
+    {
+      "candidate": "synthetic_100_no_policy_visible_dependence",
+      "comparator": "zero_vine_features_and_cvar_observation",
+      "label": "100 versus 1000 synthetic paths, no policy-visible dependence"
+    },
+    {
+      "candidate": "synthetic_100_no_policy_visible_dependence",
+      "comparator": "synthetic_100_full_vine_state",
+      "label": "No policy-visible dependence versus full state at 100 paths"
+    }
+  ],
+  "secondary_contrasts": [
+    {
+      "candidate": "synthetic_100_full_vine_state",
+      "comparator": "historical_only_no_synthetic_pretraining"
+    },
+    {
+      "candidate": "synthetic_100_no_policy_visible_dependence",
+      "comparator": "historical_only_no_synthetic_pretraining"
+    }
+  ],
+  "benchmark_comparison_candidate": "synthetic_100_no_policy_visible_dependence",
+  "primary_estimand": "annualized_CRRA_certainty_equivalent_difference_on_the_common_22_complete_periods",
+  "inference": {
+    "bootstrap": "paired_circular_moving_block",
+    "block_length": 3,
+    "replications": 9999,
+    "multiplicity": "Holm_across_three_primary_dose_and_representation_contrasts; benchmark family reported separately",
+    "seed_scope": "optimization_robustness_only_not_independent_market_histories"
+  },
+  "decision_rule": "A favorable same-holdout result is hypothesis-generating only. The completed focused windows select the no-policy-visible architecture but do not validate the 100-path dose; dose support requires a future dose-specific walk-forward, independent external market, or genuinely new observations.",
+  "failure_policy": "fail_closed_no_seed_substitution_no_silent_fallback"
+}

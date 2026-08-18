@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Matched training-source comparison on the common 22-period consumed holdout.}
+\label{tab:mixed-pretraining-comparison}
+\begin{tabular}{lrrrrrr}
+\toprule
+Training protocol & CAGR & Vol. & Sharpe & CRRA CE & Max DD & Turnover \\
+\midrule
+Historical throughout & 33.1\% & 12.1\% & 2.44 & 32.2\% & 4.8\% & 0.600 \\
+Synthetic pretraining only & 24.6\% & 13.8\% & 1.68 & 23.6\% & 7.2\% & 0.365 \\
+Mixed pretraining + historical fine-tuning & 34.1\% & 13.2\% & 2.31 & 33.1\% & 5.8\% & 0.351 \\
+Synthetic pretraining + historical fine-tuning & 32.3\% & 15.1\% & 1.94 & 30.9\% & 7.5\% & 0.354 \\
+\bottomrule
+\end{tabular}
+\begin{minipage}{0.98\linewidth}\footnotesize
+All arms use the same masked TD3--LSTM architecture, seeds, costs, and realized returns. Synthetic-only denotes the pre-fine-tuning checkpoint. Results are post-holdout explanatory.
+\end{minipage}
+\end{table}

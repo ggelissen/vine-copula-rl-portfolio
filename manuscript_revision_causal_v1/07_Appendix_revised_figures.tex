@@ -1,0 +1,212 @@
+\section*{Appendix}
+\label{sec:appendix}
+
+This appendix collects the diagnostic and explanatory figures that support the
+main-text results without expanding the confirmatory claim set. Figures
+\ref{fig:appendix_implementation_drag}--\ref{fig:appendix_seed_correlation}
+describe the frozen primary evaluation and the post-holdout ensemble mechanism;
+Figures \ref{fig:appendix_synthetic_marginals}--\ref{fig:appendix_optimizer}
+document synthetic-data and training behaviour; and Figures
+\ref{fig:appendix_causal_economics}--\ref{fig:appendix_compressed_reconciliation}
+provide additional post-holdout causal evidence. The evidence classification is
+stated explicitly in every caption.
+
+\subsection*{A. Primary Evaluation and Implementation Diagnostics}
+
+Figure \ref{fig:appendix_implementation_drag} places turnover and realised
+implementation drag on a common strategy axis. It shows that the static,
+rolling, and dynamic NN-vine optimisers incur substantially greater trading
+intensity than the RL ensemble. Equal weight has zero target turnover by
+construction and therefore supplies an implementation baseline rather than an
+actively rebalanced comparator.
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_04_implementation.tex}
+\caption{Implementation intensity and realised performance drag in the frozen
+primary evaluation. Bars report mean monthly full-$L_1$ turnover and diamonds
+report the percentage-point reduction in total return caused by the common
+transaction and financing cost model. Evidence class: frozen confirmatory
+primary evaluation.}
+\label{fig:appendix_implementation_drag}
+\end{figure}
+
+Figure \ref{fig:appendix_monthly_excess} displays when relative performance was
+earned. The variation around zero makes clear that the ranking is not generated
+by a uniform monthly advantage and motivates the paired time-series inference
+used in the main text.
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_07_monthly_excess.tex}
+\caption{Monthly net returns in excess of equal weight for the primary ensemble
+and selected benchmarks over the 22 complete locked periods. The horizontal
+zero line denotes equal-weight performance. Evidence class: frozen confirmatory
+primary evaluation.}
+\label{fig:appendix_monthly_excess}
+\end{figure}
+
+The frozen primary table uses the preregistered target-to-target turnover
+convention. Figure \ref{fig:appendix_drift_accounting} reports the subsequent
+deterministic reconciliation with realised pre-trade drifted holdings. The
+small difference for the ensemble supports the conclusion that its low
+implementation burden is not an artefact of the original convention.
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_10_drift_accounting.tex}
+\caption{Target-to-target and drift-aware turnover and transaction-cost
+accounting for the mean individual policy and arithmetic target-weight
+ensemble. This deterministic post-holdout audit does not overwrite the frozen
+primary result. Evidence class: post-holdout exploratory.}
+\label{fig:appendix_drift_accounting}
+\end{figure}
+
+Figure \ref{fig:appendix_seed_correlation} examines whether the 20 trained
+policies encode genuinely different allocation paths. The comparatively low
+off-diagonal correlations contrast with the high common-path return
+correlations and explain how target-weight averaging can cancel leverage,
+short exposure, and trades.
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_s04_seed_correlation.tex}
+\caption{Pairwise correlations of the flattened complete target-weight paths
+for the 20 frozen primary seeds. The diagonal is one by construction; the
+off-diagonal structure measures optimisation-induced allocation diversity.
+Evidence class: post-holdout explanatory.}
+\label{fig:appendix_seed_correlation}
+\end{figure}
+
+\clearpage
+\subsection*{B. Synthetic-Data Fidelity Diagnostics}
+
+Figures \ref{fig:appendix_synthetic_marginals}--\ref{fig:appendix_synthetic_temporal}
+compare the synthetic pre-training sample with the historical training prefix.
+They are diagnostics of the generator's training distribution, not tests on
+the reserved evaluation period. The identity lines indicate exact agreement;
+deviations should be interpreted jointly with the registered compatibility
+gates and the short historical sample.
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_s01_marginal_fidelity.tex}
+\caption{Marginal fidelity of synthetic pre-training returns. Each panel
+compares an asset-level historical training-prefix statistic with its synthetic
+counterpart; the gray diagonal denotes exact agreement. Evidence class:
+training-prefix synthetic diagnostic.}
+\label{fig:appendix_synthetic_marginals}
+\end{figure}
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_s02_dependence_fidelity.tex}
+\caption{Cross-sectional dependence fidelity of the synthetic pre-training
+sample. Circles satisfy the registered statistical compatibility gate and
+triangles identify pairs outside it. Historical lower-tail rates are supported
+by few events and are therefore interpreted with exact finite-sample
+uncertainty. Evidence class: training-prefix synthetic diagnostic.}
+\label{fig:appendix_synthetic_dependence}
+\end{figure}
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_s03_temporal_fidelity.tex}
+\caption{Temporal fidelity for lag-one returns and lag-one squared returns.
+Asset labels identify the sources of departures from the identity line.
+Evidence class: training-prefix synthetic diagnostic.}
+\label{fig:appendix_synthetic_temporal}
+\end{figure}
+
+\clearpage
+\subsection*{C. Training and Optimisation Diagnostics}
+
+The retained diagnostic logs provide complementary behavioural and numerical
+views of learning. Figure \ref{fig:appendix_pretraining_stability} tracks
+trailing policy outcomes through pre-training, while Figure
+\ref{fig:appendix_optimizer} tracks actor and critic optimisation quantities.
+These figures display all 20 frozen optimisation seeds supplied by the
+immutable aggregate archive; they do not turn episodes or gradient updates
+into independent statistical observations.
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_t01_pretraining_stability.tex}
+\caption{Pre-training behaviour after a 50-episode trailing mean. The panels
+show reward, terminal wealth, turnover, and gross exposure. Thin transparent
+lines identify individual seeds and the dark line is the cross-seed median.
+Evidence class: training-prefix diagnostic.}
+\label{fig:appendix_pretraining_stability}
+\end{figure}
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_t02_optimizer_diagnostics.tex}
+\caption{Pre-training optimizer diagnostics for all 20 frozen seeds. Thin
+transparent lines identify individual seeds and the dark line is the
+cross-seed median; mutually exclusive fine-tuning selection branches are
+excluded. Evidence class: training-prefix diagnostic.}
+\label{fig:appendix_optimizer}
+\end{figure}
+
+\clearpage
+\subsection*{D. Supplementary Causal and Post-Holdout Evidence}
+
+Figure \ref{fig:appendix_causal_economics} places the principal representation
+and training alternatives in turnover--CAGR space. The historical-only control
+achieves the greatest realised growth but also considerably higher turnover,
+whereas the compressed scenario-CVaR representation improves on the full raw
+state with a much smaller implementation increase. These are explanatory
+comparisons made after the primary holdout was consumed.
+
+Figure \ref{fig:appendix_causal_seed_effects} prevents an aggregate contrast
+from masking optimisation heterogeneity. The matched design compares the same
+seed across the reference and alternative intervention, but the resulting
+points still describe optimisation variability rather than new market
+realisations.
+
+\begin{figure}[!tbp]
+\centering
+\begin{minipage}[t]{0.56\textwidth}
+\centering
+\input{figures/tikz/figure_12_causal_turnover_performance.tex}
+\captionof{figure}{CAGR and mean monthly turnover of selected ten-seed causal
+ensembles. Evidence class: post-holdout explanatory.}
+\label{fig:appendix_causal_economics}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.41\textwidth}
+\centering
+\input{figures/tikz/figure_13_causal_seed_effects.tex}
+\captionof{figure}{Matched-seed annual CRRA certainty-equivalent effects.
+Blue points are individual seeds and red diamonds are medians. Evidence class:
+post-holdout explanatory.}
+\label{fig:appendix_causal_seed_effects}
+\end{minipage}
+\end{figure}
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_14_causal_wealth.tex}
+\caption{Net wealth paths of selected causal ensembles on the common realised
+asset-return sequence under common drift-aware costs. The historical-only path
+is a diagnostic alternative selected within a post-holdout experiment and is
+not a new confirmatory strategy. Evidence class: post-holdout explanatory.}
+\label{fig:appendix_causal_wealth}
+\end{figure}
+
+Finally, Figure \ref{fig:appendix_compressed_reconciliation} compares the
+compressed scenario-CVaR candidate with each frozen financial benchmark. The
+positive point estimates describe economic magnitude, but the simultaneous
+inference does not establish a fresh benchmark-superiority claim because the
+candidate was emphasised after inspection of the consumed holdout.
+
+\begin{figure}[!tbp]
+\centering
+\input{figures/tikz/figure_15_compressed_benchmark_reconciliation.tex}
+\caption{Annual CRRA certainty-equivalent differences between the post-hoc
+compressed scenario-CVaR candidate and each frozen financial benchmark. Points
+are paired estimates and horizontal segments are 95\% circular moving-block
+bootstrap intervals; none establishes superiority after Holm correction.
+Evidence class: post-holdout exploratory.}
+\label{fig:appendix_compressed_reconciliation}
+\end{figure}

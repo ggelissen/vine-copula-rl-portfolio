@@ -1,0 +1,25 @@
+% Requires booktabs.
+\begin{table}[tbp]
+\centering
+\caption{Transaction-Cost Break-Even Robustness}
+\label{tab:terminal-friction-crossings}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Contrast & CE at 0 bps (pp) & CE at 500 bps (pp) & Crossing (bps) & Direction \\
+\midrule
+TD3 vs equal weight & +5.14 & -17.16 & 107.3 & positive to negative \\
+TD3 vs static vine & -2.64 & +36.63 & 23.2 & negative to positive \\
+TD3 vs dynamic NN-vine & -1.44 & +38.70 & 12.1 & negative to positive \\
+Raw vine state & -7.31 & -3.00 & No crossing & none \\
+Joint visible dependence & +2.47 & +3.67 & No crossing & none \\
+Focused raw vine state & -0.25 & -2.18 & No crossing & none \\
+Focused visible dependence & -5.04 & -2.84 & No crossing & none \\
+Historical vs original bootstrap & +18.53 & +29.17 & No crossing & none \\
+Masked vs full-state synthetic & +5.12 & -3.33 & 281.6 & positive to negative \\
+Synthetic vs historical & -1.68 & +13.42 & 43.1 & negative to positive \\
+Synthetic vs bootstrap & +5.86 & +29.75 & No crossing & none \\
+\bottomrule
+\end{tabular}
+\caption*{\footnotesize Notes: Frozen weights are deterministically rescored; no policy is retrained. Financing rates are fixed at 3\% for shorts and 2\% for cash borrowing. A missing crossing means the sign is unchanged through 500 bps.}
+\end{table}

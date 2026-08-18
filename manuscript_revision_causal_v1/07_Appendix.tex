@@ -1,0 +1,38 @@
+\appendix
+\section{Reproducibility and Causal-Analysis Contract}
+\label{sec:appendix}
+
+\subsection{Evidence Classes}
+
+Three evidence classes are kept separate throughout the project. The frozen main evaluation is the original locked out-of-sample result. The no-vine, pretrained-only, ensemble-mechanism, and component analyses are post-holdout explanatory because they reuse its realised path. Retrospective walk-forward and external-panel studies can provide robustness and external-validity evidence, but only future non-overlapping windows frozen before access are eligible for a new confirmatory claim.
+
+\subsection{Causal Contrast Matrix}
+
+\begin{table}[H]
+\centering
+\caption{Preregistered Post-Holdout Causal Contrasts}
+\label{tab:causal_contract}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{0.31\textwidth} p{0.28\textwidth} p{0.34\textwidth}}
+\toprule
+\textbf{Contrast} & \textbf{Intervention} & \textbf{Quantity isolated} \\
+\midrule
+Direct NN-vine state & Zero 63 vine features; retain scenario-CVaR observation & Direct policy value of edge dependence features \\
+Scenario-CVaR observation & Retain vine features; zero CVaR state channel & Policy value of the scenario risk statistic \\
+Joint visible dependence & Zero vine features and CVaR observation & Combined policy-visible dependence information \\
+CVaR reward shaping & Retain state; zero CVaR reward term & Effect of tail-risk shaping in the objective \\
+Synthetic pre-training & Historical training only & Contribution of synthetic pre-training \\
+Generator comparison & Moving-block-bootstrap pre-training & Neural vine generator versus temporal bootstrap \\
+Recurrent encoder & Capacity-matched feedforward encoder & Contribution of LSTM memory \\
+Historical fine-tuning & Evaluate pretrained policy only & Contribution of realised-history adaptation \\
+Algorithm controls & DDPG, SAC, PPO, and A2C & TD3-specific update-rule sensitivity \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+All variants use seeds 20261001--20261010. A missing or invalid seed invalidates the matched experiment rather than being replaced. Ensembles are constructed by averaging target weights and then recomputing drifted turnover, transaction costs, financing costs, and returns. The primary component family uses one-sided paired CRRA-utility effects with Holm adjustment across eight contrasts; algorithm comparisons are two-sided and exploratory. Circular moving-block bootstrap inference uses 9,999 replications and block length three.
+
+\subsection{Minimum Replication Package}
+
+A complete release should contain: (i) the raw adjusted-level panel or an immutable licensed-data reference and hash; (ii) the training marginal and neural-vine fits; (iii) synthetic and historical bundle manifests; (iv) all seed checkpoints, behaviour gates, schedules, code hashes, and data hashes; (v) frozen training and evaluation source snapshots; (vi) the main and explanatory archives with SHA-256 sidecars; (vii) failed operational-retry logs and an incident timeline; (viii) R, Python, package, CUDA, and container inventories; and (ix) a contents manifest covering every supplementary artifact. Manuscript tables and figures must be generated from those frozen artifacts rather than transcribed manually.

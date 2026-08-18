@@ -1,0 +1,20 @@
+% Requires booktabs and graphicx.
+\begin{table}[tbp]
+\centering
+\caption{Training-Source Curriculum Comparison on the Consumed Holdout}
+\label{tab:mixed-pretraining-four-arm}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Protocol & Total return & CAGR & Vol. & Sharpe & CRRA CE & Max DD & Turnover & Impl. drag \\
+\midrule
+Historical throughout & 69.0 & 33.1 & 12.1 & 2.44 & 32.2 & 4.8 & 0.600 & 2.62 \\
+Synthetic only & 49.9 & 24.6 & 13.8 & 1.68 & 23.6 & 7.2 & 0.365 & 1.74 \\
+Mixed + historical fine-tuning & 71.6 & 34.1 & 13.2 & 2.31 & 33.1 & 5.8 & 0.351 & 1.61 \\
+Synthetic + historical fine-tuning & 67.2 & 32.3 & 15.1 & 1.94 & 30.9 & 7.5 & 0.354 & 1.96 \\
+\bottomrule
+\end{tabular}%
+}
+\caption*{\footnotesize Notes: Returns, volatility, CRRA certainty equivalent, drawdown, and implementation drag are percentages; turnover is mean monthly target-to-target turnover. All arms share the masked TD3--LSTM architecture, matched seeds, realized returns, constraints, and costs. The primary panel contains 22 complete holding periods. This experiment is post-holdout explanatory and cannot establish a fresh confirmatory winner.}
+\end{table}
