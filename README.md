@@ -1,133 +1,49 @@
-# Dynamic Portfolio Selection with Vine Copulas and Recurrent TD3
+# Neural-vine scenarios for recurrent portfolio control
 
-Research implementation of a constrained dynamic portfolio-allocation pipeline combining AR-GARCH marginals, a neural time-varying D-vine, synthetic pretraining, historical fine-tuning, and recurrent Twin Delayed DDPG (TD3).
+Research code for **Dynamic Portfolio Optimisation under Tail Risk: Combining Neural Vines with LSTM–TD3 Reinforcement Learning** (Gabriël M. J. Gelissen and Fengyi Yuan; manuscript in preparation). The model combines a time-varying Student-t D-vine scenario generator with constrained, recurrent portfolio control. The preferred *development* specification uses a scalar scenario-CVaR signal, mixed historical and synthetic experience during pretraining, and historical fine-tuning. The original full-vine-state specification is retained as a separately evaluated reference.
 
-> **Research status:** synthetic-data validation and the preregistered 20-seed training sweep are complete. Ablation and benchmark evaluation are in progress; the locked final out-of-sample evaluation has not yet been opened. Economic superiority is not established.
+## Results and evidence status
 
-## Research question
+The original 20-seed full-state policy was assessed in a frozen out-of-sample comparison with six benchmarks. Its positive CRRA certainty-equivalent difference from equal weight was **not statistically significant** (one-sided block-bootstrap p = 0.2347). The preferred mixed, compressed-state specification was chosen **after** that comparison. On the common 22 complete monthly periods, its ten-seed mean-weight ensemble had 34.13% CAGR, 2.31 Sharpe ratio, 33.07% annual CRRA certainty equivalent, and mean monthly target-weight turnover of 0.351. These are observed, post-selection development results—not a fresh confirmatory test or evidence of universal superiority. Ten matched seeds and block-bootstrap intervals do not establish a significant CE advantage over historical-only training.
 
-Can a recurrent portfolio policy use time-varying cross-asset dependence information to improve risk-adjusted allocation under realistic leverage, shorting, turnover, and tail-risk constraints?
+The study's theoretical contribution concerns conditional tail-risk information, not a theorem that the learned policy will outperform in markets. Read the manuscript, its tables, and the source evidence together. [The evidence synthesis](publication_pipeline_draft/PROJECT_EVIDENCE_SYNTHESIS.md) describes the original frozen comparison and later explanatory work; its earlier numerical summaries do not describe the final mixed-curriculum model.
 
-The project is designed around a stricter companion question: can any apparent improvement survive leakage controls, common realised-return scoring, multiple RL seeds, benchmark comparison, and predeclared statistical checks?
+## Find the relevant files
 
-## Method at a glance
+| Purpose | Location |
+| --- | --- |
+| Data loading, chronological splits, marginal models | `helper/` |
+| Neural vine and benchmark models | `benchmark_models/` |
+| Synthetic episodes, environment, recurrent TD3, policy replay | `rl/` |
+| Common accounting and experimental protocols | `publication_pipeline_draft/`, `eval/` |
+| Configuration and registered contrasts | `config/`, `publication_pipeline_draft/config/` |
+| Cluster workflows and protocol tests | `hpc/`, `tests/`, `publication_pipeline_draft/tests/` |
+| Frozen evidence and checksums | `frozen_releases/` |
+| Result tables and figure-generation code | `analysis_outputs/`, `publication_pipeline_draft/` |
+| Dataset provenance and redistribution limits | [data/README.md](data/README.md) |
 
-```text
-Daily asset prices
-    ↓
-Training-only AR-GARCH marginals and pseudo-observations
-    ↓
-Fully dynamic seven-asset D-vine dependence model
-    ↓
-Validated synthetic monthly episodes
-    ↓
-Recurrent TD3 pretraining
-    ↓
-Causal historical fine-tuning
-    ↓
-Locked 24-period out-of-sample evaluation
-    ↓
-Common realised-return scoring against benchmarks
-```
+Historical analyses and operational runbooks remain for traceability. A directory ending in `v1`, `v2`, etc. does **not** mean those versions are interchangeable scientific results. Consult the release manifest and checksum before using an artifact.
 
-### Dependence and marginal modelling
+## Reproduction
 
-- AR(1) marginal models with sGARCH, GJR-GARCH, and eGARCH candidates
-- Skewed Student-t innovations and residual diagnostics
-- Training-only empirical transforms to avoid holdout leakage
-- Exact training-only D-vine order search for seven assets
-- Neural time variation across all 21 unconditional and conditional D-vine edges
-- Fidelity gates for marginal moments, correlation, finite-sample tail co-exceedance, and temporal dependence
+The full pipeline requires R, Python, and substantial CPU/GPU resources. Package versions and commands depend on the experiment; a smoke test is not a reproduction of the paper. Begin with the relevant runbook and frozen contract, supply authorised source data as described in [data/README.md](data/README.md), and verify release checksums before scoring.
 
-### Portfolio policy
-
-- Recurrent TD3 with twin critics, delayed policy updates, and target smoothing
-- Long/short portfolio projection with explicit net and gross exposure constraints
-- Position limits, transaction costs, stock-borrow costs, and financing costs
-- Terminal-wealth CRRA objective expressed through dense telescoping increments
-- Scenario-based 95% CVaR penalty
-- Behavioural gates for leverage, diversification, turnover, and constraint compliance
-
-### Evaluation design
-
-- Final 24 holding periods locked away from model fitting and tuning
-- Synthetic-only pretraining
-- Historical fine-tuning restricted to the training prefix
-- One realised historical return path shared by RL and benchmark strategies
-- Equal-cost and equal-constraint scoring across methods
-- Planned multi-seed uncertainty, HAC utility comparisons, multiplicity control, and a moving-block Reality Check
-
-## Evidence status
-
-| Component | Status |
-|---|---|
-| Calendar and holdout invariants | Verified by fast tests |
-| Training-only marginal and dependence protocol | Implemented with runtime checks |
-| Dynamic all-tree D-vine smoke fit and persistence | Smoke-tested |
-| Recurrent TD3 projection and checkpoint invariants | Smoke-tested |
-| Full synthetic fidelity run | Pending |
-| Preregistered multi-seed training | Pending |
-| Locked out-of-sample comparison | Pending |
-| Economic superiority claim | Not established |
-
-See [RESEARCH_AUDIT.md](RESEARCH_AUDIT.md) for the defect history, falsification protocol, and publication gates. Historical diagnostic notes under `rl/` are retained for traceability; the root audit is authoritative when the files disagree.
-
-## Repository map
-
-```text
-benchmark_models/   benchmark portfolio and dependence models
-config/             master configuration, experiment manifests, environment snapshots
-data/               input datasets and generated artifacts
-eval/               common scoring, statistics, ablation and sensitivity runners
-helper/             data loading, time splitting, marginals and reproducibility helpers
-hpc/                cluster launch scripts
-paper_revision/     code-faithful manuscript and compiled PDF
-rl/                 generator, environment, recurrent TD3 training and evaluation
-tests/              R and Python invariants
-```
-
-## Reference workflow
-
-The project uses both R and Python. Exact package snapshots for the publication configuration are stored under `config/freeze_schema5/`.
+Fast, non-training checks from the repository root:
 
 ```bash
-# Fast protocol and calendar checks
 Rscript --vanilla tests/run_tests.r
-python tests/check_embedded_python.py
-python tests/test_leverage_gate.py
-
-# Generate and validate synthetic training episodes
-Rscript --vanilla rl/synthetic_returns.r config/config.yaml
-
-# Train without opening the locked evaluation sample
-Rscript --vanilla run_with_config.r config/config.yaml
-
-# Run only after the model and protocol have been frozen
-Rscript --vanilla evaluate_with_config.r config/config.yaml
+Rscript --vanilla tests/test_publication_benchmarks.r
+python3 -m pytest -q publication_pipeline_draft/tests
 ```
 
-The full workflow is computationally intensive and was designed for an HPC/GPU environment. Review `config/config.yaml` before running: device, core count, artifact paths, and publication seeds are explicit configuration values.
+The primary historical evaluation is described in [the pre-holdout evaluation runbook](publication_pipeline_draft/PRE_HOLDOUT_EVALUATION_RUNBOOK.md). Later mixed-training evidence and its publication artifacts are described in [the mixed-pretraining runbook](publication_pipeline_draft/MIXED_PRETRAINING_PUBLICATION_RUNBOOK.md). **Do not retune on the consumed holdout and present the result as new confirmation.** A new confirmatory claim needs a separately frozen future or external-market test.
 
-## Data protocol
+## Data, artifacts, and citation
 
-The repository contains three asset-universe CSV files. Before redistributing or using them, verify the source and licensing terms and document them in `data/README.md`. Each experiment stores hashes and split metadata so a run can be tied to its exact inputs.
+Input prices may be subject to provider redistribution terms; the GitHub source tree alone may be insufficient for byte-for-byte reproduction. Generated episodes, checkpoints, and large releases may be Git-LFS objects or separately archived assets. Small manifests, hashes, source code, and final summary tables should remain accessible without downloading training checkpoints. Each manuscript result should be traceable to its release manifest and exact code commit.
 
-The final 24 monthly holding periods are evaluation-only. They must not enter marginal fitting, D-vine fitting, normalisation, synthetic pretraining, historical fine-tuning, or hyperparameter selection.
+If using the code, cite the software with [CITATION.cff](CITATION.cff). Once the manuscript has a DOI or arXiv identifier, add it here and to the citation metadata. For a code release, cite a version-specific DOI or tag rather than the mutable `main` branch.
 
-## Limitations
+## Scope and reuse
 
-- A single 24-period market path has low statistical power, especially for tail outcomes.
-- Synthetic fidelity checks are necessary but cannot prove that the generator matches the unknown data-generating process.
-- Repeated RL seeds quantify optimisation uncertainty, not independent market histories.
-- Copula features primarily describe dependence and risk; they do not create return predictability by themselves.
-- The current repository includes historical/rejected artifacts for research traceability. Do not interpret a checkpoint or log as an endorsed result unless it passes the current schema and publication gates.
-
-## Paper
-
-The code-faithful manuscript and compiled PDF are under `paper_revision/`. Result tables intentionally remain incomplete until the locked evaluation programme has been executed.
-
-## Licence and disclaimer
-
-No project-wide licence is currently declared. Until a licence is added, copyright remains with the relevant authors and no permission to reuse the code is implied.
-
-This repository is academic research software, not investment advice. It is not a live trading system and makes no claim of future profitability.
+This is research software, not an investment product or trading recommendation. A repository license has not yet been selected; public visibility alone does not grant general reuse rights. Dataset rights must be assessed separately from any future code license.
