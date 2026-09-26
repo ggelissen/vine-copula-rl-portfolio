@@ -117,10 +117,13 @@ audited_synthetic_dose_replay <- identical(
   gate_authorization, "synthetic_dose_checkpoint_audit_v1")
 audited_mixed_pretraining_replay <- identical(
   gate_authorization, "mixed_pretraining_checkpoint_audit_v1")
+audited_headline_state_replay <- identical(
+  gate_authorization, "headline_state_checkpoint_audit_v1")
 
 if (nzchar(gate_authorization) &&
     !audited_causal_replay && !audited_focused_replay &&
-    !audited_synthetic_dose_replay && !audited_mixed_pretraining_replay) {
+    !audited_synthetic_dose_replay && !audited_mixed_pretraining_replay &&
+    !audited_headline_state_replay) {
   stop("Evaluation rejected an unknown gate authorization protocol.")
 }
 
@@ -357,6 +360,53 @@ if (audited_causal_replay) {
     stop("Checkpoint is not uniquely authorized by the mixed-pretraining audit.")
   }
   cat("Authorized weights-only replay through frozen mixed-pretraining audit.\n")
+} else if (audited_headline_state_replay) {
+  if (!truthy(Sys.getenv("EVAL_WEIGHTS_ONLY", unset = "false")) ||
+      !identical(Sys.getenv("EVAL_CHECKPOINT_MODELS", unset = ""), "full")) {
+    stop("Headline-state audit authorizes weights-only full-checkpoint replay.")
+  }
+  audit_manifest_file <- Sys.getenv("EVAL_HEADLINE_STATE_AUDIT_MANIFEST", unset = "")
+  audit_table_file <- Sys.getenv("EVAL_HEADLINE_STATE_CHECKPOINT_AUDIT", unset = "")
+  declared_checkpoint_sha256 <- tolower(Sys.getenv(
+    "EVAL_HEADLINE_STATE_CHECKPOINT_SHA256", unset = ""))
+  if (!file.exists(audit_manifest_file) || !file.exists(audit_table_file) ||
+      !grepl("^[0-9a-f]{64}$", declared_checkpoint_sha256)) {
+    stop("Headline-state replay lacks checkpoint-audit evidence.")
+  }
+  audit_manifest <- yaml::yaml.load_file(audit_manifest_file)
+  if (!identical(audit_manifest$status, "headline_state_checkpoint_audit_passed") ||
+      !identical(as.integer(audit_manifest$job_count), 30L) ||
+      !identical(as.integer(audit_manifest$experiment_count), 3L) ||
+      !identical(as.integer(audit_manifest$seeds_per_experiment), 10L) ||
+      !isTRUE(audit_manifest$all_checkpoint_tensors_finite) ||
+      !isTRUE(audit_manifest$all_checkpoint_metadata_match) ||
+      !identical(audit_manifest$confirmatory_claim_permitted, FALSE)) {
+    stop("Headline-state replay rejected an incomplete checkpoint audit.")
+  }
+  checkpoint_prefix <- Sys.getenv("EVAL_CHECKPOINT_PREFIX", unset = "")
+  checkpoint_file <- normalizePath(file.path(
+    evaluation_model_dir, paste0(checkpoint_prefix, "_full.pt")),
+    winslash = "/", mustWork = TRUE)
+  audit_table <- read.csv(audit_table_file, stringsAsFactors = FALSE,
+                          check.names = FALSE)
+  required_columns <- c("checkpoint", "checkpoint_sha256", "arm_id", "seed",
+                        "all_tensors_finite", "behavior_gate_mode")
+  if (nrow(audit_table) != 30L ||
+      !all(required_columns %in% names(audit_table))) {
+    stop("Headline-state checkpoint audit is incomplete.")
+  }
+  paths <- vapply(audit_table$checkpoint, normalizePath, character(1),
+                  winslash = "/", mustWork = TRUE)
+  match <- audit_table[paths == checkpoint_file, , drop = FALSE]
+  if (nrow(match) != 1L ||
+      !identical(tolower(match$checkpoint_sha256[[1L]]),
+                 declared_checkpoint_sha256) ||
+      !truthy(match$all_tensors_finite[[1L]]) ||
+      !identical(match$behavior_gate_mode[[1L]],
+                 Sys.getenv("PRETRAIN_BEHAVIOR_GATE_MODE", unset = "report_only"))) {
+    stop("Checkpoint is not uniquely authorized by the headline-state audit.")
+  }
+  cat("Authorized headline-state weights-only replay by checkpoint audit.\n")
 } else {
   required_training_artifacts <- c(
     file.path(evaluation_model_dir, "training_episode_metrics.csv"),
