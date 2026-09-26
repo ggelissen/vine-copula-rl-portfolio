@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "experiment_id": "post_holdout_headline_mixed_policy_inputs_v1",
+  "evidence_class": "post_holdout_explanatory",
+  "confirmatory_claim_permitted": false,
+  "consumed_holdout_reused": true,
+  "protocol_deviation_disclosure": "The mixed-pretraining response contract described its campaign as terminal. This supervisor-requested, subsequent policy-input comparison is an explicit post-holdout protocol deviation. Report all four arms and do not describe any same-sample significance as confirmatory.",
+  "question": "Holding the selected mixed pretraining curriculum, historical fine-tuning, model capacity, ten seeds, and portfolio accounting fixed, how do direct scenario-CVaR and raw NN-vine policy inputs affect performance?",
+  "base_contract": "publication_pipeline_draft/config/mixed_pretraining_response_v1.json",
+  "base_contract_sha256": "b80c889c9466d5fe1f7f83a93ebbf3f482959a687c2f638f32a7e61092d1f16d",
+  "original_training_release": "frozen_releases/mixed_pretraining_response_v1",
+  "training_source_runtime": "analysis_work/headline_state_training_source_v1",
+  "headline_evidence_release": "frozen_releases/mixed_pretraining_response_v1_evidence_v1",
+  "headline_arm": "compressed_inputs",
+  "seeds": [20261001, 20261002, 20261003, 20261004, 20261005, 20261006, 20261007, 20261008, 20261009, 20261010],
+  "new_arms": [
+    {"arm_id": "scalar_scenario_cvar", "VINE_OBSERVATION_MODE": "full", "VINE_FEATURE_MODE": "zero", "CVAR_OBSERVATION_MODE": "full"},
+    {"arm_id": "raw_vine_coordinates", "VINE_OBSERVATION_MODE": "full", "VINE_FEATURE_MODE": "full", "CVAR_OBSERVATION_MODE": "zero"},
+    {"arm_id": "full_state", "VINE_OBSERVATION_MODE": "full", "VINE_FEATURE_MODE": "full", "CVAR_OBSERVATION_MODE": "full"}
+  ],
+  "matched_training": {
+    "pretrain_data_mode": "mixed_historical_synthetic",
+    "unique_synthetic_paths": 100,
+    "unique_historical_paths": 61,
+    "pretrain_presentations": 1000,
+    "synthetic_presentations": 621,
+    "historical_presentations": 379,
+    "historical_finetune_episodes": 61,
+    "episode_length": 24,
+    "cvar_reward_mode": "full",
+    "policy_observation_dimension": 88
+  },
+  "evaluation": {
+    "window_id": "locked_oos_v1",
+    "locked_periods": 24,
+    "complete_periods": 22,
+    "turnover_convention": "target_to_target_v1",
+    "ensemble_rule": "average_target_weights_then_rescore_costs",
+    "realized_panel_sha256": "3c0275d65f316d56281ad1dda152f345d31bba107d92c4491ad6c972787b3219",
+    "headline_annualized_ce": 0.3307206384384769,
+    "headline_cagr": 0.3412859069109855,
+    "headline_mean_monthly_turnover": 0.3509063436265722
+  },
+  "inference": {
+    "replications": 9999,
+    "circular_block_length": 3,
+    "seed": 20264081,
+    "multiplicity": "Holm_across_three_two_sided_headline_input_contrasts",
+    "seed_interpretation": "Ten seeds assess training variability, not independent market samples."
+  },
+  "failure_policy": "all_30_new_and_10_frozen_headline_policies_required_no_seed_substitution",
+  "reporting_rule": "Report every input arm regardless of its result; the original-curriculum Table 8 remains historical context only and must not be mixed with this table."
+}
